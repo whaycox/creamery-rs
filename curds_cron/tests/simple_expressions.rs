@@ -3,9 +3,7 @@ use chrono::prelude::{DateTime, Utc};
 
 macro_rules! test_expression {
     ($expression:expr => ($($test_date:expr => $expected:expr),+)) => {
-        let expression = $expression;
-    
-        let test_object = CronExpression::parse(expression);
+        let test_object = $expression.parse::<CronExpression>().unwrap();
         
         $(
             assert_eq!($expected, test_object.is_match(&$test_date.parse::<DateTime<Utc>>().unwrap()),
@@ -13,10 +11,9 @@ macro_rules! test_expression {
         )+        
     };
     ($expression:expr => now => $expected:expr) => {
-        let expression = $expression;
         let test_date = Utc::now();
 
-        let test_object = CronExpression::parse(expression);
+        let test_object = $expression.parse::<CronExpression>().unwrap();
 
         assert_eq!($expected, test_object.is_match(&test_date), "Expected {:?} to fire {:?} for {:?}", $expression, $expected, &test_date);
     }

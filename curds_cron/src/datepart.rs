@@ -1,13 +1,23 @@
 use super::*;
-use std::fmt::Debug;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum CronDatePart {
     Minutes,
     Hours,
     DayOfMonth,
     Month,
     DayOfWeek,
+}
+impl Display for CronDatePart {   
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> Result<(), Error> {
+        match self {
+            CronDatePart::Minutes => write!(formatter, "Minutes"),
+            CronDatePart::Hours => write!(formatter, "Hours"),
+            CronDatePart::DayOfMonth => write!(formatter, "DayOfMonth"),
+            CronDatePart::Month => write!(formatter, "Month"),
+            CronDatePart::DayOfWeek => write!(formatter, "DayOfWeek"),
+        }
+    }
 }
 impl CronDatePart {
     pub fn fetch<Tz>(&self, datetime: &DateTime<Tz>) -> u32
