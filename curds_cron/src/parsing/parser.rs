@@ -7,7 +7,7 @@ pub trait CronFieldParser {
 
 #[cfg_attr(test, automock)]
 pub trait CronValueParsingHandler {
-    fn parse(&self, date_part: &CronDatePart, value: &str) -> Option<CronValue>;
+    fn parse(&self, date_part: &CronDatePart, value: &str) -> Option<Result<CronValue, CronParsingError>>;
 }
 
 #[cfg_attr(test, automock)]
@@ -71,17 +71,17 @@ mod tests {
                     .with(predicate::eq(CronDatePart::DayOfWeek), predicate::eq("One"))
                     .times(1)
                     .in_sequence(&mut sequence)
-                    .returning(|_,_| { Some(CronValue::Any) });
+                    .returning(|_,_| { Some(Ok(CronValue::Any)) });
                 mock_handler.expect_parse()
                     .with(predicate::eq(CronDatePart::DayOfWeek), predicate::eq("Two"))
                     .times(1)
                     .in_sequence(&mut sequence)
-                    .returning(|_,_| { Some(CronValue::Any) });
+                    .returning(|_,_| { Some(Ok(CronValue::Any)) });
                 mock_handler.expect_parse()
                     .with(predicate::eq(CronDatePart::DayOfWeek), predicate::eq("Three"))
                     .times(1)
                     .in_sequence(&mut sequence)
-                    .returning(|_,_| { Some(CronValue::Any) });
+                    .returning(|_,_| { Some(Ok(CronValue::Any)) });
                 CronValueParserLink::tail(Box::new(mock_handler)) 
             });
 

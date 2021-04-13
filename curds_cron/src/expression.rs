@@ -2,7 +2,7 @@ use super::*;
 
 #[derive(Debug)]
 pub struct CronExpression {
-    fields: Vec<CronField>,
+    fields: [CronField; Self::FIELD_COUNT],
 }
 
 impl FromStr for CronExpression {
@@ -30,14 +30,15 @@ impl CronExpression {
                 parts: parts.len()
             });
         }
-        let fields = vec![
-            TFieldParser::parse(CronDatePart::Minutes, parts[0])?,
-            TFieldParser::parse(CronDatePart::Hours, parts[1])?,
-            TFieldParser::parse(CronDatePart::DayOfMonth, parts[2])?,
-            TFieldParser::parse(CronDatePart::Month, parts[3])?,
-            TFieldParser::parse(CronDatePart::DayOfWeek, parts[4])?,
-        ];
-        Ok(CronExpression { fields })
+        Ok(CronExpression { 
+            fields : [   
+                TFieldParser::parse(CronDatePart::Minutes, parts[0])?,
+                TFieldParser::parse(CronDatePart::Hours, parts[1])?,
+                TFieldParser::parse(CronDatePart::DayOfMonth, parts[2])?,
+                TFieldParser::parse(CronDatePart::Month, parts[3])?,
+                TFieldParser::parse(CronDatePart::DayOfWeek, parts[4])?,
+            ]
+        })
     }
 
     pub fn is_match<Tz>(&self, datetime: &DateTime<Tz>) -> bool 
@@ -106,7 +107,7 @@ mod tests {
     #[test]
     fn any_nonmatch_field_returns_false() {
         let expression = CronExpression {
-            fields: vec![true_field(), false_field(), true_field()]
+            fields: [true_field(), false_field(), true_field(), true_field(), true_field()]
         };
 
         assert_eq!(false, expression.is_match(&Utc::now()));
@@ -115,7 +116,7 @@ mod tests {
     #[test]
     fn all_fields_match_returns_true() {
         let expression = CronExpression {
-            fields: vec![true_field(), true_field()]
+            fields: [true_field(), true_field(), true_field(), true_field(), true_field()]
         };
 
         assert_eq!(true, expression.is_match(&Utc::now()));

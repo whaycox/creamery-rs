@@ -21,7 +21,7 @@ impl CronValueParserLink {
 
     pub fn parse(&self, date_part: &CronDatePart, value: &str) -> Result<CronValue, CronParsingError> {
         if let Some(cron_value) = self.current.parse(date_part, value) {
-            return Ok(cron_value);
+            return Ok(cron_value?);
         }
         else {        
             match &self.successor {
@@ -67,7 +67,7 @@ mod tests {
         mock_handler.expect_parse()
             .with(predicate::eq(CronDatePart::Minutes), predicate::eq(TEST_VALUE))
             .times(1)
-            .returning(|_, _| { Some(CronValue::Any) });
+            .returning(|_, _| { Some(Ok(CronValue::Any)) });
         let test_object = CronValueParserLink::tail(Box::<MockCronValueParsingHandler>::new(mock_handler));
 
         let actual = test_object.parse(&CronDatePart::Minutes, TEST_VALUE);
@@ -89,7 +89,7 @@ mod tests {
             .with(predicate::eq(CronDatePart::Minutes), predicate::eq(TEST_VALUE))
             .times(1)
             .in_sequence(&mut sequence)
-            .returning(|_, _| { Some(CronValue::Any) });
+            .returning(|_, _| { Some(Ok(CronValue::Any)) });
         let test_object = CronValueParserLink::tail(Box::<MockCronValueParsingHandler>::new(mock_second_handler))
             .prepend(Box::<MockCronValueParsingHandler>::new(mock_first_handler));
 
