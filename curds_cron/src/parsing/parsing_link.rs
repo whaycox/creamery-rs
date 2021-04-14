@@ -27,7 +27,7 @@ impl CronValueParserLink {
             match &self.successor {
                 None => Err(CronParsingError::InvalidValue {
                     date_part: *date_part,
-                    value: value.clone().to_owned(),
+                    value: value.to_owned(),
                  }),
                 Some(link) => return link.parse(date_part, value),
             }

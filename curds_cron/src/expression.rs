@@ -21,12 +21,12 @@ impl CronExpression {
         let parts: Vec<&str> = expression.split(" ").collect();
         if parts.iter().any(|part| { part.len() == 0}) {
             return Err(CronParsingError::EmptyField {
-                expression: expression.clone().to_owned(),
+                expression: expression.to_owned(),
             });
         }
         if parts.len() != Self::FIELD_COUNT {
             return Err(CronParsingError::FieldCount { 
-                expression: expression.clone().to_owned(),
+                expression: expression.to_owned(),
                 parts: parts.len()
             });
         }

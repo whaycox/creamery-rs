@@ -11,7 +11,7 @@ impl CronValueParsingHandler for WildcardValueHandler {
                 let step_value = range_capture.as_str().parse::<u32>().unwrap();
                 if step_value <= 1 {
                     return Some(Err(CronParsingError::ValueOutOfBounds {
-                        raw_value: value.clone().to_owned(),
+                        raw_value: value.to_owned(),
                         supplied: step_value,
                         allowed: 2,
                         date_part: *date_part,
@@ -19,7 +19,7 @@ impl CronValueParsingHandler for WildcardValueHandler {
                 }
                 if date_part.min() + step_value > date_part.max() {
                     return Some(Err(CronParsingError::ValueOutOfBounds {
-                        raw_value: value.clone().to_owned(),
+                        raw_value: value.to_owned(),
                         supplied: step_value,
                         allowed: date_part.max() - date_part.min(),
                         date_part: *date_part,

@@ -6,7 +6,7 @@ impl CronValueParsingHandler for SingleValueHandler {
         if let Ok(single_value) = date_part.translate(value).parse::<u32>() {
             if single_value < date_part.min() {
                 return Some(Err(CronParsingError::ValueOutOfBounds {
-                    raw_value: value.clone().to_owned(),
+                    raw_value: value.to_owned(),
                     supplied: single_value,
                     allowed: date_part.min(),
                     date_part: *date_part,
@@ -14,7 +14,7 @@ impl CronValueParsingHandler for SingleValueHandler {
             }
             if single_value > date_part.max() {
                 return Some(Err(CronParsingError::ValueOutOfBounds {
-                    raw_value: value.clone().to_owned(),
+                    raw_value: value.to_owned(),
                     supplied: single_value,
                     allowed: date_part.max(),
                     date_part: *date_part,
@@ -24,7 +24,7 @@ impl CronValueParsingHandler for SingleValueHandler {
         }
         else {
             return Some(Err(CronParsingError::ParsedValue {
-                value: value.clone().to_owned(),
+                value: value.to_owned(),
                 date_part: *date_part,
             }))
         }

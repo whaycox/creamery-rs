@@ -12,7 +12,7 @@ impl CronValueParsingHandler for RangeValueHandler {
                 let min_bound = date_part.min();
                 if min_value < min_bound {
                     return Some(Err(CronParsingError::ValueOutOfBounds {
-                        raw_value: value.clone().to_owned(),
+                        raw_value: value.to_owned(),
                         supplied: min_value,
                         allowed: min_bound,
                         date_part: *date_part,
@@ -24,7 +24,7 @@ impl CronValueParsingHandler for RangeValueHandler {
                     let max_bound = date_part.max();
                     if max_value > max_bound {
                         return Some(Err(CronParsingError::ValueOutOfBounds {
-                            raw_value: value.clone().to_owned(),
+                            raw_value: value.to_owned(),
                             supplied: max_value,
                             allowed: max_bound,
                             date_part: *date_part,
@@ -45,14 +45,14 @@ impl CronValueParsingHandler for RangeValueHandler {
                 }
                 else {
                     return Some(Err(CronParsingError::ParsedValue {
-                        value: max.clone().to_owned(),
+                        value: max.to_owned(),
                         date_part: *date_part,
                     }))
                 }
             }
             else {
                 return Some(Err(CronParsingError::ParsedValue {
-                    value: min.clone().to_owned(),
+                    value: min.to_owned(),
                     date_part: *date_part, 
                 }))
             }

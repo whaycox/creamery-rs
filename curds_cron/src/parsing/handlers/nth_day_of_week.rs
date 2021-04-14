@@ -10,7 +10,7 @@ impl CronValueParsingHandler for NthDayOfWeekValueHandler {
             if let Ok(parsed_value) = date_part.translate(&captures[1]).parse::<u32>() {
                 if parsed_value > date_part.max() {
                     return Some(Err(CronParsingError::ValueOutOfBounds {
-                        raw_value: value.clone().to_owned(),
+                        raw_value: value.to_owned(),
                         allowed: date_part.max(),
                         supplied: parsed_value,
                         date_part: *date_part,
@@ -24,7 +24,7 @@ impl CronValueParsingHandler for NthDayOfWeekValueHandler {
             }
             else {
                 return Some(Err(CronParsingError::ParsedValue {
-                    value: value.clone().to_owned(),
+                    value: value.to_owned(),
                     date_part: *date_part,
                 }))
             }
