@@ -1,11 +1,17 @@
 use super::*;
 
+/// An enum to represent the various parts of a DateTime against which a CronExpression can match.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum CronDatePart {
+    /// The DateTime's minutes value.
     Minutes,
+    /// The DateTime's hours value.
     Hours,
+    /// The DateTime's day value.
     DayOfMonth,
+    /// The DateTime's month value.
     Month,
+    /// The DateTime's weekday value.
     DayOfWeek,
 }
 impl Display for CronDatePart {   
@@ -20,6 +26,14 @@ impl Display for CronDatePart {
     }
 }
 impl CronDatePart {
+    /// Fetches the appropriate part of the DateTime.
+    /// ```
+    /// use chrono::{DateTime, Timelike, Utc};
+    /// use curds_cron::CronDatePart;
+    /// let part = CronDatePart::Minutes;
+    /// let now = Utc::now();
+    /// assert_eq!(now.minute(), part.fetch(&now));
+    /// ```
     pub fn fetch<Tz>(&self, datetime: &DateTime<Tz>) -> u32
     where Tz : TimeZone {
         match self {
@@ -41,6 +55,12 @@ impl CronDatePart {
         }
     }
 
+    /// Return the minimum allowable value for the part.
+    /// ```
+    /// use curds_cron::CronDatePart;
+    /// let part = CronDatePart::Hours;
+    /// assert_eq!(0, part.min());
+    /// ```
     pub fn min(&self) -> u32 {
         match self {
             CronDatePart::Minutes | CronDatePart::Hours | CronDatePart::DayOfWeek => 0,
@@ -48,6 +68,12 @@ impl CronDatePart {
         }
     }
 
+    /// Return the maximum allowable value for the part.
+    /// ```
+    /// use curds_cron::CronDatePart;
+    /// let part = CronDatePart::Month;
+    /// assert_eq!(12, part.max());
+    /// ```
     pub fn max(&self) -> u32 {
         match self {
             CronDatePart::Minutes => 59,
@@ -58,6 +84,14 @@ impl CronDatePart {
         }
     }
 
+    /// Translate a value into its numeric representation, if possible.
+    /// Will return the supplied string if it is not a recognized alias.
+    /// ```
+    /// use curds_cron::CronDatePart;
+    /// let part = CronDatePart::DayOfWeek;
+    /// assert_eq!("5", part.translate("Fri"));
+    /// assert_eq!("foo", part.translate("foo"));
+    /// ```
     pub fn translate<'a>(&self, value: &'a str) -> &'a str {
         match self {
             CronDatePart::Month => match value.to_lowercase().as_str() {
