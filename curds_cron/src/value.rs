@@ -11,6 +11,27 @@ pub enum CronValue {
     NthDayOfWeek { day_of_week: u32, n: u32 },
     NearestWeekday { day_of_month: u32 },
 }
+impl Display for CronValue {
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> Result<(), std::fmt::Error> { 
+        match &self {
+            CronValue::Any => write!(formatter, "*"),
+            CronValue::Single(value) => write!(formatter, "{}", value),
+            CronValue::Step(value) => write!(formatter, "*/{}", value),
+            CronValue::Range { min, max } => write!(formatter, "{}-{}", min, max),
+            CronValue::LastDayOfMonth { offset } => {
+                if offset > &0 {
+                    return write!(formatter, "L-{}", offset);
+                }
+                else {
+                    return write!(formatter, "L");
+                }
+            },
+            CronValue::LastDayOfWeek { day_of_week } => write!(formatter, "{}L", day_of_week),
+            CronValue::NthDayOfWeek { day_of_week, n } => write!(formatter, "{}#{}", day_of_week, n),
+            CronValue::NearestWeekday { day_of_month } => write!(formatter, "{}W", day_of_month),
+        }
+    }
+}
 impl CronValue {
     pub fn is_match<Tz>(&self, date_part: &CronDatePart, datetime: &DateTime<Tz>) -> bool
     where Tz : TimeZone {
@@ -55,6 +76,83 @@ impl CronValue {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn displays_any() {
+        let test_object = CronValue::Any;
+
+        assert_eq!("*", &format!("{}", test_object));
+    }
+
+    #[test]
+    fn displays_single() {
+        let test_object = CronValue::Single(15);
+
+        assert_eq!("15", &format!("{}", test_object));
+    }
+
+    #[test]
+    fn displays_step() {
+        let test_object = CronValue::Step(5);
+
+        assert_eq!("*/5", &format!("{}", test_object));
+    }
+
+    #[test]
+    fn displays_range() {
+        let test_object = CronValue::Range {
+            min: 5,
+            max: 10,
+        };
+
+        assert_eq!("5-10", &format!("{}", test_object));
+    }
+
+    #[test]
+    fn displays_last_day_of_month_without_offset() {
+        let test_object = CronValue::LastDayOfMonth {
+            offset: 0,
+        };
+
+        assert_eq!("L", &format!("{}", test_object));
+    }
+
+    #[test]
+    fn displays_last_day_of_month_with_offset() {
+        let test_object = CronValue::LastDayOfMonth {
+            offset: 10,
+        };
+
+        assert_eq!("L-10", &format!("{}", test_object));
+    }
+
+    #[test]
+    fn displays_last_day_of_week() {
+        let test_object = CronValue::LastDayOfWeek {
+            day_of_week: 5,
+        };
+
+        assert_eq!("5L", &format!("{}", test_object));
+    }
+
+    #[test]
+    fn displays_nth_day_of_week() {
+        let test_object = CronValue::NthDayOfWeek {
+            day_of_week: 3,
+            n: 2,
+        };
+
+        assert_eq!("3#2", &format!("{}", test_object));
+    }
+
+    #[test]
+    fn displays_nearest_weekday() {
+        let test_object = CronValue::NearestWeekday {
+            day_of_month: 14,
+        };
+
+        assert_eq!("14W", &format!("{}", test_object));
+    }
 
     #[test]
     fn any_matches_always() {

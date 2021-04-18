@@ -13,20 +13,20 @@
 //! 
 //! Each field consists of some number of values, comma separated, indicating when the expression is a match.
 //! In addition to the regular: 
-//! * Single value 
-//! * Inclusive range of values
-//! * Wildcard
+//! * [Single value](#single-values) 
+//! * [Inclusive range of values](#range-values)
+//! * [Wildcard](#wildcard-values)
 //! 
 //! Expressions can also include:
-//! * Step ranges
-//! * Weekday nearest to Day of Month
-//! * Last Day of Month (with or without an offset)
-//! * Nth Day of Week
-//! * Last Day of Week
+//! * [Step ranges](#step-range-values)
+//! * [Weekday nearest to Day of Month](#weekday-nearest-to-day-of-month)
+//! * [Last Day of Month (with or without an offset)](#last-day-of-month)
+//! * [Nth Day of Week](#nth-day-of-week)
+//! * [Last Day of Week](#last-day-of-week)
 //! 
 //! Additionally, Month and Day of Week values can be represented numerically or with a three-letter abbreviation (JAN -> 01 or wed -> 3, respectively).
-//! 
 //! # Examples
+//! ## Wildcard Values
 //! An expression that is always a match.
 //! ```
 //! use chrono::{DateTime, Utc};
@@ -35,58 +35,75 @@
 //! assert_eq!(true, anytime.is_match(&Utc::now()));
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
-//! An expression that matches on the last day of February, April, or December.
+//! ## Single Values
+//! An expression that matches at the start of a new year.
 //! ```
 //! use chrono::{DateTime, Utc};
 //! use curds_cron::CronExpression;
-//! let end_of_months = "* * L 2,APR,dec *".parse::<CronExpression>()?;
-//! assert_eq!(true, end_of_months.is_match(&"2021-04-30T00:00:00Z".parse::<DateTime<Utc>>()?));
-//! assert_eq!(false, end_of_months.is_match(&"2021-12-30T00:00:00Z".parse::<DateTime<Utc>>()?));
+//! let new_year = "0 0 1 1 *".parse::<CronExpression>()?;
+//! assert_eq!(true, new_year.is_match(&"2021-01-01T00:00:00Z".parse::<DateTime<Utc>>()?));
+//! assert_eq!(false, new_year.is_match(&"2021-01-01T00:01:00Z".parse::<DateTime<Utc>>()?));
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
-//! An expression that matches at noon on Saturdays.
+//! ## Range Values
+//! An expression that matches in the middle of everything.
 //! ```
 //! use chrono::{DateTime, Utc};
 //! use curds_cron::CronExpression;
-//! let saturday_noon = "0 12 * * SAT".parse::<CronExpression>()?;
-//! assert_eq!(true, saturday_noon.is_match(&"2021-04-10T12:00:00Z".parse::<DateTime<Utc>>()?));
-//! assert_eq!(false, saturday_noon.is_match(&"2021-04-11T12:00:00Z".parse::<DateTime<Utc>>()?));
+//! let middles = "15-45 6-18 10-20 3-9 2-4".parse::<CronExpression>()?;
+//! assert_eq!(true, middles.is_match(&"2021-04-13T07:24:00Z".parse::<DateTime<Utc>>()?));
+//! assert_eq!(false, middles.is_match(&"2021-04-13T18:46:00Z".parse::<DateTime<Utc>>()?));
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
-//! An expression that matches at the top of each hour between 8AM and 5PM on the last Friday of the month.
+//! ## Step Range Values
+//! An expression that matches on even minutes in even hours on odd days in odd months.
 //! ```
 //! use chrono::{DateTime, Utc};
 //! use curds_cron::CronExpression;
-//! let last_friday = "0 8-17 * * friL".parse::<CronExpression>()?;
-//! assert_eq!(false, last_friday.is_match(&"2021-04-23T12:00:00Z".parse::<DateTime<Utc>>()?));
-//! assert_eq!(true, last_friday.is_match(&"2021-04-30T12:00:00Z".parse::<DateTime<Utc>>()?));
+//! let steps = "*/2 */2 */2 */2 *".parse::<CronExpression>()?;
+//! assert_eq!(true, steps.is_match(&"2021-01-05T06:44:00Z".parse::<DateTime<Utc>>()?));
+//! assert_eq!(false, steps.is_match(&"2021-01-05T06:43:00Z".parse::<DateTime<Utc>>()?));
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
-//! An expression that matches on the third Monday of January.
+//! ## Weekday Nearest to Day of Month
+//! An expression that matches the weekday nearest to the 10th in August.
 //! ```
 //! use chrono::{DateTime, Utc};
 //! use curds_cron::CronExpression;
-//! let third_monday = "* * * Jan Mon#3".parse::<CronExpression>()?;
-//! assert_eq!(false, third_monday.is_match(&"2021-01-11T00:00:00Z".parse::<DateTime<Utc>>()?));
-//! assert_eq!(true, third_monday.is_match(&"2021-01-18T00:00:00Z".parse::<DateTime<Utc>>()?));
+//! let tenth = "* * 10W Aug *".parse::<CronExpression>()?;
+//! assert_eq!(false, tenth.is_match(&"2019-08-10T00:00:00Z".parse::<DateTime<Utc>>()?));
+//! assert_eq!(true, tenth.is_match(&"2019-08-09T00:00:00Z".parse::<DateTime<Utc>>()?));
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
-//! An expression that matches on Wednesdays between the 10th and 20th.
+//! ## Last Day of Month
+//! An expression that matches on the two last days of every month.
 //! ```
 //! use chrono::{DateTime, Utc};
 //! use curds_cron::CronExpression;
-//! let middle_weds = "* * 10-20 * wed".parse::<CronExpression>()?;
-//! assert_eq!(false, middle_weds.is_match(&"2021-01-12T00:00:00Z".parse::<DateTime<Utc>>()?));
-//! assert_eq!(true, middle_weds.is_match(&"2021-01-13T00:00:00Z".parse::<DateTime<Utc>>()?));
+//! let last_two = "* * L,L-1 * *".parse::<CronExpression>()?;
+//! assert_eq!(false, last_two.is_match(&"2021-04-28T00:00:00Z".parse::<DateTime<Utc>>()?));
+//! assert_eq!(true, last_two.is_match(&"2021-04-29T00:00:00Z".parse::<DateTime<Utc>>()?));
+//! assert_eq!(true, last_two.is_match(&"2021-04-30T00:00:00Z".parse::<DateTime<Utc>>()?));
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
-//! An expression that matches every fifth minute five days before the last day of the month.
+//! ## Nth Day of Week
+//! An expression that matches on the 2nd Monday of June.
 //! ```
 //! use chrono::{DateTime, Utc};
 //! use curds_cron::CronExpression;
-//! let fifths = "*/5 * L-5 * *".parse::<CronExpression>()?;
-//! assert_eq!(false, fifths.is_match(&"2021-04-25T00:03:00Z".parse::<DateTime<Utc>>()?));
-//! assert_eq!(true, fifths.is_match(&"2021-04-25T00:05:00Z".parse::<DateTime<Utc>>()?));
+//! let monday = "* * * jun 1#2".parse::<CronExpression>()?;
+//! assert_eq!(false, monday.is_match(&"2021-06-07T12:00:00Z".parse::<DateTime<Utc>>()?));
+//! assert_eq!(true, monday.is_match(&"2021-06-14T12:00:00Z".parse::<DateTime<Utc>>()?));
+//! # Ok::<(), Box<dyn std::error::Error>>(())
+//! ```
+//! ## Last Day of Week
+//! An expression that matches on the last Friday of every month.
+//! ```
+//! use chrono::{DateTime, Utc};
+//! use curds_cron::CronExpression;
+//! let friday = "* * * * FriL".parse::<CronExpression>()?;
+//! assert_eq!(false, friday.is_match(&"2021-01-22T00:00:00Z".parse::<DateTime<Utc>>()?));
+//! assert_eq!(true, friday.is_match(&"2021-01-29T00:00:00Z".parse::<DateTime<Utc>>()?));
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 

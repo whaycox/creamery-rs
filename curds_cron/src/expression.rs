@@ -1,10 +1,21 @@
 use super::*;
 
-/// An representation of a Cron Expression.
-
+/// A representation of a Cron Expression.
 #[derive(Debug)]
 pub struct CronExpression {
     fields: [CronField; Self::FIELD_COUNT],
+}
+
+impl Display for CronExpression {
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> Result<(), std::fmt::Error> { 
+        write!(formatter, "{} {} {} {} {}", 
+            &self.fields[0],
+            &self.fields[1],
+            &self.fields[2],
+            &self.fields[3],
+            &self.fields[4])?;
+        Ok(())
+    }
 }
 
 impl FromStr for CronExpression {
@@ -17,11 +28,12 @@ impl FromStr for CronExpression {
 
 impl CronExpression {
     const FIELD_COUNT : usize = 5;
+    const FIELD_DELIMITER : char = ' ';
 
     fn parse<TFieldParser>(expression: &str) -> Result<CronExpression, CronParsingError>
     where TFieldParser : CronFieldParser {
         let parts: Vec<&str> = expression
-            .split(" ")
+            .split(Self::FIELD_DELIMITER)
             .filter(|part| part.len() > 0)
             .collect();
         if parts.len() != Self::FIELD_COUNT {
@@ -64,6 +76,21 @@ impl CronExpression {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn displays_fields() {
+        let test_object = CronExpression {
+            fields: [
+                CronField::new(CronDatePart::Hours, vec![CronValue::Any]),
+                CronField::new(CronDatePart::Hours, vec![CronValue::Any]),
+                CronField::new(CronDatePart::Hours, vec![CronValue::Any]),
+                CronField::new(CronDatePart::Hours, vec![CronValue::Any]),
+                CronField::new(CronDatePart::Hours, vec![CronValue::Any]),
+            ],
+        };
+
+        assert_eq!("* * * * *", &format!("{}", test_object));
+    }
 
     #[test]
     fn too_long_expression_fails() {
