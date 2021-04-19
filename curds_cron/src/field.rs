@@ -5,6 +5,24 @@ pub struct CronField {
     date_part: CronDatePart,
     values: Vec<CronValue>,
 }
+impl Display for CronField {
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+        let mut first_value_displayed = false;
+        for value in &self.values {
+            if !first_value_displayed {
+                write!(formatter, "{}", value)?;
+            }
+            else {
+                write!(formatter, ",{}", value)?;
+            }
+            if !first_value_displayed {
+                first_value_displayed = true;
+            }
+        }
+        Ok(())
+    }
+}
+
 impl CronField {
     pub fn new(date_part: CronDatePart, values: Vec<CronValue>) -> CronField {
         CronField {
@@ -27,6 +45,16 @@ impl CronField {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn displays_values() {
+        let test_object = CronField {
+            date_part: CronDatePart::Minutes,
+            values: vec![CronValue::Any,CronValue::Any,CronValue::Any],
+        };
+
+        assert_eq!("*,*,*", &format!("{}", test_object));
+    }
 
     #[test]
     fn new_builds_expected() {
