@@ -7,6 +7,7 @@ repository = "https://github.com/whaycox/creamery-rs"
 edition = "2018"
 license = "Apache-2.0"
 readme = "README.md"
+keywords = ["parsing", "scheduling", "cron", "time"]
 
 [dependencies]
 chrono = "0.4.19"
