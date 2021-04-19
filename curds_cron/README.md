@@ -14,10 +14,13 @@ The fields appear in the following order:
 # Reference Expressions
 |Expression|Description|
 --- | ---
-|* * * * *|Matches all times|
+|`* * * * *`|Matches all times|
+|`* 8-17 * * mon-fri`|Matches 8AM-5PM Mon-Fri|
+|`* * L 3,6,9,12 *`|Matches the last day of each quarter|
+|`30 1 * * *`|Matches 1:30AM every day|
 
 # Possibilities
-There are three standard values that can be supplied for all fields:
+There are four standard values that can be supplied for all fields:
 * Wildcard (`*`)
   * This value matches all times
 * Range (`5-10`)
@@ -44,46 +47,29 @@ The Day of Week field has two special values that can be supplied:
 * Last Day of Week (`2L`)
   * This value matches on the *last* occurrence of the supplied day of week.
 
-Additionally, the _Month_ and _Day of Week_ fields can either have a numeric value or a three-letter alias supplied.
+Additionally, the **Month** and **Day of Week** fields can either have a numeric value or a three-letter alias supplied.
 ## Months
 |Alias|Value|
 --- | ---
 |JAN|1|
---- | ---
 |FEB|2|
---- | ---
 |MAR|3|
---- | ---
 |APR|4|
---- | ---
 |MAY|5|
---- | ---
 |JUN|6|
---- | ---
 |JUL|7|
---- | ---
 |AUG|8|
---- | ---
 |SEP|9|
---- | ---
 |OCT|10|
---- | ---
 |NOV|11|
---- | ---
 |DEC|12|
 ## Days of Week
 |Alias|Value|
 --- | ---
 |SUN|0|
---- | ---
 |MON|1|
---- | ---
 |TUE|2|
---- | ---
 |WED|3|
---- | ---
 |THU|4|
---- | ---
 |FRI|5|
---- | ---
 |SAT|6|
