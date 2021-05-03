@@ -1,2 +1,8 @@
 [workspace]
-members = ["curds_cron"]
+members = [
+    "curds_cron", 
+    "curds_cron_service",
+    "curds_cli",
+    "curds_cli_derive",
+    "curds_cli_definition",
+    ]

@@ -1,0 +1,12 @@
+[package]
+name = "curds_cli"
+version = "0.1.0"
+authors = ["whaycox <whaycox@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+curds_cli_definition = { path = "../curds_cli_definition" }
+curds_cli_derive = { path = "../curds_cli_derive" }
+
+[dev-dependencies]
+mockall = "0.9.1"
