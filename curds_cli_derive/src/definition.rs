@@ -23,7 +23,7 @@ impl CliDefinitionTokens {
     fn impl_trait_tokens(input: &DeriveInput) -> TokenStream {
         let type_name = &input.ident;
         quote! {
-            impl ::curds_cli_definition::CliArgumentDefinition for #type_name
+            impl ::curds_cli_core::CliArgumentDefinition for #type_name
         }
     }
 
@@ -68,8 +68,8 @@ impl CliVariantTokens {
         match &variant.fields {
             Fields::Unit => {
                 quote! {
-                    fn #parse_variant_name(arguments: &mut ArgumentCollection) -> Self {
-                        #type_ident::#variant_ident
+                    fn #parse_variant_name(arguments: &mut ArgumentCollection) -> curds_cli_core::CliParseResult<Self> {
+                        Ok(#type_ident::#variant_ident)
                     }
                 }
             },
@@ -80,8 +80,8 @@ impl CliVariantTokens {
                 }
 
                 quote! {
-                    fn #parse_variant_name(arguments: &mut ArgumentCollection) -> Self {
-                        #type_ident::#variant_ident(#(#field_tokens),*)
+                    fn #parse_variant_name(arguments: &mut ArgumentCollection) -> curds_cli_core::CliParseResult<Self> {
+                        Ok(#type_ident::#variant_ident(#(#field_tokens),*))
                     }
                 }
             },
@@ -92,10 +92,10 @@ impl CliVariantTokens {
                 }
 
                 quote! {
-                    fn #parse_variant_name(arguments: &mut ArgumentCollection) -> Self {
-                        #type_ident::#variant_ident {
+                    fn #parse_variant_name(arguments: &mut ArgumentCollection) -> curds_cli_core::CliParseResult<Self> {
+                        Ok(#type_ident::#variant_ident {
                             #(#field_tokens,)*
-                        }
+                        })
                     }
                 }
             }
@@ -105,12 +105,12 @@ impl CliVariantTokens {
     fn parse_field_token(field: &Field) -> TokenStream {
         if let Some(field_ident) = &field.ident {
             return quote! {
-                #field_ident: arguments.pop()
+                #field_ident: arguments.pop()?
             }
         }
         else {
             return quote! {
-                arguments.pop()
+                arguments.pop()?
             }
         }
     }

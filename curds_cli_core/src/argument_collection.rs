@@ -1,6 +1,4 @@
-pub trait CliArgumentDefinition {
-    fn parse(key: String, arguments: &mut ArgumentCollection) -> Self;
-}
+use super::*;
 
 pub struct ArgumentCollection {
     arguments: Vec<String>,
@@ -17,7 +15,12 @@ impl ArgumentCollection {
         self.arguments.len() > 0
     }
 
-    pub fn pop(&mut self) -> String {
-        self.arguments.pop().unwrap()
+    pub fn pop(&mut self) -> CliParseResult<String> {
+        if let Some(argument) = self.arguments.pop() {
+            Ok(argument)
+        }
+        else {
+            Err(CliParseError::MissingValue)
+        }
     }
 }

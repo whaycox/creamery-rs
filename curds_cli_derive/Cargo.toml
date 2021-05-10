@@ -8,7 +8,7 @@ edition = "2018"
 proc-macro = true
 
 [dependencies]
-curds_cli_definition = { path = "../curds_cli_definition" }
+curds_cli_core = { path = "../curds_cli_core" }
 syn = { version = "1.0.70", features = ["extra-traits"] }
 quote = "1.0.9"
 proc-macro2 = "1.0.26"

@@ -1,7 +1,8 @@
 [package]
-name = "curds_cli_definition"
+name = "curds_cli_core"
 version = "0.1.0"
 authors = ["whaycox <whaycox@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+thiserror = "1.0.24"

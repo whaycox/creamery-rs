@@ -2,7 +2,7 @@ use proc_macro2::{TokenStream, Ident};
 use syn::{DeriveInput, Result, Attribute, Data, DataEnum, Variant};
 use quote::quote;
 use super::definition::{CliDefinitionTokens, CliVariantTokens};
-use curds_cli_definition::ArgumentCollection;
+use curds_cli_core::ArgumentCollection;
 
 pub fn definition_tokens(input: DeriveInput) -> Result<TokenStream> {
     let definition = CliDefinitionTokens::new(&input);
@@ -25,11 +25,11 @@ fn enum_definition_tokens(definition: CliDefinitionTokens, enum_input: DataEnum)
 
     let final_tokens = quote! {
         #impl_trait_tokens {
-            fn parse(key: String, arguments: &mut ArgumentCollection) -> Self {
+            fn parse(key: String, arguments: &mut ArgumentCollection) -> curds_cli_core::CliParseResult<Self> {
                 println!("Parsing with key {}", key);
                 match key.to_lowercase().as_str() {
                     #(#variant_match_tokens,)*
-                    _ => panic!("Unsupported operation: {}", key)
+                    _ => Err(curds_cli_core::CliParseError::UnsupportedKey { key })
                 }
             }
         }
