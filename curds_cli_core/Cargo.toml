@@ -6,3 +6,7 @@ edition = "2018"
 
 [dependencies]
 thiserror = "1.0.24"
+
+[dev-dependencies]
+mockall = "0.9.1"
+serial_test = "0.5.1"
