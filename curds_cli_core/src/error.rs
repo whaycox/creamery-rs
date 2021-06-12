@@ -1,14 +1,11 @@
 use super::*;
 
-#[derive(Debug, PartialEq, Error)]
+#[derive(Debug, PartialEq)]
 pub enum CliParseError {
-    #[error("Help was requested")]
     Help,
-    #[error("Unsupported key {key} provided.")]
     UnsupportedKey {
         key: String,
     },
-    #[error("An argument value was expected but none provided")]
     MissingValue,
 }
 
