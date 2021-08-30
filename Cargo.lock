@@ -71,6 +71,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "curds_core"
+version = "0.1.0"
+dependencies = [
+ "curds_core_abstraction",
+ "curds_core_macro",
+]
+
+[[package]]
+name = "curds_core_abstraction"
+version = "0.1.0"
+
+[[package]]
+name = "curds_core_macro"
+version = "0.1.0"
+dependencies = [
+ "curds_core_abstraction",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "curds_cron"
 version = "0.2.0"
 dependencies = [
@@ -276,9 +298,9 @@ dependencies = [
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.26"
+version = "1.0.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a152013215dca273577e18d2bf00fa862b89b24169fb78c4c95aeb07992c9cec"
+checksum = "5c7ed8b8c7b886ea3ed7dde405212185f423ab44682667c8c6dd14aa1d9f6612"
 dependencies = [
  "unicode-xid",
 ]
@@ -354,9 +376,9 @@ checksum = "fe0f37c9e8f3c5a4a66ad655a93c74daac4ad00c441533bf5c6e7990bb42604e"
 
 [[package]]
 name = "syn"
-version = "1.0.70"
+version = "1.0.75"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b9505f307c872bab8eb46f77ae357c8eba1fdacead58ee5a850116b1d7f82883"
+checksum = "b7f58f7e8eaa0009c5fec437aabf511bd9933e4b2d7407bd05273c01a8906ea7"
 dependencies = [
  "proc-macro2",
  "quote",
