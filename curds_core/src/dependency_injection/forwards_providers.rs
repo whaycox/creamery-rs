@@ -20,9 +20,7 @@ mod tests {
     }
     impl BarProvider {
         pub fn new() -> Self {
-            Self {
-                provider: Rc::new(FooProvider::root_inject()),
-            }
+            Self::construct(Rc::new(FooProvider::construct()))
         }
     }
 
@@ -35,7 +33,7 @@ mod tests {
     }
 
     #[test]
-    fn injects_foo_from_provider() {
+    fn forwards_foo_generate_to_provider() {
         let provider = BarProvider::new();
         let bar = ServiceGenerator::<Rc<dyn Bar>>::generate(&provider);
 

@@ -12,7 +12,8 @@ impl ServiceProviderDefinition {
         let definition = self.definition.clone();
         let ident = definition.ident;
         let fields = definition.fields;
-        let injected = self.injected.quote();
+        let library_field = Ident::new(SERVICES_LIBRARY_NAME, Span::call_site());
+        let injected = self.injected.quote(vec![DefaultedFields { ident: library_field.clone() }]);
         let library_definition = self.definition.clone();
         let library = self.library
             .into_iter()
@@ -20,6 +21,7 @@ impl ServiceProviderDefinition {
 
         quote! {
             #visibility struct #ident {
+                #library_field: std::cell::RefCell<std::collections::HashMap<std::any::TypeId, std::rc::Rc<dyn std::any::Any>>>, 
                 #fields
             }
     

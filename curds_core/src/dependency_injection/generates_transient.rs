@@ -2,6 +2,11 @@
 mod tests {
     use super::super::*;
 
+    #[service_provider]
+    #[generates(ConcreteFoo)]
+    #[maps(Bar <- ConcreteBar)]
+    pub struct TestServiceProvider {}
+
     #[injected]
     struct ConcreteFoo {}
     impl Foo for ConcreteFoo {
@@ -10,19 +15,14 @@ mod tests {
 
     #[injected]
     struct ConcreteBar {
-        foo: Rc<dyn Foo>,
+        foo: Rc<ConcreteFoo>,
     }
     impl Bar for ConcreteBar {
         fn bar(&self) -> u32 { EXPECTED_BAR * self.foo.foo() }
     }
 
-    #[service_provider]
-    #[maps(Foo <- ConcreteFoo)]
-    #[maps(Bar <- ConcreteBar)]
-    pub struct TestServiceProvider {}
-
     #[test]
-    fn injects_foo_into_bar() {
+    fn generates_concrete_foo() {
         let provider = TestServiceProvider::construct();
         let bar = ServiceGenerator::<Rc<dyn Bar>>::generate(&provider);
 

@@ -5,10 +5,10 @@ pub struct TransientMapDefinition {
     implementation: Ident,
 }
 impl TransientMapDefinition {
-    pub fn quote(self, dependency_definition: &DependencyDefinition) -> TokenStream {
+    pub fn quote(self, definition: &DependencyDefinition) -> TokenStream {
         let abstraction = self.abstraction;
         let implementation = self.implementation;
-        let ident = dependency_definition.ident.clone();
+        let ident = definition.ident.clone();
 
         quote! {
             impl curds_core_abstraction::dependency_injection::ServiceGenerator<std::rc::Rc<dyn #abstraction>> for #ident {

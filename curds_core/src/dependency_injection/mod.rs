@@ -2,8 +2,10 @@ use super::*;
 
 mod maps_transient;
 mod injects_dependencies;
-mod nests_providers;
-
+mod forwards_providers;
+mod clones_providers;
+mod generates_transient;
+mod generates_singleton;
 
 #[cfg(test)]
 trait Foo {

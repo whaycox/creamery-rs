@@ -3,6 +3,7 @@ mod dependency_injection;
 use proc_macro::TokenStream;
 use syn::{*, parse::*, punctuated::*};
 use quote::*;
+use std::collections::HashSet;
 
 use curds_core_abstraction::*;
 use dependency_injection::*;

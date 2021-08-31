@@ -14,7 +14,7 @@ mod tests {
 
     #[test]
     fn maps_foo() {
-        let provider = TestServiceProvider::root_inject();
+        let provider = TestServiceProvider::construct();
         let foo = ServiceGenerator::<Rc<dyn Foo>>::generate(&provider);
 
         assert_eq!(EXPECTED_FOO, foo.foo())
