@@ -1,58 +1,35 @@
 use super::*;
 
+pub fn library_name() -> Ident { Ident::new(SERVICES_LIBRARY_NAME, Span::call_site()) }
+const SERVICES_LIBRARY_NAME: &str = "_curds_core_services";
+
 pub struct ServiceProviderDefinition {
     library: Vec<ServiceProduction>,
-    visibility: Option<Token![pub]>,
-    definition: DependencyDefinition,
-    injected: InjectedImplementation,
+    definition: StructDefinition,
 }
 impl ServiceProviderDefinition {
     pub fn quote(self) -> TokenStream {
-        let visibility = self.visibility;
-        let definition = self.definition.clone();
-        let ident = definition.ident;
-        let fields = definition.fields;
-        let library_field = Ident::new(SERVICES_LIBRARY_NAME, Span::call_site());
-        let injected = self.injected.quote(vec![DefaultedFields { ident: library_field.clone() }]);
-        let library_definition = self.definition.clone();
+        let struct_tokens = self.definition.clone().quote();
+        let definition = self.definition;
         let library = self.library
             .into_iter()
-            .map(|production| production.quote(&library_definition));
+            .map(|production| production.quote(&definition));
 
         quote! {
-            #visibility struct #ident {
-                #library_field: std::cell::RefCell<std::collections::HashMap<std::any::TypeId, std::rc::Rc<dyn std::any::Any>>>, 
-                #fields
-            }
-    
-            #injected
-
+            #struct_tokens
             #(#library)*
         }
     }
 }
 
-
 impl Parse for ServiceProviderDefinition {
     fn parse(input: ParseStream) -> Result<Self> {
-        let library = ServiceProduction::parse(input)?;
-        let visibility: Option<Token![pub]> = input.parse()?;
-        input.parse::<Token![struct]>()?;
-        let ident: Ident = input.parse()?;
-        let content;
-        braced!(content in input);
-        let fields = content.parse_terminated(Field::parse_named)?;
-        let definition = DependencyDefinition {
-            ident: ident,
-            fields: fields,
-        };
-        let injected = InjectedImplementation::new(definition.clone());
+        let library = ServiceProduction::parse(&input.fork())?;
+        let definition: StructDefinition = StructDefinition::parse(input, true)?;
 
-        Ok(ServiceProviderDefinition {
+        Ok(Self {
             library: library,
-            visibility: visibility,
             definition: definition,
-            injected: injected,
         })
     }
 }

@@ -14,7 +14,7 @@ mod tests {
 
     #[service_provider]
     #[generates(BarProvider)]
-    #[clones(FooProvider <- provider)]
+    #[clones(provider)]
     struct TestServiceProvider {
         provider: Rc<FooProvider>,
     }
