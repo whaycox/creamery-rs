@@ -12,7 +12,7 @@ impl InjectedDefinition {
 impl Parse for InjectedDefinition {
     fn parse(input: ParseStream) -> Result<Self> {
         Ok(Self {
-            definition: StructDefinition::parse(input, false)?,
+            definition: StructDefinition::parse(input)?,
         })
     }
 }

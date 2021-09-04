@@ -2,29 +2,15 @@
 mod tests {
     use super::super::*;
 
-    #[injected]
-    struct ConcreteFoo {}
-    impl Foo for ConcreteFoo {
-        fn foo(&self) -> u32 { EXPECTED_FOO }
-    }
-
-    #[injected]
-    struct ConcreteBar {
-        foo: Rc<dyn Foo>,
-    }
-    impl Bar for ConcreteBar {
-        fn bar(&self) -> u32 { EXPECTED_BAR * self.foo.foo() }
-    }
-
     #[service_provider]
-    #[maps(Foo <- ConcreteFoo)]
-    #[maps(Bar <- ConcreteBar)]
-    pub struct TestServiceProvider {}
+    #[generates(dyn Foo <- ConcreteFoo)]
+    #[generates(dyn Bar <- FooedBar)]
+    struct CompositeProvider {}
 
     #[test]
     fn injects_foo_into_bar() {
-        let provider = TestServiceProvider::construct();
-        let bar = ServiceGenerator::<Rc<dyn Bar>>::generate(&provider);
+        let provider = CompositeProvider::construct();
+        let bar = ServiceGenerator::<Rc<dyn Bar>>::generate(&*provider);
 
         assert_eq!(EXPECTED_FOO * EXPECTED_BAR, bar.bar())
     }

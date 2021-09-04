@@ -5,5 +5,13 @@ pub trait ServiceGenerator<TService: 'static> {
 }
 
 pub trait Injected<TProvider> {
-    fn inject(provider: &TProvider) -> Self;
+    fn inject(provider: &TProvider) -> Rc<Self>;
+}
+
+pub trait Scoped {
+    fn scope(&self) -> Self;
+}
+impl<TProvider> Scoped for Rc<TProvider>
+where TProvider : Scoped {
+    fn scope(&self) -> Self { Rc::new(<TProvider as Scoped>::scope(&*self)) }
 }

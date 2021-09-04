@@ -2,13 +2,17 @@ use super::*;
 
 #[derive(Clone)]
 pub struct InjectedDependency {
-    visibility: Visibility,
-    name: Ident,
-    ty: Type,
+    pub visibility: Visibility,
+    pub name: Ident,
+    pub ty: TokenStream,
     pub default: bool,
 }
 
 impl InjectedDependency {
+    pub fn eq(&self, name: &Ident) -> bool {
+        self.name.to_string() == name.to_string()
+    }
+
     pub fn parse(buffer: ParseBuffer, defaults: &HashSet<Ident>) -> Result<Vec<Self>> {
         let fields: Punctuated<Field, Token![,]> = buffer.parse_terminated(Field::parse_named)?;
         let mut dependencies: Vec<InjectedDependency> = Vec::new();
@@ -22,7 +26,7 @@ impl InjectedDependency {
         Ok(Self {
             visibility: field.vis,
             name: field.ident.clone().unwrap(),
-            ty: field.ty,
+            ty: field.ty.to_token_stream(),
             default: defaults.contains(&field.ident.unwrap()),
         })
     }
@@ -63,6 +67,16 @@ impl InjectedDependency {
         }
         else {
             quote! { #name: #name }
+        }
+    }
+
+    pub fn scope_tokens(self) -> TokenStream {
+        let name = self.name;
+        if self.default {
+            quote! { #name: std::default::Default::default() }
+        }
+        else {
+            quote! { #name: self.#name.clone() }
         }
     }
 }
