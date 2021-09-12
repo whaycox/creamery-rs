@@ -4,7 +4,7 @@ use super::*;
 pub struct GeneratedDefinition {
     abstraction: Option<Ident>,
     implementation: Ident,
-    singleton_identifier: String,
+    pub singleton: SingletonIdentifier,
 }
 
 impl Parse for GeneratedDefinition {
@@ -16,40 +16,37 @@ impl Parse for GeneratedDefinition {
         if trait_production.is_some() && implementation.is_none() {
             return Err(Error::new(requested.span(), "a concrete type type must also be defined"));
         }
-
-        let random_bytes = rand::thread_rng().gen::<[u8; 8]>();
-        let mut singleton_identifier = String::new();
-        for byte in random_bytes {
-            singleton_identifier.push_str(&format!("{:X}", byte));
-        }
+        let singleton = SingletonIdentifier::new();
 
         Ok(match implementation {
             Some(ident) => Self {
                 abstraction: Some(requested),
                 implementation: ident,
-                singleton_identifier: singleton_identifier,
+                singleton: singleton,
             },
             None => Self {
                 abstraction: None,
                 implementation: requested,
-                singleton_identifier: singleton_identifier,
+                singleton: singleton,
             }
         })
     }
 }
 
 impl GeneratedDefinition {
-    pub fn singleton_dependency(self) -> InjectedDependency {
-        let field_name = format!("{}{}", SINGLETON_FIELD_PREFIX, self.singleton_identifier);
-        let implementation = self.implementation;
-        let singleton_type = quote! { std::cell::RefCell<std::option::Option<std::rc::Rc<#implementation>>> };
-
-        InjectedDependency {
-            visibility: Visibility::Inherited,
-            name: Ident::new(&field_name, Span::call_site()),
-            ty: singleton_type,
-            default: true,
+    pub fn singleton_type(&self) -> String {
+        self.implementation.to_string()
+    }
+    pub fn set_singleton_identifier(self, ident: &SingletonIdentifier) -> Self {
+        Self {
+            abstraction: self.abstraction,
+            implementation: self.implementation,
+            singleton: ident.clone(),
         }
+    }
+    pub fn to_singleton_dependency(self) -> SingletonDependency {
+        let implementation = self.implementation;
+        SingletonDependency::new(self.singleton, quote! { std::rc::Rc<#implementation> })
     }
 
     pub fn transient(self, definition: &StructDefinition) -> TokenStream {
@@ -76,7 +73,7 @@ impl GeneratedDefinition {
         };
         let implementation = self.implementation;
         let name = definition.name.clone();
-        let singleton_ident = Ident::new(&format!("{}{}", SINGLETON_FIELD_PREFIX, self.singleton_identifier), Span::call_site());
+        let singleton_ident = self.singleton.ident();
 
         quote! {
             impl curds_core_abstraction::dependency_injection::ServiceGenerator<std::rc::Rc<#requested>> for #name {

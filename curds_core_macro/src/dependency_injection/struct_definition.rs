@@ -4,28 +4,10 @@ use super::*;
 pub struct StructDefinition {
     visibility: Option<Token![pub]>,
     pub name: Ident,
-    dependencies: RefCell<Vec<InjectedDependency>>,
-    defaults: HashSet<Ident>,
+    fields: Vec<StructField>,
 }
-impl StructDefinition {
-    pub fn dependency_type(&self, name: &Ident) -> TokenStream {
-        for dependency in self.dependencies.borrow().clone() {
-            if dependency.eq(name) {
-                return dependency.ty.clone()
-            }
-        }
-        quote_spanned! { name.span() => compile_warning!("provider not found") }
-    }
-
-    pub fn add_dependencies(&mut self, explicit_dependencies: Vec<InjectedDependency>) {
-        let mut dependencies = self.dependencies.take();
-        for dependency in explicit_dependencies {
-            dependencies.push(dependency)
-        }
-        self.dependencies.replace(dependencies);
-    }
-
-    pub fn parse(input: ParseStream) -> Result<Self> {
+impl Parse for StructDefinition {
+    fn parse(input: ParseStream) -> Result<Self> {
         let defaults: HashSet<Ident> = DefaultedField::parse_defaults(input)?
             .into_iter()
             .collect();
@@ -34,20 +16,35 @@ impl StructDefinition {
         let name: Ident = input.parse()?;
         let content;
         braced!(content in input);
-        let dependencies = InjectedDependency::parse(content, &defaults)?;
+        let parsed_fields: Punctuated<Field, Token![,]> = content.parse_terminated(Field::parse_named)?;
+        let mut fields: Vec<StructField> = Vec::new();
+        for field in parsed_fields {
+            let field_name = field.ident.clone().unwrap();
+            fields.push(StructField::new(field, defaults.contains(&field_name)));
+        }
 
         Ok(Self {
             visibility: visibility,
             name: name,
-            dependencies: RefCell::new(dependencies),
-            defaults: defaults,
+            fields: fields,
         })
     }
+}
 
-    pub fn quote(self) -> TokenStream {
-        let struct_tokens = self.clone().struct_tokens();
+impl StructDefinition {
+    pub fn dependency_type(&self, name: &Ident) -> Type {
+        for field in self.fields.clone() {
+            if field.eq(name) {
+                return field.ty()
+            }
+        }
+        panic!("no provider found");
+    } 
+
+    pub fn quote(self, singletons: Vec<SingletonDependency>) -> TokenStream {
+        let struct_tokens = self.clone().struct_tokens(singletons.clone());
         let injected_tokens = self.clone().injected_tokens();
-        let construct_tokens = self.construct_tokens();
+        let construct_tokens = self.construct_tokens(singletons);
 
         quote! {
             #struct_tokens
@@ -55,13 +52,16 @@ impl StructDefinition {
             #construct_tokens
         }
     }
-    fn struct_tokens(self) -> TokenStream {
+    fn struct_tokens(self, singletons: Vec<SingletonDependency>) -> TokenStream {
         let visibility = self.visibility;
         let name = self.name;
-        let struct_fields = self.dependencies
-            .take()
+        let mut struct_fields: Vec<TokenStream> = self.fields
             .into_iter()
-            .map(|dependency| dependency.struct_tokens());
+            .map(|field| field.to_token_stream())
+            .collect();
+        for singleton in singletons {
+            struct_fields.push(singleton.field_tokens())
+        }
 
         quote! {
             #visibility struct #name {
@@ -71,57 +71,45 @@ impl StructDefinition {
     }
     fn injected_tokens(self) -> TokenStream {
         let name = self.name;
-        let has_constraints = self.dependencies
-            .borrow()
+        let mapped_constraints: Vec<TokenStream> = self.fields
             .clone()
             .into_iter()
-            .any(|field| !field.default);
+            .filter_map(|dependency| dependency.constraint_tokens())
+            .collect();
+        let has_constraints = mapped_constraints.len() > 0;
         let constraint_tokens =
         if has_constraints {
-            let mapped_constraints = self.dependencies
-                .borrow()
-                .clone()
-                .into_iter()
-                .filter_map(|dependency| if !dependency.default { Some(dependency.constraint_tokens()) } else { None });
-
             quote! { where TProvider : #(#mapped_constraints)+* }
         }
         else {
             quote! {}
         };
-        let generator_tokens =
-        if has_constraints {
-            let mapped_generators = self.dependencies
-                .take()
-                .into_iter()
-                .filter_map(|dependency| if !dependency.default { Some(dependency.generator_tokens()) } else { None });
-
-            quote! { #(#mapped_generators),* }
-        }
-        else {
-            quote! {}
-        };
+        let generator_tokens = self.fields
+            .into_iter()
+            .filter_map(|dependency| dependency.generator_tokens());
         
         quote! {
             impl<TProvider> curds_core_abstraction::dependency_injection::Injected<TProvider> for #name
             #constraint_tokens {
                 fn inject(provider: &TProvider) -> std::rc::Rc<Self> {
-                    Self::construct(#generator_tokens)
+                    Self::construct(#(#generator_tokens),*)
                 }
             }
         }
     }
-    fn construct_tokens(self) -> TokenStream {
+    fn construct_tokens(self, singletons: Vec<SingletonDependency>) -> TokenStream {
         let name = self.name;
-        let argument_tokens = self.dependencies
-            .borrow()
+        let argument_tokens = self.fields
             .clone()
             .into_iter()
-            .filter_map(|dependency| if !dependency.default { Some(dependency.argument_tokens()) } else { None });
-        let initializer_tokens = self.dependencies
-            .take()
+            .filter_map(|dependency| dependency.argument_tokens());
+        let mut initializer_tokens: Vec<TokenStream> = self.fields
             .into_iter()
-            .map(|dependency| dependency.initializer_tokens());
+            .map(|dependency| dependency.initializer_tokens())
+            .collect();
+        for singleton in singletons {
+            initializer_tokens.push(singleton.initializer_tokens())
+        }
 
         quote! {
             impl #name {
@@ -134,12 +122,15 @@ impl StructDefinition {
         }
     }
 
-    pub fn scope_tokens(self) -> TokenStream {
+    pub fn scope_tokens(self, singletons: Vec<SingletonDependency>) -> TokenStream {
         let name = self.name;
-        let initializer_tokens = self.dependencies
-            .take()
+        let mut initializer_tokens: Vec<TokenStream> = self.fields
             .into_iter()
-            .map(|dependency| dependency.scope_tokens());
+            .map(|dependency| dependency.scope_tokens())
+            .collect();
+        for singleton in singletons {
+            initializer_tokens.push(singleton.initializer_tokens())
+        }
 
         quote! {
             impl curds_core_abstraction::dependency_injection::Scoped for #name {

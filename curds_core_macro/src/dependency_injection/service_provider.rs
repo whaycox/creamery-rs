@@ -1,16 +1,15 @@
 use super::*;
 
-pub const SINGLETON_FIELD_PREFIX: &str = "_curds_core_singleton_";
-
 pub struct ServiceProviderDefinition {
     library: Vec<ServiceProduction>,
     definition: StructDefinition,
+    singletons: Vec<SingletonDependency>,
 }
 impl ServiceProviderDefinition {
     pub fn quote(self) -> TokenStream {
-        let struct_tokens = self.definition.clone().quote();
+        let struct_tokens = self.definition.clone().quote(self.singletons.clone());
         let definition = self.definition.clone();
-        let scope_tokens = self.definition.scope_tokens();
+        let scope_tokens = self.definition.scope_tokens(self.singletons);
         let library = self.library
             .into_iter()
             .map(|production| production.quote(&definition));
@@ -25,24 +24,14 @@ impl ServiceProviderDefinition {
 
 impl Parse for ServiceProviderDefinition {
     fn parse(input: ParseStream) -> Result<Self> {
-        let library = ServiceProduction::parse(&input.fork())?;
-        let mut definition: StructDefinition = StructDefinition::parse(input)?;
-        let singleton_fields: Vec<InjectedDependency> = library.clone()
-            .into_iter()
-            .filter_map(|production| {
-                if production.is_singleton() {
-                    Some(production.singleton_dependency(&definition))
-                }
-                else {
-                    None
-                }
-            })
-            .collect();
-        definition.add_dependencies(singleton_fields);
+        let library = ServiceProduction::parse_library(&input.fork())?;
+        let definition: StructDefinition = StructDefinition::parse(input)?;
+        let singletons: Vec<SingletonDependency> = ServiceProduction::singleton_fields(library.clone(), &definition);
 
         Ok(Self {
             library: library,
             definition: definition,
+            singletons: singletons,
         })
     }
 }

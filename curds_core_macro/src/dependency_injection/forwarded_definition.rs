@@ -6,7 +6,7 @@ pub struct ForwardedDefinition {
     intermediate: Option<Ident>,
     provider: Ident,
     mapped: bool,
-    singleton_identifier: String,
+    pub singleton: SingletonIdentifier,
 }
 
 impl Parse for ForwardedDefinition {
@@ -17,12 +17,7 @@ impl Parse for ForwardedDefinition {
         let intermediate: Ident = input.parse()?;
         input.parse::<Option<Token![<-]>>()?;
         let provider_ident: Option<Ident> = input.parse()?;
-
-        let random_bytes = rand::thread_rng().gen::<[u8; 8]>();
-        let mut singleton_identifier = String::new();
-        for byte in random_bytes {
-            singleton_identifier.push_str(&format!("{:X}", byte));
-        }
+        let singleton = SingletonIdentifier::new();
         
         Ok(match provider_ident {
             Some(provider_name) => {
@@ -31,7 +26,7 @@ impl Parse for ForwardedDefinition {
                     intermediate: Some(intermediate),
                     provider: provider_name,
                     mapped: trait_production.is_some(),
-                    singleton_identifier: singleton_identifier,
+                    singleton: singleton,
                 }
             },
             None => {
@@ -40,7 +35,7 @@ impl Parse for ForwardedDefinition {
                     intermediate: None,
                     provider: intermediate,
                     mapped: trait_production.is_some(),
-                    singleton_identifier: singleton_identifier,
+                    singleton: singleton,
                 }
             }
         })
@@ -48,26 +43,34 @@ impl Parse for ForwardedDefinition {
 }
 
 impl ForwardedDefinition {
-    pub fn singleton_dependency(self) -> InjectedDependency {
-        let field_name = format!("{}{}", SINGLETON_FIELD_PREFIX, self.singleton_identifier);
-        let singleton_type = match self.intermediate {
-            Some(intermediate) => quote! { std::cell::RefCell<std::option::Option<std::rc::Rc<#intermediate>>> },
-            None => if self.mapped {
-                let abstraction = self.requested;
-                quote! { std::cell::RefCell<std::option::Option<std::rc::Rc<dyn #abstraction>>> }
-            }
-            else {
-                let implementation = self.requested;
-                quote! { std::cell::RefCell<std::option::Option<std::rc::Rc<#implementation>>> }
-            },
-        };
-
-        InjectedDependency {
-            visibility: Visibility::Inherited,
-            name: Ident::new(&field_name, Span::call_site()),
-            ty: singleton_type,
-            default: true,
+    pub fn singleton_type(&self) -> String {
+        match &self.intermediate {
+            Some(intermediate) => intermediate.to_string(),
+            None => self.requested.to_string(),
         }
+    }
+    pub fn set_singleton_identifier(self, ident: &SingletonIdentifier) -> Self {
+        Self {
+            requested: self.requested,
+            intermediate: self.intermediate,
+            provider: self.provider,
+            mapped: self.mapped,
+            singleton: ident.clone(),
+        }
+    }
+    pub fn to_singleton_dependency(self) -> SingletonDependency {
+        match &self.intermediate {
+            Some(intermediate) => SingletonDependency::new(self.singleton, quote! { std::rc::Rc<#intermediate> }),
+            None => {
+                let requested = self.requested;
+                if self.mapped {
+                    SingletonDependency::new(self.singleton, quote! { std::rc::Rc<dyn #requested> })
+                }
+                else {
+                    SingletonDependency::new(self.singleton, quote! { std::rc::Rc<#requested> })
+                }
+            },
+        }        
     }
 
     pub fn transient(self, definition: &StructDefinition) -> TokenStream {
@@ -90,7 +93,7 @@ impl ForwardedDefinition {
         quote! {
             impl curds_core_abstraction::dependency_injection::ServiceGenerator<std::rc::Rc<#requested>> for #name {
                 fn generate(&self) -> std::rc::Rc<#requested> {
-                    curds_core_abstraction::dependency_injection::ServiceGenerator::<std::rc::Rc<#intermediate>>::generate(&*self.#provider)
+                    curds_core_abstraction::dependency_injection::ServiceGenerator::<std::rc::Rc<#intermediate>>::generate(&self.#provider)
                 }
             }
         }
@@ -112,13 +115,13 @@ impl ForwardedDefinition {
         };
         let provider = self.provider;
         let name = definition.name.clone();
-        let singleton_ident = Ident::new(&format!("{}{}", SINGLETON_FIELD_PREFIX, self.singleton_identifier), Span::call_site());
+        let singleton_ident = self.singleton.ident();
 
         quote! {
             impl curds_core_abstraction::dependency_injection::ServiceGenerator<std::rc::Rc<#requested>> for #name {
                 fn generate(&self) -> std::rc::Rc<#requested> {
                     if self.#singleton_ident.borrow().is_none() {
-                        let service = curds_core_abstraction::dependency_injection::ServiceGenerator::<std::rc::Rc<#intermediate>>::generate(&*self.#provider);
+                        let service = curds_core_abstraction::dependency_injection::ServiceGenerator::<std::rc::Rc<#intermediate>>::generate(&self.#provider);
                         self.#singleton_ident.replace(Some(service));
                     }
                     self.#singleton_ident

@@ -7,7 +7,7 @@ mod tests {
     struct BaseProvider {}
     impl Bar for BaseProvider {
         fn bar(&self) -> u32 {
-            let foo = ServiceGenerator::<Rc<IncrementingFoo>>::generate(&*self);
+            let foo = ServiceGenerator::<Rc<IncrementingFoo>>::generate(self);
             foo.foo()
         }
     }
@@ -22,11 +22,11 @@ mod tests {
     fn scoped_provider_doesnt_keep_parent_singletons() {
         let base_provider = BaseProvider::construct();
         let provider = ScopedStructProvider::construct(base_provider.clone());
-        let base_foo = ServiceGenerator::<Rc<IncrementingFoo>>::generate(&*base_provider);
+        let base_foo = ServiceGenerator::<Rc<IncrementingFoo>>::generate(&base_provider);
 
         for i in 0..10 {
-            let scoped_provider = ServiceGenerator::<Rc<BaseProvider>>::generate(&*provider);
-            let foo = ServiceGenerator::<Rc<IncrementingFoo>>::generate(&*scoped_provider);
+            let scoped_provider = ServiceGenerator::<Rc<BaseProvider>>::generate(&provider);
+            let foo = ServiceGenerator::<Rc<IncrementingFoo>>::generate(&scoped_provider);
 
             assert_eq!(i, base_foo.foo());
             assert_eq!(0, foo.foo());
@@ -45,10 +45,10 @@ mod tests {
     fn scoped_provider_as_trait_doesnt_keep_parent_singletons() {
         let base_provider = BaseProvider::construct();
         let provider = ScopedTraitProvider::construct(base_provider.clone());
-        let base_foo = ServiceGenerator::<Rc<IncrementingFoo>>::generate(&*base_provider);
+        let base_foo = ServiceGenerator::<Rc<IncrementingFoo>>::generate(&base_provider);
 
         for i in 0..10 {
-            let scoped_provider = ServiceGenerator::<Rc<dyn Bar>>::generate(&*provider);
+            let scoped_provider = ServiceGenerator::<Rc<dyn Bar>>::generate(&provider);
 
             assert_eq!(i, base_foo.foo());
             assert_eq!(0, scoped_provider.bar());

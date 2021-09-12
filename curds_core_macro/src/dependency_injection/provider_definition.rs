@@ -4,7 +4,7 @@ use super::*;
 pub struct ProviderDefinition {
     abstraction: Option<Ident>,
     provider: Ident,
-    singleton_identifier: String,
+    pub singleton: SingletonIdentifier,
 }
 
 impl Parse for ProviderDefinition {
@@ -13,45 +13,37 @@ impl Parse for ProviderDefinition {
         let requested: Ident = input.parse()?;
         input.parse::<Option<Token![<-]>>()?;
         let provider: Option<Ident> = input.parse()?;
-
-        let random_bytes = rand::thread_rng().gen::<[u8; 8]>();
-        let mut singleton_identifier = String::new();
-        for byte in random_bytes {
-            singleton_identifier.push_str(&format!("{:}", byte));
-        }
+        let singleton = SingletonIdentifier::new();
 
         Ok(match provider {
             Some(provider_name) => Self {
                 abstraction: Some(requested),
                 provider: provider_name,
-                singleton_identifier: singleton_identifier,
+                singleton: singleton,
             },
             None => Self {
                 abstraction: None,
                 provider: requested,
-                singleton_identifier: singleton_identifier,
+                singleton: singleton,
             }
         })
     }
 }
 
 impl ProviderDefinition {
-    pub fn singleton_dependency(self, definition: &StructDefinition) -> InjectedDependency {
-        let field_name = format!("{}{}", SINGLETON_FIELD_PREFIX, self.singleton_identifier);
-        let singleton_type = match self.abstraction {
-            Some(abstraction) => quote! { std::cell::RefCell<std::option::Option<std::rc::Rc<dyn #abstraction>>> },
-            None => {
-                let provider_type = definition.dependency_type(&self.provider);
-                quote! { std::cell::RefCell<std::option::Option<#provider_type>> }
-            },
-        };
-
-        InjectedDependency {
-            visibility: Visibility::Inherited,
-            name: Ident::new(&field_name, Span::call_site()),
-            ty: singleton_type,
-            default: true,
+    pub fn provider_name(&self) -> String {
+        self.provider.to_string()
+    }
+    pub fn set_singleton_identifier(self, ident: &SingletonIdentifier) -> Self {
+        Self {
+            abstraction: self.abstraction,
+            provider: self.provider,
+            singleton: ident.clone(),
         }
+    }
+    pub fn to_singleton_dependency(self, struct_definition: &StructDefinition) -> SingletonDependency {
+        let ty = struct_definition.dependency_type(&self.provider);
+        SingletonDependency::new(self.singleton, quote! { #ty })
     }
 
     pub fn clone_tokens(self, definition: &StructDefinition) -> TokenStream {
@@ -106,7 +98,7 @@ impl ProviderDefinition {
         let provider = self.provider;
         let name = definition.name.clone();
         let provider_type = definition.dependency_type(&provider);
-        let singleton_ident = Ident::new(&format!("{}{}", SINGLETON_FIELD_PREFIX, self.singleton_identifier), Span::call_site());
+        let singleton_ident = self.singleton.ident();
 
         match self.abstraction {
             Some(abstraction) => quote! {

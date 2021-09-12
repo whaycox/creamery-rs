@@ -21,7 +21,7 @@ mod tests {
     #[test]
     fn forwards_generate_struct_to_base() {
         let provider = ForwardedStructProvider::new();
-        let foo = ServiceGenerator::<Rc<ConcreteFoo>>::generate(&*provider);
+        let foo = ServiceGenerator::<Rc<ConcreteFoo>>::generate(&provider);
 
         assert_eq!(EXPECTED_FOO, foo.foo())
     }
@@ -40,7 +40,7 @@ mod tests {
     #[test]
     fn forwards_generate_trait_to_base() {
         let provider = ForwardedTraitProvider::new();
-        let foo = ServiceGenerator::<Rc<dyn Foo>>::generate(&*provider);
+        let foo = ServiceGenerator::<Rc<dyn Foo>>::generate(&provider);
 
         assert_eq!(EXPECTED_FOO, foo.foo())
     }
@@ -59,7 +59,7 @@ mod tests {
     #[test]
     fn forwards_generate_trait_via_concrete_to_base() {
         let provider = ForwardedIntermediateProvider::new();
-        let foo = ServiceGenerator::<Rc<dyn Foo>>::generate(&*provider);
+        let foo = ServiceGenerator::<Rc<dyn Foo>>::generate(&provider);
 
         assert_eq!(EXPECTED_FOO, foo.foo())
     }

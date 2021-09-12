@@ -9,7 +9,7 @@ mod tests {
     #[test]
     fn generates_foo_struct() {
         let provider = StructProvider::construct();
-        let foo = ServiceGenerator::<Rc<ConcreteFoo>>::generate(&*provider);
+        let foo = ServiceGenerator::<Rc<ConcreteFoo>>::generate(&provider);
 
         assert_eq!(EXPECTED_FOO, foo.foo())
     }
@@ -21,7 +21,7 @@ mod tests {
     #[test]
     fn generates_foo_trait() {
         let provider = TraitProvider::construct();
-        let foo = ServiceGenerator::<Rc<dyn Foo>>::generate(&*provider);
+        let foo = ServiceGenerator::<Rc<dyn Foo>>::generate(&provider);
 
         assert_eq!(EXPECTED_FOO, foo.foo())
     }
