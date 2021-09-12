@@ -1,0 +1,14 @@
+[package]
+name = "curds_core_macro"
+version = "0.1.0"
+edition = "2018"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+curds_core_abstraction = { path = "../curds_core_abstraction" }
+syn = { version = "1.0.75", features = ["parsing"] }
+quote = "1.0.9"
+rand = "0.8.4"
+proc-macro2 = "1.0.28"

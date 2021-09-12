@@ -4,5 +4,8 @@ members = [
     "curds_cron_service",
     "curds_cli_core",
     "curds_cli_derive",
+    "curds_core_abstraction",
+    "curds_core_macro",
+    "curds_core",
     "curds_cli",
     ]
