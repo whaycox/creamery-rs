@@ -1,5 +1,3 @@
-use super::*;
-
 mod generates_transient;
 mod generates_singleton;
 mod injects_dependencies;
@@ -8,6 +6,9 @@ mod forwards_singleton;
 mod clones;
 mod scopes_transient;
 mod scopes_singleton;
+
+#[cfg(test)]
+use super::*;
 
 #[cfg(test)]
 pub use simple::*;

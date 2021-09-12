@@ -22,4 +22,4 @@ pub use struct_field::*;
 pub use singleton_identifier::*;
 pub use singleton_dependency::*;
 
-use proc_macro2::{TokenStream, Span, Punct, Spacing};
+use proc_macro2::{TokenStream, Span};
