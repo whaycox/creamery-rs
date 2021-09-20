@@ -2,7 +2,7 @@ use super::*;
 
 #[derive(Clone)]
 pub struct StructDefinition {
-    visibility: Option<Token![pub]>,
+    visibility: Visibility,
     pub name: Ident,
     fields: Vec<StructField>,
 }
@@ -11,7 +11,7 @@ impl Parse for StructDefinition {
         let defaults: HashSet<Ident> = DefaultedField::parse_defaults(input)?
             .into_iter()
             .collect();
-        let visibility: Option<Token![pub]> = input.parse()?;
+        let visibility: Visibility = input.parse()?;
         input.parse::<Token![struct]>()?;
         let name: Ident = input.parse()?;
         let content;

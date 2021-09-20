@@ -4,12 +4,12 @@ mod tests {
 
     #[service_provider]
     #[generates(IncrementingFoo)]
-    #[generates(dyn Foo <- IncrementingFoo)]
+    #[generates(dyn Foo ~ IncrementingFoo)]
     struct BaseProvider {}
 
     #[service_provider]
-    #[forwards_singleton(dyn Foo <- IncrementingFoo <- base)]
-    #[forwards_singleton(IncrementingFoo <- base)]
+    #[forwards_singleton(dyn Foo ~ IncrementingFoo ~ base)]
+    #[forwards_singleton(IncrementingFoo ~ base)]
     struct ForwardedProvider {
         base: Rc<BaseProvider>,
     }
@@ -60,8 +60,8 @@ mod tests {
     }
 
     #[service_provider]
-    #[forwards_singleton(dyn Foo <- base)]
-    #[forwards_singleton(IncrementingFoo <- base)]
+    #[forwards_singleton(dyn Foo ~ base)]
+    #[forwards_singleton(IncrementingFoo ~ base)]
     struct ForwardedWithoutIntermediateProvider {
         base: Rc<BaseProvider>,
     }

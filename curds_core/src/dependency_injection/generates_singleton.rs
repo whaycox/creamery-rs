@@ -3,7 +3,7 @@ mod tests {
     use super::super::*;
 
     #[service_provider]
-    #[generates_singleton(dyn Foo <- IncrementingFoo)]
+    #[generates_singleton(dyn Foo ~ IncrementingFoo)]
     #[generates_singleton(IncrementingFoo)]
     struct SingletonProvider {}
 
@@ -21,7 +21,7 @@ mod tests {
     }
 
     #[service_provider]
-    #[generates(dyn Foo <- IncrementingFoo)]
+    #[generates(dyn Foo ~ IncrementingFoo)]
     #[generates(IncrementingFoo)]
     struct TransientProvider {}
 

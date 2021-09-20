@@ -1,4 +1,4 @@
-//mod dependency_injection;
+mod dependency_injection;
 mod message_dispatch;
 
 #[cfg(test)]

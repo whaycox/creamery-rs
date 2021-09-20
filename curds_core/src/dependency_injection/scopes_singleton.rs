@@ -13,7 +13,7 @@ mod tests {
     }
 
     #[service_provider]
-    #[scopes_singleton(dyn Bar <- base)]
+    #[scopes_singleton(dyn Bar ~ base)]
     #[scopes_singleton(base)]
     struct ScopedProvider {
         base: Rc<BaseProvider>,

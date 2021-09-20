@@ -2,68 +2,74 @@ use super::*;
 
 #[derive(Clone)]
 pub struct ForwardedDefinition {
-    requested: Ident,
-    intermediate: Option<Ident>,
+    trait_production: bool,
+    requested: Type,
+    intermediate: Option<Type>,
     provider: Ident,
-    mapped: bool,
     pub singleton: SingletonIdentifier,
 }
 
 impl Parse for ForwardedDefinition {
     fn parse(input: ParseStream) -> Result<Self> {
-        let trait_production: Option<Token![dyn]> = input.parse()?;
-        let requested: Ident = input.parse()?;
-        input.parse::<Token![<-]>()?;
-        let intermediate: Ident = input.parse()?;
-        input.parse::<Option<Token![<-]>>()?;
-        let provider_ident: Option<Ident> = input.parse()?;
         let singleton = SingletonIdentifier::new();
-        
-        Ok(match provider_ident {
-            Some(provider_name) => {
-                Self {
-                    requested: requested,
-                    intermediate: Some(intermediate),
-                    provider: provider_name,
-                    mapped: trait_production.is_some(),
-                    singleton: singleton,
-                }
-            },
-            None => {
-                Self {
-                    requested: requested,
-                    intermediate: None,
-                    provider: intermediate,
-                    mapped: trait_production.is_some(),
-                    singleton: singleton,
-                }
-            }
-        })
+        let trait_production: Option<Token![dyn]> = input.parse()?;
+        let requested: Type = input.parse()?;
+        input.parse::<Token![~]>()?;
+        //CHECK FOR DYN TOKEN
+        let provider_fork = input.fork();
+        let intermediate: Result<Type> = input.parse();
+        if input.peek(Token![~]) {
+            let intermediate_type = intermediate?;
+            input.parse::<Token![~]>()?;
+            let provider: Ident = input.parse()?;
+            
+            Ok(Self {
+                trait_production: trait_production.is_some(),
+                requested: requested,
+                intermediate: Some(intermediate_type),
+                provider: provider,
+                singleton: singleton,
+            })
+        }
+        else {
+            let provider: Ident = provider_fork.parse()?;
+
+            Ok(Self {
+                trait_production: trait_production.is_some(),
+                requested: requested,
+                intermediate: None,
+                provider: provider,
+                singleton: singleton,
+            })
+        }
     }
 }
 
 impl ForwardedDefinition {
-    pub fn singleton_type(&self) -> String {
-        match &self.intermediate {
-            Some(intermediate) => intermediate.to_string(),
-            None => self.requested.to_string(),
+    pub fn register(self, collection: &mut SingletonCollection) -> Self {
+        let registered_type = match self.intermediate.clone()  {
+            Some(intermediate) => intermediate,
+            None => self.requested.clone(),
+        };
+
+        match collection.register_type(registered_type, self.singleton.clone()) {
+            None => self,
+            Some(replacement) => Self {
+                trait_production: self.trait_production,
+                requested: self.requested,
+                intermediate: self.intermediate,
+                provider: self.provider,
+                singleton: replacement,
+            }
         }
     }
-    pub fn set_singleton_identifier(self, ident: &SingletonIdentifier) -> Self {
-        Self {
-            requested: self.requested,
-            intermediate: self.intermediate,
-            provider: self.provider,
-            mapped: self.mapped,
-            singleton: ident.clone(),
-        }
-    }
+
     pub fn to_singleton_dependency(self) -> SingletonDependency {
         match &self.intermediate {
             Some(intermediate) => SingletonDependency::new(self.singleton, quote! { std::rc::Rc<#intermediate> }),
             None => {
                 let requested = self.requested;
-                if self.mapped {
+                if self.trait_production {
                     SingletonDependency::new(self.singleton, quote! { std::rc::Rc<dyn #requested> })
                 }
                 else {
@@ -75,7 +81,7 @@ impl ForwardedDefinition {
 
     pub fn transient(self, definition: &StructDefinition) -> TokenStream {
         let requested = 
-        if self.mapped {
+        if self.trait_production {
             let abstraction = self.requested;
             quote! { dyn #abstraction }
         }
@@ -101,7 +107,7 @@ impl ForwardedDefinition {
 
     pub fn singleton(self, definition: &StructDefinition) -> TokenStream {
         let requested = 
-        if self.mapped {
+        if self.trait_production {
             let abstraction = self.requested;
             quote! { dyn #abstraction }
         }

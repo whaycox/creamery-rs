@@ -4,11 +4,11 @@ mod tests {
 
     #[service_provider]
     #[generates(ConcreteFoo)]
-    #[generates(dyn Foo <- ConcreteFoo)]
+    #[generates(dyn Foo ~ ConcreteFoo)]
     struct BaseProvider {}
 
     #[service_provider]
-    #[forwards(ConcreteFoo <- base)]
+    #[forwards(ConcreteFoo ~ base)]
     struct ForwardedStructProvider {
         base: Rc<BaseProvider>,
     }
@@ -27,7 +27,7 @@ mod tests {
     }
 
     #[service_provider]
-    #[forwards(dyn Foo <- base)]
+    #[forwards(dyn Foo ~ base)]
     struct ForwardedTraitProvider {
         base: Rc<BaseProvider>,
     }
@@ -46,7 +46,7 @@ mod tests {
     }
 
     #[service_provider]
-    #[forwards(dyn Foo <- ConcreteFoo <- base)]
+    #[forwards(dyn Foo ~ ConcreteFoo ~ base)]
     struct ForwardedIntermediateProvider {
         base: Rc<BaseProvider>,
     }

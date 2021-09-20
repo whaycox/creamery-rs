@@ -35,7 +35,7 @@ mod tests {
     }
 
     #[service_provider]
-    #[clones(dyn Bar <- base)]
+    #[clones(dyn Bar ~ base)]
     struct ClonedTraitProvider {
         base: Rc<BaseProvider>,
     }

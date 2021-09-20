@@ -15,7 +15,7 @@ mod tests {
     }
 
     #[service_provider]
-    #[generates(dyn Foo <- ConcreteFoo)]
+    #[generates(dyn Foo ~ ConcreteFoo)]
     struct TraitProvider {}
 
     #[test]
