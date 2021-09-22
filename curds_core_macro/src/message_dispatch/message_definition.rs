@@ -1,38 +1,60 @@
 use super::*;
 
+#[derive(Clone)]
 pub struct MessageDefinition {
-    visibility: bool,
-    message_type: Ident,
-    context_type: Ident,
+    name: Ident,
+    message_type: Type,
+    base_name: Ident,
+    routing: DispatchRouting,
 }
 
-impl Parse for MessageDefinition {
-    fn parse(input: ParseStream) -> Result<Self> {
-        let visibility: Option<Token![pub]> = input.parse()?;
-        let message_type: Ident = input.parse()?;
-        input.parse::<Token![<-]>()?;
-        let context_type: Ident = input.parse()?;
-        if input.peek(Token![->]) {
-            input.parse::<Token![->]>()?;
-            let return_type: Ident = input.parse()?;
-        }
-        else if input.peek(Token![&]) {
-            input.parse::<Token![&]>()?;
-            let pipeline_content;
-            braced!(pipeline_content in input);
-            let pipeline: PipelineDefinition = input.parse()?;
-        }
-        else if input.peek(Token![|]) {
-            input.parse::<Token![|]>()?;
-            let chain_content;
-            braced!(chain_content in input);
-            let chain: ChainDefinition = input.parse()?;
-        }
+impl MessageDefinition {
+    pub fn parse(attribute: Attribute) -> Result<Self> {
+        let name = attribute.path
+            .get_ident()
+            .unwrap()
+            .clone();
+        let formatted_name: String = name
+            .clone()
+            .to_string()
+            .split("_")
+            .into_iter()
+            .map(|part| {
+                let mut title_part = part.to_owned();
+                if let Some(char) = title_part.get_mut(0..1) {
+                    char.make_ascii_uppercase();
+                }
+                title_part
+            })
+            .collect();
+        let routing: DispatchRouting = attribute.parse_args()?;
 
         Ok(Self {
-            visibility: visibility.is_some(),
-            message_type: message_type,
-            context_type: context_type,
+            name: name,
+            message_type: routing.message_type.clone(),
+            base_name: Ident::new(&formatted_name, attribute.path.span()),
+            routing: routing,
         })
+    }
+
+    pub fn context_type(&self) -> Type { self.routing.context_type.clone() }
+
+    pub fn signature_tokens(self) -> TokenStream {
+        let name = self.name;
+        let message_type = self.message_type;
+        quote! { fn #name(&self, message: #message_type) -> curds_core_abstraction::message_dispatch::Result<()>; }
+    }
+
+    pub fn trait_tokens(self, visibility: &Visibility, parent_trait: &Ident) -> TokenStream { self.routing.trait_tokens(visibility, parent_trait, &self.base_name) }
+
+    pub fn implementation_tokens(self) -> TokenStream {
+        let name = self.name;
+        let message_type = self.message_type;
+        let routing = self.routing.quote(&self.base_name);
+        quote! { 
+            fn #name(&self, message: #message_type) -> curds_core_abstraction::message_dispatch::Result<()> {
+                #routing
+            }
+        }
     }
 }

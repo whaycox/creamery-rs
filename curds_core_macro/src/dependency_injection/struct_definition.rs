@@ -2,7 +2,7 @@ use super::*;
 
 #[derive(Clone)]
 pub struct StructDefinition {
-    visibility: Visibility,
+    pub visibility: Visibility,
     pub name: Ident,
     fields: Vec<StructField>,
 }

@@ -36,6 +36,14 @@ impl Parse for GeneratedDefinition {
 }
 
 impl GeneratedDefinition {
+    pub fn new(generated_type: Type) -> Self {
+        Self {
+            abstraction: None,
+            implementation: generated_type,
+            singleton: SingletonIdentifier::new(),
+        }
+    }
+
     pub fn register(self, collection: &mut SingletonCollection) -> Self {
         match collection.register_type(self.implementation.clone(), self.singleton.clone()) {
             None => self,

@@ -13,13 +13,13 @@ pub enum ServiceProduction {
     ForwardSingleton(ForwardedDefinition),
 }
 
-const CLONES_IDENTIFIER: &str = "clones";
-const SCOPES_IDENTIFIER: &str = "scopes";
-const SCOPES_SINGLETON_IDENTIFIER: &str = "scopes_singleton";
-const GENERATES_IDENTIFIER: &str = "generates";
-const GENERATES_SINGLETON_IDENTIFIER: &str = "generates_singleton";
-const FORWARDS_IDENTIFIER: &str = "forwards";
-const FORWARDS_SINGLETON_IDENTIFIER: &str = "forwards_singleton";
+pub const CLONES_IDENTIFIER: &str = "clones";
+pub const SCOPES_IDENTIFIER: &str = "scopes";
+pub const SCOPES_SINGLETON_IDENTIFIER: &str = "scopes_singleton";
+pub const GENERATES_IDENTIFIER: &str = "generates";
+pub const GENERATES_SINGLETON_IDENTIFIER: &str = "generates_singleton";
+pub const FORWARDS_IDENTIFIER: &str = "forwards";
+pub const FORWARDS_SINGLETON_IDENTIFIER: &str = "forwards_singleton";
 
 impl ServiceProduction {
     pub fn singleton_fields(library: Vec<Self>, struct_definition: &StructDefinition) -> Vec<SingletonDependency> {
