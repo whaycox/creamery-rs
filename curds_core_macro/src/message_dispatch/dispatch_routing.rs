@@ -17,7 +17,8 @@ impl Parse for DispatchRouting {
             let return_type: Type = input.parse()?;
             RoutingDefinition::Pipeline(PipelineDefinition::new(return_type))
         }
-        else if input.peek(token::Brace) {
+        else if input.peek(Token![&]) {
+            input.parse::<Token![&]>()?;
             let pipeline_content;
             braced!(pipeline_content in input);
             let pipeline: PipelineDefinition = pipeline_content.parse()?;
@@ -40,6 +41,8 @@ impl Parse for DispatchRouting {
 }
 
 impl DispatchRouting {
+    pub fn return_type(&self) -> Option<Type> { self.definition.return_type() }
+
     pub fn quote(self, base_name: &Ident) -> TokenStream {
         let context_type = self.context_type;
         let stage_implementations = self.definition.implementation_tokens(base_name, &context_type);
@@ -47,7 +50,6 @@ impl DispatchRouting {
         quote! {
             let context = curds_core_abstraction::dependency_injection::ServiceGenerator::<std::rc::Rc<#context_type>>::generate(self);
             #stage_implementations
-            Ok(())
         }
     }
 

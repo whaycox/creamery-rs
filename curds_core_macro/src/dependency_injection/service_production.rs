@@ -77,14 +77,14 @@ impl ServiceProduction {
                 library.push(Self::GenerateTransient(attribute.parse_args::<GeneratedDefinition>()?))
             }
             else if attribute.path.is_ident(GENERATES_SINGLETON_IDENTIFIER) {
-                let mut definition = attribute.parse_args::<GeneratedDefinition>()?;
+                let definition = attribute.parse_args::<GeneratedDefinition>()?;
                 library.push(Self::GenerateSingleton(definition.register(&mut singletons)))
             }
             else if attribute.path.is_ident(FORWARDS_IDENTIFIER) {
                 library.push(Self::ForwardTransient(attribute.parse_args::<ForwardedDefinition>()?))
             }
             else if attribute.path.is_ident(FORWARDS_SINGLETON_IDENTIFIER) {
-                let mut definition = attribute.parse_args::<ForwardedDefinition>()?;
+                let definition = attribute.parse_args::<ForwardedDefinition>()?;
                 library.push(Self::ForwardSingleton(definition.register(&mut singletons)))
             }
         }

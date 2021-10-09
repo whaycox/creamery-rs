@@ -12,6 +12,13 @@ impl Default for RoutingDefinition {
 }
 
 impl RoutingDefinition {
+    pub fn return_type(&self) -> Option<Type> {
+        match self {
+            Self::Pipeline(pipeline_definition) => pipeline_definition.return_type(),
+            _ => None
+        }
+    }
+
     pub fn implementation_tokens(self, base_name: &Ident, context_type: &Type) -> TokenStream {
         match self {
             Self::Pipeline(pipeline_definition) => pipeline_definition.implementation_tokens(base_name, context_type),

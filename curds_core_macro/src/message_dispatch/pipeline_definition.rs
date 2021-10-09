@@ -1,65 +1,99 @@
 use super::*;
 
-const HANDLER_NAME: &str = "Handler";
-
 #[derive(Clone)]
 pub struct PipelineDefinition {
-    stages: Vec<(Ident, Option<Type>)>,
+    stages: Vec<PipelineStage>,
 }
 impl Default for PipelineDefinition {
     fn default() -> Self {
         Self { 
-            stages: vec![(Ident::new(HANDLER_NAME, Span::call_site()), None)],
+            stages: vec![PipelineStage::default_message()],
         }
-    }
-}
-impl PipelineDefinition {
-    pub fn new(return_type: Type) -> Self {
-        Self {
-            stages: vec![(Ident::new(HANDLER_NAME, Span::call_site()), Some(return_type))]
-        }
-    }
-
-    pub fn implementation_tokens(self, base_name: &Ident, context_type: &Type) -> TokenStream {
-        let stage_implementations: Vec<TokenStream> = self.stages
-            .into_iter()
-            .map(|stage| {
-                let stage_name = stage.0;
-                let trait_name = format_ident!("{}{}", base_name, stage_name.clone());
-                let assign_token = match stage.1 {
-                    Some(return_type) => quote! { let #stage_name = },
-                    None => quote! { },
-                };
-                quote! {
-                    #assign_token <#context_type as #trait_name>::handle(&context, self, message)?;
-                }
-            })
-            .collect();
-        quote! { #(#stage_implementations)* }       
-    }
-
-    pub fn trait_tokens(self, visibility: &Visibility, parent_trait: &Ident, base_name: &Ident, message_type: &Type) -> TokenStream {
-        let stage_traits: Vec<TokenStream> = self.stages
-            .into_iter()
-            .map(|stage| {
-                let trait_name = format_ident!("{}{}", base_name, stage.0);
-                let return_token = match stage.1 {
-                    Some(return_type) => quote! { #return_type },
-                    None => quote! { () },
-                };
-                quote! {
-                    #visibility trait #trait_name {
-                        fn handle(&self, dispatch: &dyn #parent_trait, message: #message_type) -> curds_core_abstraction::message_dispatch::Result<#return_token>;
-                    }
-                }
-            })
-            .collect();
-        quote! { #(#stage_traits)* }
     }
 }
 
 impl Parse for PipelineDefinition {
     fn parse(input: ParseStream) -> Result<Self> {
-        todo!("pipeline parsing")
+        let stages: Punctuated<PipelineStage, Token![,]> = input.parse_terminated(PipelineStage::parse)?;
+        Ok(Self {
+            stages: stages
+                .into_iter()
+                .collect(),
+        })
+    }
+}
+
+impl PipelineDefinition {
+    pub fn new(return_type: Type) -> Self {
+        Self {
+            stages: vec![PipelineStage::default_request(return_type)]
+        }
+    }
+
+    pub fn return_type(&self) -> Option<Type> {
+        if self.stages.len() > 0 {
+            let last = &self.stages[self.stages.len() - 1];
+            last.return_type()
+        }
+        else {
+            None
+        }
+    }
+
+    pub fn implementation_tokens(self, base_name: &Ident, context_type: &Type) -> TokenStream {
+        let mut stage_implementations: Vec<TokenStream> = Vec::new();
+        let mut previous_stage_output: Option<Ident> = None;
+        for stage in self.stages {
+            let stage_name = stage.name;
+            let trait_name = format_ident!("{}{}", base_name, stage_name.clone());
+            let input_token = match &previous_stage_output {
+                Some(name) => quote! { #name },
+                None => quote! { message },
+            };
+            let assign_token = match stage.return_type {
+                Some(_return_type) => {
+                    previous_stage_output = Some(stage_name.clone());
+                    quote! { let #stage_name = }
+                },
+                None => {
+                    previous_stage_output = None;
+                    quote! { }
+                },
+            };
+            stage_implementations.push(quote! {
+                #assign_token <#context_type as #trait_name>::handle(&context, self, &#input_token)?;
+            });
+        }
+        stage_implementations.push(match previous_stage_output {
+            Some(name) => quote! { Ok(#name) },
+            None => quote! { Ok(()) },
+        });
+        quote! { #(#stage_implementations)* }       
+    }
+
+    pub fn trait_tokens(self, visibility: &Visibility, parent_trait: &Ident, base_name: &Ident, message_type: &Type) -> TokenStream {
+        let mut stage_traits: Vec<TokenStream> = Vec::new();
+        let mut previous_stage_output: Option<Type> = None;
+        for stage in self.stages {
+            let stage_name = stage.name;
+            let trait_name = format_ident!("{}{}", base_name, stage_name.clone());
+            let input_token = match &previous_stage_output {
+                Some(output) => quote! { #output },
+                None => quote! { #message_type },
+            };
+            let return_token = match stage.return_type {
+                Some(return_type) => {
+                    previous_stage_output = Some(return_type.clone());
+                    quote! { #return_type }
+                },
+                None => quote! { () },
+            };
+            stage_traits.push(quote! {                    
+                #visibility trait #trait_name {
+                    fn handle(&self, dispatch: &dyn #parent_trait, input: &#input_token) -> curds_core_abstraction::message_dispatch::Result<#return_token>;
+                }
+            });
+        }
+        quote! { #(#stage_traits)* }
     }
 }

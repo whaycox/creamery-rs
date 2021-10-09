@@ -17,7 +17,8 @@ impl Parse for DispatchDefinition {
                 !attribute.path.is_ident(GENERATES_IDENTIFIER) &&
                 !attribute.path.is_ident(GENERATES_SINGLETON_IDENTIFIER) &&
                 !attribute.path.is_ident(FORWARDS_IDENTIFIER) &&
-                !attribute.path.is_ident(FORWARDS_SINGLETON_IDENTIFIER) {
+                !attribute.path.is_ident(FORWARDS_SINGLETON_IDENTIFIER) &&
+                !attribute.path.is_ident(DEFAULTED_IDENTIFIER) {
                 let message = MessageDefinition::parse(attribute)?;
                 provider_definition.generates(message.context_type());
                 messages.push(message);

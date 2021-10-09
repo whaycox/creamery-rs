@@ -1,6 +1,6 @@
 use super::*;
 
-const DEFAULTED_IDENTIFIER: &str = "defaults";
+pub const DEFAULTED_IDENTIFIER: &str = "defaults";
 
 #[derive(Clone)]
 pub struct DefaultedField {}
