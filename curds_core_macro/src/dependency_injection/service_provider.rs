@@ -34,7 +34,7 @@ impl ServiceProviderDefinition {
 
 impl Parse for ServiceProviderDefinition {
     fn parse(input: ParseStream) -> Result<Self> {
-        let library = ServiceProduction::parse_library(&input.fork())?;
+        let library = ServiceProduction::parse_library(input)?;
         let definition: StructDefinition = StructDefinition::parse(input)?;
         let singletons: Vec<SingletonDependency> = ServiceProduction::singleton_fields(library.clone(), &definition);
 
