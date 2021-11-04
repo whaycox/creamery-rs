@@ -42,10 +42,7 @@ impl MessageDefinition {
     pub fn signature_tokens(self) -> TokenStream {
         let name = self.name;
         let message_type = self.message_type;
-        let return_tokens = match self.routing.return_type() {
-            Some(return_type) => quote! { #return_type },
-            None => quote! { () },
-        };
+        let return_tokens = self.routing.return_tokens();
         quote! { fn #name(&self, message: #message_type) -> curds_core_abstraction::message_dispatch::Result<#return_tokens>; }
     }
 
@@ -54,10 +51,7 @@ impl MessageDefinition {
     pub fn implementation_tokens(self) -> TokenStream {
         let name = self.name;
         let message_type = self.message_type;
-        let return_tokens = match self.routing.return_type() {
-            Some(return_type) => quote! { #return_type },
-            None => quote! { () },
-        };
+        let return_tokens = self.routing.return_tokens();
         let routing = self.routing.quote(&self.base_name);
         quote! {
             #[allow(non_snake_case)]

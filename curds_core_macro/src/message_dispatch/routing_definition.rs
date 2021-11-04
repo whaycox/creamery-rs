@@ -12,24 +12,24 @@ impl Default for RoutingDefinition {
 }
 
 impl RoutingDefinition {
-    pub fn return_type(&self) -> Option<Type> {
+    pub fn return_tokens(&self) -> TokenStream {
         match self {
-            Self::Pipeline(pipeline_definition) => pipeline_definition.return_type(),
-            _ => None
+            Self::Pipeline(pipeline_definition) => pipeline_definition.return_tokens(),
+            Self::Chain(chain_definition) => chain_definition.return_tokens(),
         }
     }
 
     pub fn implementation_tokens(self, base_name: &Ident, context_type: &Type) -> TokenStream {
         match self {
             Self::Pipeline(pipeline_definition) => pipeline_definition.implementation_tokens(base_name, context_type),
-            _ => quote! {},
+            Self::Chain(chain_definition) => chain_definition.implementation_tokens(base_name, context_type),
         }
     }
 
     pub fn trait_tokens(self, visibility: &Visibility, parent_trait: &Ident, base_name: &Ident, message_type: &Type) -> TokenStream {
         match self {
             Self::Pipeline(pipeline_definition) => pipeline_definition.trait_tokens(visibility, parent_trait, base_name, message_type),
-            _ => quote! {},
+            Self::Chain(chain_definition) => chain_definition.trait_tokens(visibility, parent_trait, base_name, message_type),
         }
     }
 }

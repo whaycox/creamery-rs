@@ -18,16 +18,11 @@ impl Parse for DispatchRouting {
             RoutingDefinition::Pipeline(PipelineDefinition::new(return_type))
         }
         else if input.peek(Token![&]) {
-            input.parse::<Token![&]>()?;
-            let pipeline_content;
-            braced!(pipeline_content in input);
-            let pipeline: PipelineDefinition = pipeline_content.parse()?;
+            let pipeline: PipelineDefinition = input.parse()?;
             RoutingDefinition::Pipeline(pipeline)
         }
-        else if input.peek(token::Bracket) {
-            let chain_content;
-            bracketed!(chain_content in input);
-            let chain: ChainDefinition = chain_content.parse()?;
+        else if input.peek(Token![|]) {
+            let chain: ChainDefinition = input.parse()?;
             RoutingDefinition::Chain(chain)
         }
         else { RoutingDefinition::default() };
@@ -41,7 +36,7 @@ impl Parse for DispatchRouting {
 }
 
 impl DispatchRouting {
-    pub fn return_type(&self) -> Option<Type> { self.definition.return_type() }
+    pub fn return_tokens(&self) -> TokenStream { self.definition.return_tokens() }
 
     pub fn quote(self, base_name: &Ident) -> TokenStream {
         let context_type = self.context_type;

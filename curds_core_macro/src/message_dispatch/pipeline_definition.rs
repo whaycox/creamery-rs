@@ -14,7 +14,10 @@ impl Default for PipelineDefinition {
 
 impl Parse for PipelineDefinition {
     fn parse(input: ParseStream) -> Result<Self> {
-        let stages: Punctuated<PipelineStage, Token![,]> = input.parse_terminated(PipelineStage::parse)?;
+        input.parse::<Token![&]>()?;
+        let pipeline_content;
+        braced!(pipeline_content in input);
+        let stages: Punctuated<PipelineStage, Token![,]> = pipeline_content.parse_terminated(PipelineStage::parse)?;
         Ok(Self {
             stages: stages
                 .into_iter()
@@ -30,13 +33,16 @@ impl PipelineDefinition {
         }
     }
 
-    pub fn return_type(&self) -> Option<Type> {
+    pub fn return_tokens(&self) -> TokenStream {
         if self.stages.len() > 0 {
             let last = &self.stages[self.stages.len() - 1];
-            last.return_type()
+            match last.return_type() {
+                Some(return_type) => quote! { #return_type },
+                None => quote! { () },
+            }
         }
         else {
-            None
+            quote! { () }
         }
     }
 

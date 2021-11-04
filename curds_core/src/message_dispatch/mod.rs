@@ -2,6 +2,8 @@ mod basic_message;
 mod basic_request;
 mod complex_message;
 mod complex_request;
+mod chain_message;
+mod chain_request;
 
 #[cfg(test)]
 use super::*;
