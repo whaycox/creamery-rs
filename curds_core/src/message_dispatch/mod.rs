@@ -1,9 +1,10 @@
-mod basic_message;
-mod basic_request;
-mod complex_message;
-mod complex_request;
-mod chain_message;
-mod chain_request;
+//mod basic_message;
+//mod basic_request;
+//mod complex_message;
+//mod complex_request;
+//mod chain_message;
+//mod chain_request;
+mod default_pipeline_message;
 
 #[cfg(test)]
 use super::*;
@@ -36,6 +37,29 @@ mod simple {
 
     #[injected]
     pub struct FooMessageContext {}
+
+    #[injected]
+    pub struct FooRepositoryContext {
+        pub repo: Rc<dyn FooRepository>,
+    }
+
+    pub trait FooRepository {
+        fn store(&self, foo: u32);
+        fn get(&self) -> Option<u32>;
+    }
+    #[injected]
+    pub struct ConcreteRepository {
+        #[defaulted]
+        repo: Cell<Option<u32>>,
+    }
+    impl FooRepository for ConcreteRepository {
+        fn store(&self, foo: u32) {
+            self.repo.set(Some(foo))
+        }
+        fn get(&self) -> Option<u32> {
+            self.repo.get()
+        }
+    }
 
     #[derive(Debug)]
     pub struct FooMessageError {

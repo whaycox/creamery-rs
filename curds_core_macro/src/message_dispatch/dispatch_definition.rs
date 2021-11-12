@@ -1,5 +1,7 @@
 use super::*;
 
+const PIPELINE_IDENTIFIER: &str = "pipeline";
+
 pub struct DispatchDefinition {
     messages: Vec<MessageDefinition>,
     provider_definition: ServiceProviderDefinition,
@@ -8,10 +10,19 @@ pub struct DispatchDefinition {
 impl Parse for DispatchDefinition {
     fn parse(input: ParseStream) -> Result<Self> {
         let mut messages: Vec<MessageDefinition> = Vec::new();
+        let mut pipeline: PipelineDefinition = Default::default();
+        let mut chain: ChainDefinition = Default::default();
         let attributes = Attribute::parse_outer(&input.fork())?;
         let mut provider_definition: ServiceProviderDefinition = input.parse()?;
+        let mut contexts: HashSet<Type> = HashSet::new();
         for attribute in attributes {
-            if !attribute.path.is_ident(CLONES_IDENTIFIER) &&
+            if  attribute.path.is_ident(PIPELINE_IDENTIFIER) {
+
+
+
+                todo!("default pipeline")
+            }
+            else if !attribute.path.is_ident(CLONES_IDENTIFIER) &&
                 !attribute.path.is_ident(SCOPES_IDENTIFIER) &&
                 !attribute.path.is_ident(SCOPES_SINGLETON_IDENTIFIER) &&
                 !attribute.path.is_ident(GENERATES_IDENTIFIER) &&
@@ -20,9 +31,12 @@ impl Parse for DispatchDefinition {
                 !attribute.path.is_ident(FORWARDS_SINGLETON_IDENTIFIER) &&
                 !attribute.path.is_ident(DEFAULTED_IDENTIFIER) {
                 let message = MessageDefinition::parse(attribute)?;
-                provider_definition.generates(message.context_type());
+                contexts.insert(message.context_type());
                 messages.push(message);
             }
+        }
+        for context in contexts {
+            provider_definition.generates(context)
         }
 
         Ok(Self {
