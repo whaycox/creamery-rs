@@ -1,65 +1,52 @@
 use super::*;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct PipelineDefinition {
-    stages: Vec<PipelineStage>,
+    parameters: RoutingParameters,
+    route: Option<SerialRoute>,
 }
-impl Default for PipelineDefinition {
-    fn default() -> Self {
-        Self { 
-            stages: vec![PipelineStage::default_message()],
-        }
-    }
-}
-
-impl Parse for PipelineDefinition {
-    fn parse(input: ParseStream) -> Result<Self> {
-        input.parse::<Token![&]>()?;
-        let pipeline_content;
-        braced!(pipeline_content in input);
-        let stages: Punctuated<PipelineStage, Token![,]> = pipeline_content.parse_terminated(PipelineStage::parse)?;
-        Ok(Self {
-            stages: stages
-                .into_iter()
-                .collect(),
-        })
-    }
-}
-
 impl PipelineDefinition {
-    pub fn new(return_type: Type) -> Self {
+    pub fn explicit(parameters: RoutingParameters, route: SerialRoute) -> Self {
         Self {
-            stages: vec![PipelineStage::default_request(return_type)]
+            parameters: parameters,
+            route: Some(route),
+        }
+    }
+    
+    pub fn implicit(parameters: RoutingParameters) -> Self {
+        Self {
+            parameters: parameters,
+            route: None,
         }
     }
 
-    pub fn return_tokens(&self) -> TokenStream {
-        if self.stages.len() > 0 {
-            let last = &self.stages[self.stages.len() - 1];
-            match last.return_type() {
-                Some(return_type) => quote! { #return_type },
-                None => quote! { () },
-            }
-        }
-        else {
-            quote! { () }
+    pub fn context_type(&self) -> Type { self.parameters.context_type.clone() }
+
+    pub fn expand(self, defaults: &DispatchDefaults) -> Self {
+        Self {
+            parameters: self.parameters.clone(),
+            route: match self.route {
+                Some(route) => Some(route),
+                None => Some(defaults.expand_pipeline(self.parameters)),
+            },
         }
     }
 
-    pub fn implementation_tokens(self, base_name: &Ident, context_type: &Type) -> TokenStream {
+    pub fn quote(self, base_name: &Ident) -> TokenStream {
+        let context_type = self.parameters.context_type;
         let mut stage_implementations: Vec<TokenStream> = Vec::new();
         let mut previous_stage_output: Option<Ident> = None;
-        for stage in self.stages {
-            let stage_name = stage.name;
-            let trait_name = format_ident!("{}{}", base_name, stage_name.clone());
+        let route = self.route.unwrap();
+        for stage in route.stages {
+            let trait_name = stage.trait_name(&base_name);
             let input_token = match &previous_stage_output {
                 Some(name) => quote! { #name },
                 None => quote! { message },
             };
-            let assign_token = match stage.return_type {
+            let assign_token = match stage.output {
                 Some(_return_type) => {
-                    previous_stage_output = Some(stage_name.clone());
-                    quote! { let #stage_name = }
+                    previous_stage_output = Some(trait_name.clone());
+                    quote! { let #trait_name = }
                 },
                 None => {
                     previous_stage_output = None;
@@ -74,32 +61,49 @@ impl PipelineDefinition {
             Some(name) => quote! { Ok(#name) },
             None => quote! { Ok(()) },
         });
-        quote! { #(#stage_implementations)* }       
+        quote! {
+            let context = curds_core_abstraction::dependency_injection::ServiceGenerator::<std::rc::Rc<#context_type>>::generate(self);
+            #(#stage_implementations)* 
+        } 
     }
 
-    pub fn trait_tokens(self, visibility: &Visibility, parent_trait: &Ident, base_name: &Ident, message_type: &Type) -> TokenStream {
+    pub fn signature_tokens(self) -> TokenStream {
+        let message_type = self.parameters.message_type;
+        let response_tokens = match self.parameters.response_type {
+            Some(response_type) => quote! { #response_type },
+            None => quote! { () },
+        };
+
+        quote! { (&self, message: #message_type) -> curds_core_abstraction::message_dispatch::Result<#response_tokens> }
+    }
+
+    pub fn trait_tokens(self, visibility: &Visibility, parent_trait: &Ident, base_name: &Ident) -> TokenStream {
         let mut stage_traits: Vec<TokenStream> = Vec::new();
         let mut previous_stage_output: Option<Type> = None;
-        for stage in self.stages {
-            let stage_name = stage.name;
-            let trait_name = format_ident!("{}{}", base_name, stage_name.clone());
+
+        let message_type = self.parameters.message_type;
+        let route = self.route.unwrap();
+        for stage in route.stages {
+            let trait_name = stage.trait_name(base_name);
             let input_token = match &previous_stage_output {
                 Some(output) => quote! { #output },
-                None => quote! { #message_type },
-            };
-            let return_token = match stage.return_type {
+                None => quote! { #message_type }
+            };       
+            let return_token = match stage.output() {
                 Some(return_type) => {
                     previous_stage_output = Some(return_type.clone());
                     quote! { #return_type }
                 },
                 None => quote! { () },
             };
-            stage_traits.push(quote! {                    
+
+            stage_traits.push(quote! {
                 #visibility trait #trait_name {
                     fn handle(&self, dispatch: &dyn #parent_trait, input: &#input_token) -> curds_core_abstraction::message_dispatch::Result<#return_token>;
                 }
             });
         }
+
         quote! { #(#stage_traits)* }
     }
 }

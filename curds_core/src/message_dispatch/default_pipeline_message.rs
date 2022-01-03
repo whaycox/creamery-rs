@@ -7,8 +7,8 @@ mod tests {
     #[message_dispatch(TestMessages)]
     #[first(FooMessage ~ FooRepositoryContext)]
     #[second(FooMessage ~ FooRepositoryContext)]
-    #[third(FooMessage ~ FooRepositoryContext)]
-    #[pipeline(Validator, Handler)]
+    #[third(FooMessage ~ FooRepositoryContext &)]
+    #[message(Validator, Handler)]
     #[generates_singleton(dyn FooRepository ~ ConcreteRepository)]
     struct TestMessagesProvider {}
 
@@ -22,6 +22,7 @@ mod tests {
             }
         }
     }
+
     impl FirstHandler for FooRepositoryContext {
         fn handle(&self, _dispatch: &dyn TestMessages, input: &FooMessage) -> Result<()> {
             self.repo.store(input.foo);
