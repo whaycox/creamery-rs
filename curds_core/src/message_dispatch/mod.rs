@@ -5,6 +5,8 @@ mod complex_request;
 mod chain_message;
 mod chain_request;
 mod default_pipeline_message;
+mod default_pipeline_request;
+mod default_chain;
 
 #[cfg(test)]
 use super::*;
@@ -18,6 +20,7 @@ mod simple {
 
     pub const EXPECTED_FOO: u32 = 876;
 
+    #[derive(Debug)]
     pub struct FooMessage {
         pub foo: u32,
     } 
@@ -32,6 +35,11 @@ mod simple {
             Self {
                 foo: value,
             }
+        }
+    }
+    impl PartialEq for FooMessage {
+        fn eq(&self, other: &Self) -> bool {
+            self.foo == other.foo
         }
     }
 

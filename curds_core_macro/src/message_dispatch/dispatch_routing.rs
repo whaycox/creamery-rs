@@ -32,6 +32,10 @@ impl Parse for DispatchRouting {
                 }, route))
             }
             else {
+                if input.peek(Token![->]) {
+                    input.parse::<Token![->]>()?;
+                    response_type = Some(input.parse()?);
+                }
                 Self::Pipeline(PipelineDefinition::implicit(RoutingParameters {
                     message_type: message_type,
                     context_type: context_type,
@@ -40,16 +44,24 @@ impl Parse for DispatchRouting {
             }
         }
         else if input.peek(Token![|]) {
-            let route: ParallelRoute = input.parse()?;
+            input.parse::<Token![|]>()?;
+            let mut route: Option<ParallelRoute> = None;
             if input.peek(Token![->]) {
                 input.parse::<Token![->]>()?;
-                response_type = Some(input.parse()?)
+                response_type = Some(input.parse()?);
+            }
+            else if input.peek(token::Bracket) {
+                route = Some(input.parse()?);
+                if input.peek(Token![->]) {
+                    input.parse::<Token![->]>()?;
+                    response_type = Some(input.parse()?);
+                }
             }
             Self::Chain(ChainDefinition::new(RoutingParameters {
                 message_type: message_type,
                 context_type: context_type,
                 response_type: response_type,
-            }, Some(route)))
+            }, route))
         }
         else {
             Self::Pipeline(PipelineDefinition::implicit(RoutingParameters {

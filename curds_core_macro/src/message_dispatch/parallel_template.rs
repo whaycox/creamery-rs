@@ -15,7 +15,12 @@ impl Default for ParallelTemplate {
 
 impl Parse for ParallelTemplate {
     fn parse(input: ParseStream) -> Result<Self> {
-        todo!("ChainTemplate parse")
+        let channels: Punctuated<Ident, Token![,]> = input.parse_terminated(Ident::parse)?;
+        Ok(Self {
+            channels: channels
+                .into_iter()
+                .collect(),
+        })
     }
 }
 

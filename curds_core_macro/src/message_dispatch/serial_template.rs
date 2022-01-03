@@ -25,7 +25,17 @@ impl SerialTemplate {
     }
 
     pub fn parse_request(input: ParseStream) -> Result<Self> {
-        todo!("parse request");
+        let stages: Punctuated<SerialTemplateStage, Token![,]> = input.parse_terminated(SerialTemplateStage::request)?;
+        let mut parsed_stages: Vec<SerialTemplateStage> = stages
+            .into_iter()
+            .collect();
+        let last = parsed_stages.pop();
+        if last.is_some() {
+            parsed_stages.push(last.unwrap().to_response());
+        }
+        Ok(Self {
+            stages: parsed_stages,
+        })
     }
 
     pub fn expand_with(&self, parameters: RoutingParameters) -> SerialRoute {

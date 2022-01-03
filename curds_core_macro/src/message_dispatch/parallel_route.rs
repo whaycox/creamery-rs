@@ -14,7 +14,6 @@ impl ParallelRoute {
 
 impl Parse for ParallelRoute {
     fn parse(input: ParseStream) -> Result<Self> {
-        input.parse::<Token![|]>()?;
         let channel_content;
         bracketed!(channel_content in input);
         let channels: Punctuated<Ident, Token![,]> = channel_content.parse_terminated(Ident::parse)?;

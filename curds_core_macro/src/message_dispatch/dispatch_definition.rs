@@ -2,6 +2,7 @@ use super::*;
 
 const MESSAGE_IDENTIFIER: &str = "message";
 const REQUEST_IDENTIFIER: &str = "request";
+const CHAIN_IDENTIFIER: &str = "chain";
 
 pub struct DispatchDefinition {
     messages: Vec<MessageDefinition>,
@@ -24,6 +25,9 @@ impl Parse for DispatchDefinition {
             }
             else if attribute.path.is_ident(REQUEST_IDENTIFIER) {
                 request_template = attribute.parse_args_with(SerialTemplate::parse_request)?;
+            }
+            else if attribute.path.is_ident(CHAIN_IDENTIFIER) {
+                chain_template = attribute.parse_args_with(ParallelTemplate::parse)?;
             }
             else if !attribute.path.is_ident(CLONES_IDENTIFIER) &&
                 !attribute.path.is_ident(SCOPES_IDENTIFIER) &&
