@@ -36,7 +36,7 @@ mod tests {
     }
 
     #[service_provider]
-    #[scopes(dyn Bar <- base)]
+    #[scopes(dyn Bar ~ base)]
     struct ScopedTraitProvider {
         base: Rc<BaseProvider>,
     }

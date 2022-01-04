@@ -13,13 +13,13 @@ pub enum ServiceProduction {
     ForwardSingleton(ForwardedDefinition),
 }
 
-const CLONES_IDENTIFIER: &str = "clones";
-const SCOPES_IDENTIFIER: &str = "scopes";
-const SCOPES_SINGLETON_IDENTIFIER: &str = "scopes_singleton";
-const GENERATES_IDENTIFIER: &str = "generates";
-const GENERATES_SINGLETON_IDENTIFIER: &str = "generates_singleton";
-const FORWARDS_IDENTIFIER: &str = "forwards";
-const FORWARDS_SINGLETON_IDENTIFIER: &str = "forwards_singleton";
+pub const CLONES_IDENTIFIER: &str = "clones";
+pub const SCOPES_IDENTIFIER: &str = "scopes";
+pub const SCOPES_SINGLETON_IDENTIFIER: &str = "scopes_singleton";
+pub const GENERATES_IDENTIFIER: &str = "generates";
+pub const GENERATES_SINGLETON_IDENTIFIER: &str = "generates_singleton";
+pub const FORWARDS_IDENTIFIER: &str = "forwards";
+pub const FORWARDS_SINGLETON_IDENTIFIER: &str = "forwards_singleton";
 
 impl ServiceProduction {
     pub fn singleton_fields(library: Vec<Self>, struct_definition: &StructDefinition) -> Vec<SingletonDependency> {
@@ -27,21 +27,27 @@ impl ServiceProduction {
         for production in library {
             match production {
                 Self::GenerateSingleton(generated) => {
-                    let singleton_type = generated.singleton_type();
-                    if !singletons.contains_key(&singleton_type) {
-                        singletons.insert(singleton_type, generated.to_singleton_dependency());
+                    let singleton = generated.singleton
+                        .ident()
+                        .to_string();
+                    if !singletons.contains_key(&singleton) {
+                        singletons.insert(singleton, generated.to_singleton_dependency());
                     }
                 },
                 Self::ForwardSingleton(forwarded) => {
-                    let singleton_type = forwarded.singleton_type();
-                    if !singletons.contains_key(&singleton_type) {
-                        singletons.insert(singleton_type, forwarded.to_singleton_dependency());
+                    let singleton = forwarded.singleton
+                        .ident()
+                        .to_string();
+                    if !singletons.contains_key(&singleton) {
+                        singletons.insert(singleton, forwarded.to_singleton_dependency());
                     }
                 },
                 Self::ScopeSingleton(scoped) => {
-                    let singleton_type = scoped.provider_name();
-                    if !singletons.contains_key(&singleton_type) {
-                        singletons.insert(singleton_type, scoped.to_singleton_dependency(struct_definition));
+                    let singleton = scoped.singleton
+                        .ident()
+                        .to_string();
+                    if !singletons.contains_key(&singleton) {
+                        singletons.insert(singleton, scoped.to_singleton_dependency(struct_definition));
                     }
                 },
                 _ => {}
@@ -54,7 +60,7 @@ impl ServiceProduction {
     }
 
     pub fn parse_library(input: ParseStream) -> Result<Vec<Self>> {
-        let mut singletons: HashMap<String, SingletonIdentifier> = HashMap::new();
+        let mut singletons = SingletonCollection::new();
         let mut library: Vec<Self> = Vec::new();
         for attribute in Attribute::parse_outer(input)? {
             if attribute.path.is_ident(CLONES_IDENTIFIER) {
@@ -64,52 +70,22 @@ impl ServiceProduction {
                 library.push(Self::ScopeTransient(attribute.parse_args::<ProviderDefinition>()?))
             }
             else if attribute.path.is_ident(SCOPES_SINGLETON_IDENTIFIER) {
-                let mut definition = attribute.parse_args::<ProviderDefinition>()?;
-                let singleton_type = definition.provider_name();
-                match singletons.get(&singleton_type) {
-                    Some(singleton) => {
-                        definition = definition.set_singleton_identifier(singleton);
-                    },
-                    None => {
-                        singletons.insert(singleton_type, definition.singleton.clone());
-                    }
-                }
-                
-                library.push(Self::ScopeSingleton(definition))
+                let definition = attribute.parse_args::<ProviderDefinition>()?;                
+                library.push(Self::ScopeSingleton(definition.register(&mut singletons)))
             }
             else if attribute.path.is_ident(GENERATES_IDENTIFIER) {
                 library.push(Self::GenerateTransient(attribute.parse_args::<GeneratedDefinition>()?))
             }
             else if attribute.path.is_ident(GENERATES_SINGLETON_IDENTIFIER) {
-                let mut definition = attribute.parse_args::<GeneratedDefinition>()?;
-                let singleton_type = definition.singleton_type();
-                match singletons.get(&singleton_type) {
-                    Some(singleton) => {
-                        definition = definition.set_singleton_identifier(singleton);
-                    },
-                    None => {
-                        singletons.insert(singleton_type, definition.singleton.clone());
-                    }
-                }
-
-                library.push(Self::GenerateSingleton(definition))
+                let definition = attribute.parse_args::<GeneratedDefinition>()?;
+                library.push(Self::GenerateSingleton(definition.register(&mut singletons)))
             }
             else if attribute.path.is_ident(FORWARDS_IDENTIFIER) {
                 library.push(Self::ForwardTransient(attribute.parse_args::<ForwardedDefinition>()?))
             }
             else if attribute.path.is_ident(FORWARDS_SINGLETON_IDENTIFIER) {
-                let mut definition = attribute.parse_args::<ForwardedDefinition>()?;
-                let singleton_type = definition.singleton_type();
-                match singletons.get(&singleton_type) {
-                    Some(singleton) => {
-                        definition = definition.set_singleton_identifier(singleton);
-                    },
-                    None => {
-                        singletons.insert(singleton_type, definition.singleton.clone());
-                    }
-                }
-
-                library.push(Self::ForwardSingleton(definition))
+                let definition = attribute.parse_args::<ForwardedDefinition>()?;
+                library.push(Self::ForwardSingleton(definition.register(&mut singletons)))
             }
         }
 

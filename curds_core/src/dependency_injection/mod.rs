@@ -29,8 +29,8 @@ mod simple {
     }
 
     #[injected]
-    #[defaults(value)]
     pub struct IncrementingFoo {
+        #[defaulted]
         value: Cell<u32>,
     }
     impl Foo for IncrementingFoo {

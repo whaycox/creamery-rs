@@ -3,8 +3,8 @@ mod tests {
     use super::super::*;
 
     #[service_provider]
-    #[generates(dyn Foo <- ConcreteFoo)]
-    #[generates(dyn Bar <- FooedBar)]
+    #[generates(dyn Foo ~ ConcreteFoo)]
+    #[generates(dyn Bar ~ FooedBar)]
     struct CompositeProvider {}
 
     #[test]

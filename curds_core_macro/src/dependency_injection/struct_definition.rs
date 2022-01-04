@@ -1,26 +1,33 @@
 use super::*;
 
+pub const DEFAULTED_IDENTIFIER: &str = "defaulted";
+
 #[derive(Clone)]
 pub struct StructDefinition {
-    visibility: Option<Token![pub]>,
+    pub visibility: Visibility,
     pub name: Ident,
     fields: Vec<StructField>,
 }
 impl Parse for StructDefinition {
     fn parse(input: ParseStream) -> Result<Self> {
-        let defaults: HashSet<Ident> = DefaultedField::parse_defaults(input)?
-            .into_iter()
-            .collect();
-        let visibility: Option<Token![pub]> = input.parse()?;
+        Attribute::parse_outer(input)?;
+        let visibility: Visibility = input.parse()?;
         input.parse::<Token![struct]>()?;
         let name: Ident = input.parse()?;
         let content;
         braced!(content in input);
         let parsed_fields: Punctuated<Field, Token![,]> = content.parse_terminated(Field::parse_named)?;
         let mut fields: Vec<StructField> = Vec::new();
-        for field in parsed_fields {
-            let field_name = field.ident.clone().unwrap();
-            fields.push(StructField::new(field, defaults.contains(&field_name)));
+        for mut field in parsed_fields {
+            let mut default = false;
+            for i in 0..field.attrs.len() {
+                if field.attrs[i].path.is_ident(DEFAULTED_IDENTIFIER) {
+                    default = true;
+                    field.attrs.remove(i);
+                    break;
+                }
+            }
+            fields.push(StructField::new(field, default));
         }
 
         Ok(Self {

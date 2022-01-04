@@ -2,48 +2,59 @@ use super::*;
 
 #[derive(Clone)]
 pub struct GeneratedDefinition {
-    abstraction: Option<Ident>,
-    implementation: Ident,
+    abstraction: Option<Type>,
+    implementation: Type,
     pub singleton: SingletonIdentifier,
 }
 
 impl Parse for GeneratedDefinition {
     fn parse(input: ParseStream) -> Result<Self> {
-        let trait_production: Option<Token![dyn]> = input.parse()?;
-        let requested: Ident = input.parse()?;
-        input.parse::<Option<Token![<-]>>()?;
-        let implementation: Option<Ident> = input.parse()?;
-        if trait_production.is_some() && implementation.is_none() {
-            return Err(Error::new(requested.span(), "a concrete type type must also be defined"));
-        }
         let singleton = SingletonIdentifier::new();
-
-        Ok(match implementation {
-            Some(ident) => Self {
+        let trait_production: Option<Token![dyn]> = input.parse()?;
+        let requested: Type = input.parse()?;
+        if input.peek(Token![~]) {
+            input.parse::<Token![~]>()?;
+            //CHECK FOR DYN IMPLEMENTATION
+            let implementation: Type = input.parse()?;
+            Ok(Self {
                 abstraction: Some(requested),
-                implementation: ident,
+                implementation: implementation,
                 singleton: singleton,
-            },
-            None => Self {
+            })
+        }
+        else if trait_production.is_some() {
+            Err(Error::new(requested.span(), "a concrete type type must also be defined"))
+        }
+        else {
+            Ok(Self {
                 abstraction: None,
                 implementation: requested,
                 singleton: singleton,
-            }
-        })
+            })
+        }
     }
 }
 
 impl GeneratedDefinition {
-    pub fn singleton_type(&self) -> String {
-        self.implementation.to_string()
-    }
-    pub fn set_singleton_identifier(self, ident: &SingletonIdentifier) -> Self {
+    pub fn new(generated_type: Type) -> Self {
         Self {
-            abstraction: self.abstraction,
-            implementation: self.implementation,
-            singleton: ident.clone(),
+            abstraction: None,
+            implementation: generated_type,
+            singleton: SingletonIdentifier::new(),
         }
     }
+
+    pub fn register(self, collection: &mut SingletonCollection) -> Self {
+        match collection.register_type(self.implementation.clone(), self.singleton.clone()) {
+            None => self,
+            Some(replacement) => Self {
+                abstraction: self.abstraction,
+                implementation: self.implementation,
+                singleton: replacement,
+            }
+        }
+    }
+
     pub fn to_singleton_dependency(self) -> SingletonDependency {
         let implementation = self.implementation;
         SingletonDependency::new(self.singleton, quote! { std::rc::Rc<#implementation> })

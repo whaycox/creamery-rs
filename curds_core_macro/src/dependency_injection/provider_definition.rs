@@ -2,45 +2,55 @@ use super::*;
 
 #[derive(Clone)]
 pub struct ProviderDefinition {
-    abstraction: Option<Ident>,
+    abstraction: Option<Type>,
     provider: Ident,
     pub singleton: SingletonIdentifier,
 }
 
 impl Parse for ProviderDefinition {
     fn parse(input: ParseStream) -> Result<Self> {
-        input.parse::<Option<Token![dyn]>>()?;
-        let requested: Ident = input.parse()?;
-        input.parse::<Option<Token![<-]>>()?;
-        let provider: Option<Ident> = input.parse()?;
         let singleton = SingletonIdentifier::new();
+        let trait_production: Option<Token![dyn]> = input.parse()?;
+        let provider_fork = input.fork();
+        let requested: Result<Type> = input.parse();
+        if input.peek(Token![~]) {
+            let requested_type = requested?;
+            input.parse::<Token![~]>()?;
+            let provider: Ident = input.parse()?;
 
-        Ok(match provider {
-            Some(provider_name) => Self {
-                abstraction: Some(requested),
-                provider: provider_name,
+            Ok(Self {
+                abstraction: Some(requested_type),
+                provider: provider,
                 singleton: singleton,
-            },
-            None => Self {
-                abstraction: None,
-                provider: requested,
-                singleton: singleton,
+            })
+        }
+        else {
+            let provider: Ident = provider_fork.parse()?;
+            if trait_production.is_some() {
+                return Err(Error::new(trait_production.span(), "unexpected token"))
             }
-        })
+
+            Ok(Self {
+                abstraction: None,
+                provider: provider,
+                singleton: singleton,
+            })
+        }
     }
 }
 
 impl ProviderDefinition {
-    pub fn provider_name(&self) -> String {
-        self.provider.to_string()
-    }
-    pub fn set_singleton_identifier(self, ident: &SingletonIdentifier) -> Self {
-        Self {
-            abstraction: self.abstraction,
-            provider: self.provider,
-            singleton: ident.clone(),
+    pub fn register(self, collection: &mut SingletonCollection) -> Self {
+        match collection.register_provider(self.provider.clone(), self.singleton.clone()) {
+            None => self,
+            Some(replacement) => Self {
+                abstraction: self.abstraction,
+                provider: self.provider,
+                singleton: replacement,
+            }
         }
     }
+
     pub fn to_singleton_dependency(self, struct_definition: &StructDefinition) -> SingletonDependency {
         let ty = struct_definition.dependency_type(&self.provider);
         SingletonDependency::new(self.singleton, quote! { #ty })
