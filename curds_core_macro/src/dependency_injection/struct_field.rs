@@ -20,10 +20,33 @@ impl StructField {
         }
     }
 
-    pub fn constraint_tokens(self) -> Option<TokenStream> {
+    pub fn constraint_tokens(self) -> Option<TypeParamBound> {
         if !self.default {
-            let dependency = self.field.ty;
-            Some(quote! { curds_core_abstraction::dependency_injection::ServiceGenerator<#dependency> })
+            let mut constraint_path = Path::from(PathSegment {
+                ident: Ident::new("curds_core_abstraction", Span::call_site()),
+                arguments: PathArguments::None,
+            });
+            constraint_path.segments.push(PathSegment {
+                ident: Ident::new("dependency_injection", Span::call_site()),
+                arguments: PathArguments::None,
+            });
+            let mut generic_arguments = AngleBracketedGenericArguments {
+                colon2_token: None,
+                lt_token: syn::token::Lt { spans: [Span::call_site()] },
+                args: Punctuated::new(),
+                gt_token: syn::token::Gt { spans: [Span::call_site()] },
+            };
+            generic_arguments.args.push(GenericArgument::Type(self.field.ty));
+            constraint_path.segments.push(PathSegment {
+                ident: Ident::new("ServiceGenerator", Span::call_site()),
+                arguments: PathArguments::AngleBracketed(generic_arguments),
+            });
+            Some(TypeParamBound::Trait(TraitBound {
+                paren_token: None,
+                modifier: TraitBoundModifier::None,
+                lifetimes: None,
+                path: constraint_path,
+            }))
         }
         else {
             None

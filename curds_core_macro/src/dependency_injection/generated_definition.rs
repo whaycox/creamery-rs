@@ -14,7 +14,6 @@ impl Parse for GeneratedDefinition {
         let requested: Type = input.parse()?;
         if input.peek(Token![~]) {
             input.parse::<Token![~]>()?;
-            //CHECK FOR DYN IMPLEMENTATION
             let implementation: Type = input.parse()?;
             Ok(Self {
                 abstraction: Some(requested),
