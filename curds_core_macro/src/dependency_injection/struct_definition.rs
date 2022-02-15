@@ -6,7 +6,7 @@ pub const DEFAULTED_IDENTIFIER: &str = "defaulted";
 pub struct StructDefinition {
     pub visibility: Visibility,
     pub name: Ident,
-    generics: Generics,
+    pub generics: Generics,
     fields: Vec<StructField>,
 }
 impl Parse for StructDefinition {

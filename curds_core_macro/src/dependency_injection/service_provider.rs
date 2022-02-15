@@ -3,7 +3,7 @@ use super::*;
 #[derive(Clone)]
 pub struct ServiceProviderDefinition {
     library: Vec<ServiceProduction>,
-    definition: StructDefinition,
+    pub definition: StructDefinition,
     singletons: Vec<SingletonDependency>,
 }
 impl ServiceProviderDefinition {

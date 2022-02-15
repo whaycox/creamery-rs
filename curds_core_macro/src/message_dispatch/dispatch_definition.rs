@@ -81,6 +81,7 @@ impl DispatchDefinition {
             .map(|message| message.trait_tokens(&visibility, &message_trait))
             .collect();
         let provider_name = self.provider_definition.name();
+        let (impl_generics, type_generics, where_clause) = self.provider_definition.definition.generics.split_for_impl();
         let message_implementations: Vec<TokenStream> = expanded_messages
             .into_iter()
             .map(|message| message.implementation_tokens())
@@ -94,7 +95,7 @@ impl DispatchDefinition {
 
             #(#message_traits)*
 
-            impl #message_trait for #provider_name {
+            impl #impl_generics #message_trait for #provider_name #type_generics #where_clause {
                 #(#message_implementations)*
             }
         }
