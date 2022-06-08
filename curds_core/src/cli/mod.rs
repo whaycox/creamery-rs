@@ -32,18 +32,18 @@ mod tests {
 
     struct TestOperations {}
     impl Parseable for TestOperations {
-        fn parse(factory: &Rc<dyn ArgumentFactory>) -> Self { Self {} }
+        fn parse(factory: Rc<dyn ArgumentFactory>) -> Self { Self {} }
     }
 
     #[service_provider]
-    #[generates_singleton(dyn ArgumentFactory ~ WheyArgumentFactory<TestingContext>)]
-    #[generates_singleton(WheyArgumentFactorySetup<TestingContext>)]
+    #[generates_singleton(dyn ArgumentFactory ~ WheyArgumentFactory)]
+    #[generates_singleton(WheyArgumentFactorySetup)]
     #[generates_singleton(dyn Terminal ~ WheyTerminal)]
     #[generates_singleton(CliParser)]
     struct TestingContext {}
 
     impl TestingContext {
-        pub fn setup_argument_factory(&self) -> Rc<WheyArgumentFactorySetup<TestingContext>> { Self::generate(&self) }
+        pub fn setup_argument_factory(&self) -> Rc<WheyArgumentFactorySetup> { Self::generate(&self) }
     }
 
     #[test]

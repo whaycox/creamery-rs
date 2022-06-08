@@ -13,7 +13,7 @@ impl CliParser {
     where TParseableOperations : Parseable {
         let mut parsed: Vec<TParseableOperations> = Vec::new();
         while self.factory.has_arguments() {
-            parsed.push(TParseableOperations::parse(&self.factory))
+            parsed.push(TParseableOperations::parse(self.factory.clone()))
         }
         
         parsed

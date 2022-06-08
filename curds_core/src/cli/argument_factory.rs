@@ -16,16 +16,14 @@ pub trait ArgumentFactorySetup {
 }
 #[injected]
 #[cfg(test)]
-pub struct WheyArgumentFactorySetup<TDisambiguator: 'static> {
-    #[defaulted]
-    phantom: PhantomData<TDisambiguator>,
+pub struct WheyArgumentFactorySetup {
     #[defaulted]
     has_arguments_setups: Cell<Vec<Box<dyn Setup<(), bool>>>>,
     #[defaulted]
     next_setups: Cell<Vec<Box<dyn Setup<(), String>>>>,
 }
 #[cfg(test)]
-impl<TDisambiguator> ArgumentFactorySetup for WheyArgumentFactorySetup<TDisambiguator> {
+impl ArgumentFactorySetup for WheyArgumentFactorySetup {
     fn has_arguments(&self, setup: Box<dyn Setup<(), bool>>) {
         let mut setups = self.has_arguments_setups.take();
         setups.insert(0, setup);
@@ -95,11 +93,11 @@ impl<TDisambiguator> ArgumentFactorySetup for WheyArgumentFactorySetup<TDisambig
 
 #[injected]
 #[cfg(test)]
-pub struct WheyArgumentFactory<TDisambiguator: 'static> {
-    setups: Rc<WheyArgumentFactorySetup<TDisambiguator>>,
+pub struct WheyArgumentFactory {
+    setups: Rc<WheyArgumentFactorySetup>,
 }
 #[cfg(test)]
-impl<TDisambiguator> ArgumentFactory for WheyArgumentFactory<TDisambiguator> {
+impl ArgumentFactory for WheyArgumentFactory {
     fn has_arguments(&self) -> bool { self.setups.consume_has_arguments() }
     fn next(&self) -> String { self.setups.consume_next() }
 }
