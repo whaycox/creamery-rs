@@ -6,6 +6,7 @@ mod forwards_singleton;
 mod clones;
 mod scopes_transient;
 mod scopes_singleton;
+mod generic_service;
 
 #[cfg(test)]
 use super::*;

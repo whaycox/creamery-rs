@@ -14,7 +14,6 @@ impl Parse for GeneratedDefinition {
         let requested: Type = input.parse()?;
         if input.peek(Token![~]) {
             input.parse::<Token![~]>()?;
-            //CHECK FOR DYN IMPLEMENTATION
             let implementation: Type = input.parse()?;
             Ok(Self {
                 abstraction: Some(requested),
@@ -67,11 +66,12 @@ impl GeneratedDefinition {
         };
         let implementation = self.implementation;
         let name = definition.name.clone();
+        let (impl_generics, type_generics, where_clause) = definition.generics.split_for_impl();
 
         quote! {
-            impl curds_core_abstraction::dependency_injection::ServiceGenerator<std::rc::Rc<#requested>> for #name {
+            impl #impl_generics curds_core_abstraction::dependency_injection::ServiceGenerator<std::rc::Rc<#requested>> for #name #type_generics #where_clause {
                 fn generate(&self) -> std::rc::Rc<#requested> {
-                    <#implementation as curds_core_abstraction::dependency_injection::Injected::<#name>>::inject(self)
+                    <#implementation as curds_core_abstraction::dependency_injection::Injected::<#name #type_generics>>::inject(self)
                 }
             }
         }
@@ -84,10 +84,11 @@ impl GeneratedDefinition {
         };
         let implementation = self.implementation;
         let name = definition.name.clone();
+        let (impl_generics, type_generics, where_clause) = definition.generics.split_for_impl();
         let singleton_ident = self.singleton.ident();
 
         quote! {
-            impl curds_core_abstraction::dependency_injection::ServiceGenerator<std::rc::Rc<#requested>> for #name {
+            impl #impl_generics curds_core_abstraction::dependency_injection::ServiceGenerator<std::rc::Rc<#requested>> for #name #type_generics #where_clause {
                 fn generate(&self) -> std::rc::Rc<#requested> {
                     if self.#singleton_ident.borrow().is_none() {
                         let service = <#implementation as curds_core_abstraction::dependency_injection::Injected::<#name>>::inject(self);

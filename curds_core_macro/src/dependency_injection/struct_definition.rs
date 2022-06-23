@@ -6,6 +6,7 @@ pub const DEFAULTED_IDENTIFIER: &str = "defaulted";
 pub struct StructDefinition {
     pub visibility: Visibility,
     pub name: Ident,
+    pub generics: Generics,
     fields: Vec<StructField>,
 }
 impl Parse for StructDefinition {
@@ -14,6 +15,7 @@ impl Parse for StructDefinition {
         let visibility: Visibility = input.parse()?;
         input.parse::<Token![struct]>()?;
         let name: Ident = input.parse()?;
+        let generics: Generics = input.parse()?;
         let content;
         braced!(content in input);
         let parsed_fields: Punctuated<Field, Token![,]> = content.parse_terminated(Field::parse_named)?;
@@ -33,6 +35,7 @@ impl Parse for StructDefinition {
         Ok(Self {
             visibility: visibility,
             name: name,
+            generics: generics,
             fields: fields,
         })
     }
@@ -62,6 +65,7 @@ impl StructDefinition {
     fn struct_tokens(self, singletons: Vec<SingletonDependency>) -> TokenStream {
         let visibility = self.visibility;
         let name = self.name;
+        let (impl_generics, type_generics, where_clause) = self.generics.split_for_impl();
         let mut struct_fields: Vec<TokenStream> = self.fields
             .into_iter()
             .map(|field| field.to_token_stream())
@@ -71,33 +75,31 @@ impl StructDefinition {
         }
 
         quote! {
-            #visibility struct #name {
+            #visibility struct #name #type_generics #where_clause {
                 #(#struct_fields),*
             }
         }
     }
     fn injected_tokens(self) -> TokenStream {
         let name = self.name;
-        let mapped_constraints: Vec<TokenStream> = self.fields
-            .clone()
-            .into_iter()
-            .filter_map(|dependency| dependency.constraint_tokens())
-            .collect();
-        let has_constraints = mapped_constraints.len() > 0;
-        let constraint_tokens =
-        if has_constraints {
-            quote! { where TProvider : #(#mapped_constraints)+* }
+        let mut provider_generic = TypeParam::from(Ident::new("TProvider", Span::call_site()));
+        for field in self.fields.clone() {
+            let bound = field.constraint_tokens();
+            if bound.is_some() {
+                provider_generic.bounds.push(bound.unwrap())
+            }
         }
-        else {
-            quote! {}
-        };
+        let mut generics = self.generics;
+        let generics_without_provider = generics.clone();
+        generics.params.push(GenericParam::Type(provider_generic));
         let generator_tokens = self.fields
             .into_iter()
             .filter_map(|dependency| dependency.generator_tokens());
+        let (impl_generics, _, where_clause) = generics.split_for_impl();
+        let (_, type_generics, _) = generics_without_provider.split_for_impl();
         
         quote! {
-            impl<TProvider> curds_core_abstraction::dependency_injection::Injected<TProvider> for #name
-            #constraint_tokens {
+            impl #impl_generics curds_core_abstraction::dependency_injection::Injected<TProvider> for #name #type_generics #where_clause {
                 fn inject(provider: &TProvider) -> std::rc::Rc<Self> {
                     Self::construct(#(#generator_tokens),*)
                 }
@@ -117,9 +119,10 @@ impl StructDefinition {
         for singleton in singletons {
             initializer_tokens.push(singleton.initializer_tokens())
         }
+        let (impl_generics, type_generics, where_clause) = self.generics.split_for_impl();
 
         quote! {
-            impl #name {
+            impl #impl_generics #name #type_generics #where_clause {
                 pub fn construct(#(#argument_tokens),*) -> std::rc::Rc<Self> {
                     std::rc::Rc::new(Self {
                         #(#initializer_tokens),*
@@ -138,9 +141,10 @@ impl StructDefinition {
         for singleton in singletons {
             initializer_tokens.push(singleton.initializer_tokens())
         }
+        let (impl_generics, type_generics, where_clause) = self.generics.split_for_impl();
 
         quote! {
-            impl curds_core_abstraction::dependency_injection::Scoped for #name {
+            impl #impl_generics curds_core_abstraction::dependency_injection::Scoped for #name #type_generics #where_clause {
                 fn scope(&self) -> Self {
                     Self {
                         #(#initializer_tokens),*
