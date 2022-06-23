@@ -2,7 +2,6 @@ use std::{error::Error, fmt::Display};
 
 #[derive(Debug)]
 pub enum SetupError {
-    ExhaustedConsumption,
     InputComparison,
 }
 impl Display for SetupError {

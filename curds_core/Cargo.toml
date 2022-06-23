@@ -4,5 +4,6 @@ version = "0.1.0"
 edition = "2018"
 
 [dependencies]
+chrono = "0.4.19"
 curds_core_abstraction = { path = "../curds_core_abstraction" }
 curds_core_macro = { path = "../curds_core_macro" }

@@ -1,5 +1,35 @@
 use super::*;
 
+pub struct CompareExpectation<TInput> {
+    remaining: Cell<Option<u32>>,
+    comparison: Box<dyn InputCompare<TInput>>,
+}
+impl<TInput> CompareExpectation<TInput> {
+    pub fn is_exhausted(&self) -> bool {
+        match self.remaining.borrow().get() {
+            Some(calls) => calls > 0,
+            None => false,
+        }
+    }
+
+    pub fn consume(&self, input: TInput) -> bool {
+        let comparison = self.comparison.is_expected(input);
+        match self.remaining.borrow().get() {
+            Some(calls) => self.remaining.set(Some(calls - 1)),
+            None => {},
+        }
+        comparison
+    }
+}
+impl<TInput> Default for CompareExpectation<TInput> {
+    fn default() -> Self {
+        Self { 
+            remaining: Cell::new(None), 
+            comparison: Box::new(AnyCompare{}),
+        }
+    }
+} 
+
 pub trait InputCompare<TInput> {
     fn is_expected(&self, input: TInput) -> bool;
 }
