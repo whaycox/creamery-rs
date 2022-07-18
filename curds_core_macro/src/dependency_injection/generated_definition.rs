@@ -36,14 +36,14 @@ impl GeneratedDefinition {
         let producing_abstraction = self.abstraction.is_some();
         let implementation = &self.implementation;
         let requested = match &self.abstraction {
-            Some(abstraction) => quote! { std::rc::Rc<dyn #abstraction> },
+            Some(abstraction) => quote! { std::boxed::Box<dyn #abstraction> },
             None => implementation.to_token_stream(),
         };
         let name = provider.name();
         let (impl_generics, type_generics, where_clause) = provider.generics().split_for_impl();
         let mut generation = quote! { <#implementation as curds_core_abstraction::dependency_injection::Injected::<#name #type_generics>>::inject(self) };
         if producing_abstraction {
-            generation = quote! { std::rc::Rc::new(#generation) };
+            generation = quote! { std::boxed::Box::new(#generation) };
         }
 
         quote! {

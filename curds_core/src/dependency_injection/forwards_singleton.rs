@@ -5,6 +5,12 @@ mod tests {
     #[service_provider]
     #[generates(IncrementingFoo)]
     #[generates(dyn Foo ~ IncrementingFoo)]
+    #[generates_singleton(IncrementingFoo)]
+    #[generates_singleton(dyn Foo ~ IncrementingFoo)]
+    #[generates(ForwardedProvider)]
+    #[generates(ForwardedWithoutIntermediateProvider)]
+    #[scopes_self]
+    #[derive(Clone)]
     struct BaseProvider {}
 
     #[service_provider]
@@ -13,15 +19,11 @@ mod tests {
     struct ForwardedProvider {
         base: BaseProvider,
     }
-    impl ForwardedProvider {
-        fn new() -> Self {
-            Self::construct(BaseProvider::construct())
-        }
-    }
 
     #[test]
     fn forwards_generate_struct_to_base_but_stores_as_singleton() {
-        let provider = ForwardedProvider::new();
+        let base_provider: BaseProvider = BaseProvider::construct();
+        let provider: ForwardedProvider = base_provider.generate();
 
         for i in 0..10 {
             let foo: Rc<IncrementingFoo> = provider.generate();
@@ -34,7 +36,8 @@ mod tests {
 
     #[test]
     fn generates_trait_via_base_but_stores_concrete_as_singleton() {
-        let provider = ForwardedProvider::new();
+        let base_provider: BaseProvider = BaseProvider::construct();
+        let provider: ForwardedProvider = base_provider.generate();
 
         for i in 0..10 {
             let foo: Rc<dyn Foo> = provider.generate();
@@ -47,7 +50,8 @@ mod tests {
 
     #[test]
     fn trait_and_struct_same_singleton() {
-        let provider = ForwardedProvider::new();
+        let base_provider: BaseProvider = BaseProvider::construct();
+        let provider: ForwardedProvider = base_provider.generate();
 
         for i in 0..10 {
             let foo_trait = ServiceGenerator::<Rc<dyn Foo>>::generate(&provider);
@@ -65,15 +69,11 @@ mod tests {
     struct ForwardedWithoutIntermediateProvider {
         base: BaseProvider,
     }
-    impl ForwardedWithoutIntermediateProvider {
-        fn new() -> Self {
-            Self::construct(BaseProvider::construct())
-        }
-    }
 
     #[test]
     fn can_store_trait_singleton_without_intermediate() {
-        let provider = ForwardedWithoutIntermediateProvider::new();
+        let base_provider: BaseProvider = BaseProvider::construct();
+        let provider: ForwardedWithoutIntermediateProvider = base_provider.generate();
 
         for i in 0..10 {
             let foo: Rc<dyn Foo> = provider.generate();
@@ -86,7 +86,8 @@ mod tests {
 
     #[test]
     fn trait_singleton_without_intermediate_is_stored_separately() {
-        let provider = ForwardedWithoutIntermediateProvider::new();
+        let base_provider: BaseProvider = BaseProvider::construct();
+        let provider: ForwardedWithoutIntermediateProvider = base_provider.generate();
 
         for i in 0..10 {
             let foo_trait: Rc<dyn Foo> = provider.generate();

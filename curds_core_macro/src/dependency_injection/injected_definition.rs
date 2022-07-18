@@ -52,7 +52,6 @@ impl InjectedDefinition {
         let construct = self.quote_construct();
 
         quote! {
-            #[derive(std::clone::Clone)]
             #item
             #injected
             #construct

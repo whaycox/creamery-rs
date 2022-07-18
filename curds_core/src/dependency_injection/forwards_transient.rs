@@ -5,6 +5,11 @@ mod tests {
     #[service_provider]
     #[generates(ConcreteFoo)]
     #[generates(dyn Foo ~ ConcreteFoo)]
+    #[generates(ForwardedStructProvider)]
+    #[generates(ForwardedTraitProvider)]
+    #[generates(ForwardedIntermediateProvider)]
+    #[clones_self]
+    #[derive(Clone)]
     struct BaseProvider {}
 
     #[service_provider]
@@ -12,15 +17,11 @@ mod tests {
     struct ForwardedStructProvider {
         base: BaseProvider,
     }
-    impl ForwardedStructProvider {
-        fn new() -> Self {
-            Self::construct(BaseProvider::construct())
-        }
-    }
 
     #[test]
     fn forwards_generate_struct_to_base() {
-        let provider = ForwardedStructProvider::new();
+        let base_provider: BaseProvider = BaseProvider::construct();
+        let provider: ForwardedStructProvider = base_provider.generate();
         let foo: ConcreteFoo = provider.generate();
 
         assert_eq!(EXPECTED_FOO, foo.foo())
@@ -31,16 +32,12 @@ mod tests {
     struct ForwardedTraitProvider {
         base: BaseProvider,
     }
-    impl ForwardedTraitProvider {
-        fn new() -> Self {
-            Self::construct(BaseProvider::construct())
-        }
-    }
 
     #[test]
     fn forwards_generate_trait_to_base() {
-        let provider = ForwardedTraitProvider::new();
-        let foo: Rc<dyn Foo> = provider.generate();
+        let base_provider: BaseProvider = BaseProvider::construct();
+        let provider: ForwardedTraitProvider = base_provider.generate();
+        let foo: Box<dyn Foo> = provider.generate();
 
         assert_eq!(EXPECTED_FOO, foo.foo())
     }
@@ -50,16 +47,12 @@ mod tests {
     struct ForwardedIntermediateProvider {
         base: BaseProvider,
     }
-    impl ForwardedIntermediateProvider {
-        fn new() -> Self {
-            Self::construct(BaseProvider::construct())
-        }
-    }
 
     #[test]
     fn forwards_generate_trait_via_concrete_to_base() {
-        let provider = ForwardedIntermediateProvider::new();
-        let foo: Rc<dyn Foo> = provider.generate();
+        let base_provider: BaseProvider = BaseProvider::construct();
+        let provider: ForwardedIntermediateProvider = base_provider.generate();
+        let foo: Box<dyn Foo> = provider.generate();
 
         assert_eq!(EXPECTED_FOO, foo.foo())
     }

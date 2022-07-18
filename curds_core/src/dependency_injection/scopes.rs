@@ -6,6 +6,7 @@ mod tests {
     #[generates_singleton(IncrementingFoo)]
     #[generates(ScopedStructProvider)]
     #[scopes_self]
+    #[derive(Clone)]
     struct BaseProvider {}
 
     #[service_provider]

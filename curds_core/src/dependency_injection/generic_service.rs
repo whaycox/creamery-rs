@@ -40,21 +40,19 @@ mod tests {
     fn generates_generic_struct() {
         let provider = RepositoryProvider::construct();
 
-        test_bool_repository(&mut provider.generate());
-        test_u32_repository(&mut provider.generate());
+        test_bool_repository(provider.generate());
+        test_u32_repository(provider.generate());
     }
-    fn test_bool_repository(repo: &mut Rc<dyn Repository<u32, bool>>) {
-        let mutable = Rc::get_mut(repo).unwrap();
-        let first_key = mutable.store(true);
-        let second_key = mutable.store(false);
+    fn test_bool_repository(mut repo: Box<dyn Repository<u32, bool>>) {
+        let first_key = repo.store(true);
+        let second_key = repo.store(false);
         
         assert_eq!(true, repo.retrieve(first_key));
         assert_eq!(false, repo.retrieve(second_key));
     }
-    fn test_u32_repository(repo: &mut Rc<dyn Repository<u32, u32>>) {
-        let mutable = Rc::get_mut(repo).unwrap();
-        let first_key = mutable.store(10);
-        let second_key = mutable.store(400);
+    fn test_u32_repository(mut repo: Box<dyn Repository<u32, u32>>) {
+        let first_key = repo.store(10);
+        let second_key = repo.store(400);
 
         assert_eq!(10, repo.retrieve(first_key));
         assert_eq!(400, repo.retrieve(second_key));

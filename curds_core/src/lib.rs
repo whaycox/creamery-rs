@@ -1,5 +1,5 @@
 mod dependency_injection;
-mod message_dispatch;
+//mod message_dispatch;
 //mod cli;
 //mod time;
 

@@ -52,7 +52,7 @@ impl ForwardedDefinition {
         let requested = 
         if self.trait_production {
             let abstraction = &self.requested;
-            quote! { std::rc::Rc<dyn #abstraction> }
+            quote! { std::boxed::Box<dyn #abstraction> }
         }
         else {
             self.requested.to_token_stream()
@@ -67,7 +67,7 @@ impl ForwardedDefinition {
         let (impl_generics, type_generics, where_clause) = provider.generics().split_for_impl();
         let mut generation = quote! { curds_core_abstraction::dependency_injection::ServiceGenerator::<#intermediate>::generate(&self.#forwarded_provider) };
         if self.trait_production && self.intermediate.is_some() {
-            generation = quote! { std::rc::Rc::new(#generation) };
+            generation = quote! { std::boxed::Box::new(#generation) };
         }
 
         quote! {

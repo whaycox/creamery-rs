@@ -21,7 +21,7 @@ mod tests {
     #[test]
     fn generates_foo_trait() {
         let provider = TraitProvider::construct();
-        let foo: Rc<dyn Foo> = provider.generate();
+        let foo: Box<dyn Foo> = provider.generate();
 
         assert_eq!(EXPECTED_FOO, foo.foo())
     }

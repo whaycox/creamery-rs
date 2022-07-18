@@ -63,7 +63,7 @@ mod simple {
 
     #[injected]
     pub struct FooedBar {
-        foo: Rc<dyn Foo>,
+        foo: Box<dyn Foo>,
     }
     impl Bar for FooedBar {
         fn bar(&self) -> u32 { EXPECTED_BAR * self.foo.foo() }
