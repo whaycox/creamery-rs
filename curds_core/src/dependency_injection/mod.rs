@@ -1,11 +1,10 @@
 mod generates_transient;
 mod generates_singleton;
 mod injects_dependencies;
+mod clones;
+mod scopes;
 mod forwards_transient;
 mod forwards_singleton;
-mod clones;
-mod scopes_transient;
-mod scopes_singleton;
 mod generic_service;
 
 #[cfg(test)]
@@ -19,6 +18,7 @@ mod simple {
     use super::*;
 
     pub const EXPECTED_FOO: u32 = 123;
+
     pub trait Foo {
         fn foo(&self) -> u32;
     }

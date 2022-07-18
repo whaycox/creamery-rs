@@ -12,7 +12,7 @@ mod tests {
         let provider = SingletonProvider::construct();
 
         for i in 0..10 {
-            let foo = ServiceGenerator::<Rc<IncrementingFoo>>::generate(&provider);
+            let foo: Rc<IncrementingFoo> = provider.generate();
 
             assert_eq!(i * 3, foo.foo());
             assert_eq!(i * 3 + 1, foo.foo());
@@ -30,7 +30,7 @@ mod tests {
         let provider = TransientProvider::construct();
 
         for _ in 0..10 {
-            let foo = ServiceGenerator::<Rc<IncrementingFoo>>::generate(&provider);
+            let foo: Rc<IncrementingFoo> = provider.generate();
 
             assert_eq!(0, foo.foo());
             assert_eq!(1, foo.foo());
@@ -43,7 +43,7 @@ mod tests {
         let provider = SingletonProvider::construct();
 
         for i in 0..10 {
-            let foo = ServiceGenerator::<Rc<dyn Foo>>::generate(&provider);
+            let foo: Rc<dyn Foo> = provider.generate();
 
             assert_eq!(i * 3, foo.foo());
             assert_eq!(i * 3 + 1, foo.foo());
@@ -56,7 +56,7 @@ mod tests {
         let provider = TransientProvider::construct();
 
         for _ in 0..10 {
-            let foo = ServiceGenerator::<Rc<dyn Foo>>::generate(&provider);
+            let foo: Rc<dyn Foo> = provider.generate();
 
             assert_eq!(0, foo.foo());
             assert_eq!(1, foo.foo());
@@ -69,8 +69,8 @@ mod tests {
         let provider = SingletonProvider::construct();
 
         for i in 0..10 {
-            let foo_trait = ServiceGenerator::<Rc<dyn Foo>>::generate(&provider);
-            let foo = ServiceGenerator::<Rc<IncrementingFoo>>::generate(&provider);
+            let foo_trait: Rc<dyn Foo> = provider.generate();
+            let foo: Rc<IncrementingFoo> = provider.generate();
 
             assert_eq!(i * 3, foo_trait.foo());
             assert_eq!(i * 3 + 1, foo.foo());

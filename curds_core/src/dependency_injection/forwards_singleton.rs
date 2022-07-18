@@ -11,10 +11,10 @@ mod tests {
     #[forwards_singleton(dyn Foo ~ IncrementingFoo ~ base)]
     #[forwards_singleton(IncrementingFoo ~ base)]
     struct ForwardedProvider {
-        base: Rc<BaseProvider>,
+        base: BaseProvider,
     }
     impl ForwardedProvider {
-        fn new() -> Rc<Self> {
+        fn new() -> Self {
             Self::construct(BaseProvider::construct())
         }
     }
@@ -24,7 +24,7 @@ mod tests {
         let provider = ForwardedProvider::new();
 
         for i in 0..10 {
-            let foo = ServiceGenerator::<Rc<IncrementingFoo>>::generate(&provider);
+            let foo: Rc<IncrementingFoo> = provider.generate();
 
             assert_eq!(i * 3, foo.foo());
             assert_eq!(i * 3 + 1, foo.foo());
@@ -37,7 +37,7 @@ mod tests {
         let provider = ForwardedProvider::new();
 
         for i in 0..10 {
-            let foo = ServiceGenerator::<Rc<dyn Foo>>::generate(&provider);
+            let foo: Rc<dyn Foo> = provider.generate();
 
             assert_eq!(i * 3, foo.foo());
             assert_eq!(i * 3 + 1, foo.foo());
@@ -63,10 +63,10 @@ mod tests {
     #[forwards_singleton(dyn Foo ~ base)]
     #[forwards_singleton(IncrementingFoo ~ base)]
     struct ForwardedWithoutIntermediateProvider {
-        base: Rc<BaseProvider>,
+        base: BaseProvider,
     }
     impl ForwardedWithoutIntermediateProvider {
-        fn new() -> Rc<Self> {
+        fn new() -> Self {
             Self::construct(BaseProvider::construct())
         }
     }
@@ -76,7 +76,7 @@ mod tests {
         let provider = ForwardedWithoutIntermediateProvider::new();
 
         for i in 0..10 {
-            let foo = ServiceGenerator::<Rc<dyn Foo>>::generate(&provider);
+            let foo: Rc<dyn Foo> = provider.generate();
 
             assert_eq!(i * 3, foo.foo());
             assert_eq!(i * 3 + 1, foo.foo());
@@ -89,8 +89,8 @@ mod tests {
         let provider = ForwardedWithoutIntermediateProvider::new();
 
         for i in 0..10 {
-            let foo_trait = ServiceGenerator::<Rc<dyn Foo>>::generate(&provider);
-            let foo = ServiceGenerator::<Rc<IncrementingFoo>>::generate(&provider);
+            let foo_trait: Rc<dyn Foo> = provider.generate();
+            let foo: Rc<IncrementingFoo> = provider.generate();
 
             assert_eq!(i * 3, foo.foo());
             assert_eq!(i * 3, foo_trait.foo());

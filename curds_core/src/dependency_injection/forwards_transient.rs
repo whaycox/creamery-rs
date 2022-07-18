@@ -10,10 +10,10 @@ mod tests {
     #[service_provider]
     #[forwards(ConcreteFoo ~ base)]
     struct ForwardedStructProvider {
-        base: Rc<BaseProvider>,
+        base: BaseProvider,
     }
     impl ForwardedStructProvider {
-        fn new() -> Rc<Self> {
+        fn new() -> Self {
             Self::construct(BaseProvider::construct())
         }
     }
@@ -21,7 +21,7 @@ mod tests {
     #[test]
     fn forwards_generate_struct_to_base() {
         let provider = ForwardedStructProvider::new();
-        let foo = ServiceGenerator::<Rc<ConcreteFoo>>::generate(&provider);
+        let foo: ConcreteFoo = provider.generate();
 
         assert_eq!(EXPECTED_FOO, foo.foo())
     }
@@ -29,10 +29,10 @@ mod tests {
     #[service_provider]
     #[forwards(dyn Foo ~ base)]
     struct ForwardedTraitProvider {
-        base: Rc<BaseProvider>,
+        base: BaseProvider,
     }
     impl ForwardedTraitProvider {
-        fn new() -> Rc<Self> {
+        fn new() -> Self {
             Self::construct(BaseProvider::construct())
         }
     }
@@ -40,7 +40,7 @@ mod tests {
     #[test]
     fn forwards_generate_trait_to_base() {
         let provider = ForwardedTraitProvider::new();
-        let foo = ServiceGenerator::<Rc<dyn Foo>>::generate(&provider);
+        let foo: Rc<dyn Foo> = provider.generate();
 
         assert_eq!(EXPECTED_FOO, foo.foo())
     }
@@ -48,10 +48,10 @@ mod tests {
     #[service_provider]
     #[forwards(dyn Foo ~ ConcreteFoo ~ base)]
     struct ForwardedIntermediateProvider {
-        base: Rc<BaseProvider>,
+        base: BaseProvider,
     }
     impl ForwardedIntermediateProvider {
-        fn new() -> Rc<Self> {
+        fn new() -> Self {
             Self::construct(BaseProvider::construct())
         }
     }
@@ -59,7 +59,7 @@ mod tests {
     #[test]
     fn forwards_generate_trait_via_concrete_to_base() {
         let provider = ForwardedIntermediateProvider::new();
-        let foo = ServiceGenerator::<Rc<dyn Foo>>::generate(&provider);
+        let foo: Rc<dyn Foo> = provider.generate();
 
         assert_eq!(EXPECTED_FOO, foo.foo())
     }
