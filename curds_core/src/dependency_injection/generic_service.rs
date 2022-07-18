@@ -32,8 +32,8 @@ mod tests {
     }
 
     #[service_provider]
-    #[generates_singleton(dyn Repository<u32, bool> ~ GenericRepository<bool>)]
-    #[generates_singleton(dyn Repository<u32, u32> ~ GenericRepository<u32>)]
+    #[generates(dyn Repository<u32, bool> ~ GenericRepository<bool>)]
+    #[generates(dyn Repository<u32, u32> ~ GenericRepository<u32>)]
     struct RepositoryProvider {}
 
     #[test]
@@ -44,12 +44,12 @@ mod tests {
         test_u32_repository(&mut provider.generate());
     }
     fn test_bool_repository(repo: &mut Rc<dyn Repository<u32, bool>>) {
-        panic!("no good");
-        //let first_key = mutable.store(true);
-        //let second_key = mutable.store(false);
-
-        //assert_eq!(true, repo.retrieve(first_key));
-        //assert_eq!(false, repo.retrieve(second_key));
+        let mutable = Rc::get_mut(repo).unwrap();
+        let first_key = mutable.store(true);
+        let second_key = mutable.store(false);
+        
+        assert_eq!(true, repo.retrieve(first_key));
+        assert_eq!(false, repo.retrieve(second_key));
     }
     fn test_u32_repository(repo: &mut Rc<dyn Repository<u32, u32>>) {
         let mutable = Rc::get_mut(repo).unwrap();
