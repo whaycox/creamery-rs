@@ -70,8 +70,7 @@ impl GeneratedDefinition {
             impl #impl_generics curds_core_abstraction::dependency_injection::ServiceGenerator<#requested> for #name #type_generics #where_clause {
                 fn generate(&self) -> #requested {
                     if self.#singleton_ident.borrow().is_none() {
-                        let service = <#implementation as curds_core_abstraction::dependency_injection::Injected::<#name>>::inject(self);
-                        self.#singleton_ident.replace(Some(std::rc::Rc::new(service)));
+                        self.#singleton_ident.replace(Some(std::rc::Rc::new(<#implementation as curds_core_abstraction::dependency_injection::Injected::<#name>>::inject(self))));
                     }
                     self.#singleton_ident
                         .borrow()

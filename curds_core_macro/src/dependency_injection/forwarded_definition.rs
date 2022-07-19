@@ -2,6 +2,7 @@ use super::*;
 
 pub struct ForwardedDefinition {
     trait_production: bool,
+    promoted: bool,
     requested: Type,
     intermediate: Option<Type>,
     provider: Ident,
@@ -11,7 +12,10 @@ impl Parse for ForwardedDefinition {
     fn parse(input: ParseStream) -> Result<Self> {
         let trait_production: Option<Token![dyn]> = input.parse()?;
         let requested: Type = input.parse()?;
-        input.parse::<Token![~]>()?;
+        let promoted: Option<Token![^]> = input.parse()?;
+        if promoted.is_none() {
+            input.parse::<Token![~]>()?;
+        }
         let provider_fork = input.fork();
         let intermediate: Result<Type> = input.parse();
         if input.peek(Token![~]) {
@@ -21,6 +25,7 @@ impl Parse for ForwardedDefinition {
             
             Ok(Self {
                 trait_production: trait_production.is_some(),
+                promoted: promoted.is_some(),
                 requested: requested,
                 intermediate: Some(intermediate_type),
                 provider: provider,
@@ -31,6 +36,7 @@ impl Parse for ForwardedDefinition {
 
             Ok(Self {
                 trait_production: trait_production.is_some(),
+                promoted: promoted.is_some(),
                 requested: requested,
                 intermediate: None,
                 provider: provider,
@@ -91,7 +97,7 @@ impl ForwardedDefinition {
             stored = &self.requested;
             self.requested.to_token_stream()
         };
-        let intermediate = 
+        let mut intermediate = 
         match &self.intermediate {
             Some(concrete) => {
                 stored = concrete;
@@ -99,7 +105,24 @@ impl ForwardedDefinition {
             },
             None => requested.clone(),
         };
+        if self.promoted {
+            if self.intermediate.is_none() && self.trait_production {
+                intermediate = quote! { std::boxed::Box<#intermediate> };
+            }
+        }
+        else {
+            intermediate = quote! { std::rc::Rc<#intermediate> };
+        }
         let provider = &self.provider;
+        let mut generation = quote! { curds_core_abstraction::dependency_injection::ServiceGenerator::<#intermediate>::generate(&self.#provider) };
+        if self.promoted {
+            if self.intermediate.is_none() && self.trait_production {
+                generation = quote! { #generation.into() };
+            }
+            else {
+                generation = quote! { std::rc::Rc::new(#generation) };
+            }
+        }
         let name = definition.name();
         let singleton_ident = definition.singleton(stored);
 
@@ -107,8 +130,7 @@ impl ForwardedDefinition {
             impl curds_core_abstraction::dependency_injection::ServiceGenerator<std::rc::Rc<#requested>> for #name {
                 fn generate(&self) -> std::rc::Rc<#requested> {
                     if self.#singleton_ident.borrow().is_none() {
-                        let service = curds_core_abstraction::dependency_injection::ServiceGenerator::<std::rc::Rc<#intermediate>>::generate(&self.#provider);
-                        self.#singleton_ident.replace(Some(service));
+                        self.#singleton_ident.replace(Some(#generation));
                     }
                     self.#singleton_ident
                         .borrow()
