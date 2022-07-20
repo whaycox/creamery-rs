@@ -17,7 +17,7 @@ impl WheyTest {
                     let name = typed.pat;
                     let injected_type = typed.ty;
                     injected_inputs.push(quote! {
-                        let #name: std::rc::Rc<#injected_type> = #injected_type::construct();
+                        let #name: #injected_type = #injected_type::construct();
                     });
                 },
                 _ => panic!("Unexpected input"),

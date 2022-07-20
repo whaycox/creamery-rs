@@ -1,16 +1,16 @@
 use super::*;
 
 pub struct WheyContext {
-    tokens: TokenStream,
+    item: ItemStruct,
 }
 
 impl WheyContext {
     pub fn quote(self, context_type: Ident) -> TokenStream {
-        let tokens = self.tokens;
+        let item = self.item;
         quote! {
             #[service_provider]
             #[generates_singleton(#context_type)]
-            #tokens
+            #item
         }
     }
 }
@@ -18,7 +18,7 @@ impl WheyContext {
 impl Parse for WheyContext {
     fn parse(input: ParseStream) -> Result<Self> {
         Ok(WheyContext {
-            tokens: input.parse()?,
+            item: input.parse()?,
         })
     }
 }
