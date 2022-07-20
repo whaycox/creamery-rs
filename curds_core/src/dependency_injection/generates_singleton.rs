@@ -5,6 +5,8 @@ mod tests {
     #[service_provider]
     #[generates_singleton(dyn Foo ~ IncrementingFoo)]
     #[generates_singleton(IncrementingFoo)]
+    #[generates(dyn Foo ~ IncrementingFoo)]
+    #[generates(IncrementingFoo)]
     struct SingletonProvider {}
 
     #[test]
@@ -12,7 +14,7 @@ mod tests {
         let provider = SingletonProvider::construct();
 
         for i in 0..10 {
-            let foo = ServiceGenerator::<Rc<IncrementingFoo>>::generate(&provider);
+            let foo: Rc<IncrementingFoo> = provider.generate();
 
             assert_eq!(i * 3, foo.foo());
             assert_eq!(i * 3 + 1, foo.foo());
@@ -20,17 +22,12 @@ mod tests {
         }
     }
 
-    #[service_provider]
-    #[generates(dyn Foo ~ IncrementingFoo)]
-    #[generates(IncrementingFoo)]
-    struct TransientProvider {}
-
     #[test]
     fn transient_foo_struct_resets() {
-        let provider = TransientProvider::construct();
+        let provider = SingletonProvider::construct();
 
         for _ in 0..10 {
-            let foo = ServiceGenerator::<Rc<IncrementingFoo>>::generate(&provider);
+            let foo: IncrementingFoo = provider.generate();
 
             assert_eq!(0, foo.foo());
             assert_eq!(1, foo.foo());
@@ -43,7 +40,7 @@ mod tests {
         let provider = SingletonProvider::construct();
 
         for i in 0..10 {
-            let foo = ServiceGenerator::<Rc<dyn Foo>>::generate(&provider);
+            let foo: Rc<dyn Foo> = provider.generate();
 
             assert_eq!(i * 3, foo.foo());
             assert_eq!(i * 3 + 1, foo.foo());
@@ -53,10 +50,10 @@ mod tests {
 
     #[test]
     fn transient_foo_trait_resets() {
-        let provider = TransientProvider::construct();
+        let provider = SingletonProvider::construct();
 
         for _ in 0..10 {
-            let foo = ServiceGenerator::<Rc<dyn Foo>>::generate(&provider);
+            let foo: Box<dyn Foo> = provider.generate();
 
             assert_eq!(0, foo.foo());
             assert_eq!(1, foo.foo());
@@ -69,8 +66,8 @@ mod tests {
         let provider = SingletonProvider::construct();
 
         for i in 0..10 {
-            let foo_trait = ServiceGenerator::<Rc<dyn Foo>>::generate(&provider);
-            let foo = ServiceGenerator::<Rc<IncrementingFoo>>::generate(&provider);
+            let foo_trait: Rc<dyn Foo> = provider.generate();
+            let foo: Rc<IncrementingFoo> = provider.generate();
 
             assert_eq!(i * 3, foo_trait.foo());
             assert_eq!(i * 3 + 1, foo.foo());

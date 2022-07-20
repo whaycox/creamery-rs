@@ -1,21 +1,21 @@
 use super::*;
 
-#[derive(Clone)]
 pub struct ForwardedDefinition {
     trait_production: bool,
+    promoted: bool,
     requested: Type,
     intermediate: Option<Type>,
     provider: Ident,
-    pub singleton: SingletonIdentifier,
 }
 
 impl Parse for ForwardedDefinition {
     fn parse(input: ParseStream) -> Result<Self> {
-        let singleton = SingletonIdentifier::new();
         let trait_production: Option<Token![dyn]> = input.parse()?;
         let requested: Type = input.parse()?;
-        input.parse::<Token![~]>()?;
-        //CHECK FOR DYN TOKEN
+        let promoted: Option<Token![^]> = input.parse()?;
+        if promoted.is_none() {
+            input.parse::<Token![~]>()?;
+        }
         let provider_fork = input.fork();
         let intermediate: Result<Type> = input.parse();
         if input.peek(Token![~]) {
@@ -25,10 +25,10 @@ impl Parse for ForwardedDefinition {
             
             Ok(Self {
                 trait_production: trait_production.is_some(),
+                promoted: promoted.is_some(),
                 requested: requested,
                 intermediate: Some(intermediate_type),
                 provider: provider,
-                singleton: singleton,
             })
         }
         else {
@@ -36,99 +36,101 @@ impl Parse for ForwardedDefinition {
 
             Ok(Self {
                 trait_production: trait_production.is_some(),
+                promoted: promoted.is_some(),
                 requested: requested,
                 intermediate: None,
                 provider: provider,
-                singleton: singleton,
             })
         }
     }
 }
 
 impl ForwardedDefinition {
-    pub fn register(self, collection: &mut SingletonCollection) -> Self {
-        let registered_type = match self.intermediate.clone()  {
-            Some(intermediate) => intermediate,
-            None => self.requested.clone(),
-        };
-
-        match collection.register_type(registered_type, self.singleton.clone()) {
-            None => self,
-            Some(replacement) => Self {
-                trait_production: self.trait_production,
-                requested: self.requested,
-                intermediate: self.intermediate,
-                provider: self.provider,
-                singleton: replacement,
-            }
-        }
-    }
-
-    pub fn to_singleton_dependency(self) -> SingletonDependency {
+    pub fn trait_storage(&self) -> bool { self.intermediate.is_none() && self.trait_production }
+    pub fn singleton_type(&self) -> Type { 
         match &self.intermediate {
-            Some(intermediate) => SingletonDependency::new(self.singleton, quote! { std::rc::Rc<#intermediate> }),
-            None => {
-                let requested = self.requested;
-                if self.trait_production {
-                    SingletonDependency::new(self.singleton, quote! { std::rc::Rc<dyn #requested> })
-                }
-                else {
-                    SingletonDependency::new(self.singleton, quote! { std::rc::Rc<#requested> })
-                }
-            },
-        }        
-    }
+            Some(intermediate) => intermediate.clone(),
+            None => self.requested.clone(),
+        }
+     }
 
-    pub fn transient(self, definition: &StructDefinition) -> TokenStream {
+    pub fn quote_transient(&self, provider: &ServiceProviderDefinition) -> TokenStream {
         let requested = 
         if self.trait_production {
-            let abstraction = self.requested;
-            quote! { dyn #abstraction }
+            let abstraction = &self.requested;
+            quote! { std::boxed::Box<dyn #abstraction> }
         }
         else {
             self.requested.to_token_stream()
         };
         let intermediate = 
-        match self.intermediate {
+        match &self.intermediate {
             Some(concrete) => quote! { #concrete },
             None => requested.clone(),
         };
-        let provider = self.provider;
-        let name = definition.name.clone();
+        let name = provider.name();
+        let forwarded_provider = &self.provider;
+        let (impl_generics, type_generics, where_clause) = provider.generics().split_for_impl();
+        let mut generation = quote! { curds_core_abstraction::dependency_injection::ServiceGenerator::<#intermediate>::generate(&self.#forwarded_provider) };
+        if self.trait_production && self.intermediate.is_some() {
+            generation = quote! { std::boxed::Box::new(#generation) };
+        }
 
         quote! {
-            impl curds_core_abstraction::dependency_injection::ServiceGenerator<std::rc::Rc<#requested>> for #name {
-                fn generate(&self) -> std::rc::Rc<#requested> {
-                    curds_core_abstraction::dependency_injection::ServiceGenerator::<std::rc::Rc<#intermediate>>::generate(&self.#provider)
+            impl #impl_generics curds_core_abstraction::dependency_injection::ServiceGenerator<#requested> for #name #type_generics #where_clause {
+                fn generate(&self) -> #requested {
+                    #generation
                 }
             }
         }
     }
 
-    pub fn singleton(self, definition: &StructDefinition) -> TokenStream {
+    pub fn quote_singleton(&self, definition: &ServiceProviderDefinition) -> TokenStream {
+        let mut stored: &Type;
         let requested = 
         if self.trait_production {
-            let abstraction = self.requested;
+            let abstraction = &self.requested;
+            stored = abstraction;
             quote! { dyn #abstraction }
         }
         else {
+            stored = &self.requested;
             self.requested.to_token_stream()
         };
-        let intermediate = 
-        match self.intermediate {
-            Some(concrete) => quote! { #concrete },
+        let mut intermediate = 
+        match &self.intermediate {
+            Some(concrete) => {
+                stored = concrete;
+                quote! { #concrete }
+            },
             None => requested.clone(),
         };
-        let provider = self.provider;
-        let name = definition.name.clone();
-        let singleton_ident = self.singleton.ident();
+        if self.promoted {
+            if self.intermediate.is_none() && self.trait_production {
+                intermediate = quote! { std::boxed::Box<#intermediate> };
+            }
+        }
+        else {
+            intermediate = quote! { std::rc::Rc<#intermediate> };
+        }
+        let provider = &self.provider;
+        let mut generation = quote! { curds_core_abstraction::dependency_injection::ServiceGenerator::<#intermediate>::generate(&self.#provider) };
+        if self.promoted {
+            if self.intermediate.is_none() && self.trait_production {
+                generation = quote! { #generation.into() };
+            }
+            else {
+                generation = quote! { std::rc::Rc::new(#generation) };
+            }
+        }
+        let name = definition.name();
+        let singleton_ident = definition.singleton(stored);
 
         quote! {
             impl curds_core_abstraction::dependency_injection::ServiceGenerator<std::rc::Rc<#requested>> for #name {
                 fn generate(&self) -> std::rc::Rc<#requested> {
                     if self.#singleton_ident.borrow().is_none() {
-                        let service = curds_core_abstraction::dependency_injection::ServiceGenerator::<std::rc::Rc<#intermediate>>::generate(&self.#provider);
-                        self.#singleton_ident.replace(Some(service));
+                        self.#singleton_ident.replace(Some(#generation));
                     }
                     self.#singleton_ident
                         .borrow()

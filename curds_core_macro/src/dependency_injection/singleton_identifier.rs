@@ -5,11 +5,12 @@ pub const SINGLETON_FIELD_PREFIX: &str = "_curds_core_singleton_";
 #[derive(Clone)]
 pub struct SingletonIdentifier {
     ident: String,
+    pub trait_storage: bool,
 }
 
 impl SingletonIdentifier {
-    pub fn new() -> Self {
-        let random_bytes = rand::thread_rng().gen::<[u8; 8]>();
+    pub fn new(trait_storage: bool) -> Self {
+        let random_bytes = rand::thread_rng().gen::<[u8; 4]>();
         let mut singleton_identifier = String::new();
         for byte in random_bytes {
             singleton_identifier.push_str(&format!("{:X}", byte));
@@ -17,6 +18,7 @@ impl SingletonIdentifier {
 
         Self {
             ident: singleton_identifier,
+            trait_storage: trait_storage,
         }
     }
 
