@@ -18,11 +18,5 @@ pub use singleton_identifier::*;
 pub use provider_definition::*;
 pub use forwarded_definition::*;
 
-//mod struct_field;
-//mod singleton_dependency;
-//
-//pub use struct_field::*;
-//pub use singleton_dependency::*;
-
 use proc_macro2::{TokenStream, Span};
 use syn::{ItemStruct};

@@ -1,10 +1,39 @@
 use super::*;
 
+pub const EXPECTATION_IDENTIFIER: &str = "expect";
+
 pub struct WheyMock {
     mocked_trait: ItemTrait,
 }
 
+impl Parse for WheyMock {
+    fn parse(input: ParseStream) -> Result<Self> {
+        let mut item: ItemTrait = input.parse()?;
+        Self::parse_expectations(&mut item);
+
+        Ok(WheyMock {
+            mocked_trait: item,
+        })
+    }
+}
+
 impl WheyMock {
+    fn parse_expectations(item: &mut ItemTrait) {
+        let length = item.attrs.len();
+        if length > 0 {let mut attribute_index = length - 1;
+            while attribute_index < length {
+                let attribute = &item.attrs[attribute_index];
+                if attribute.path.is_ident(EXPECTATION_IDENTIFIER) {
+                    item.attrs.remove(attribute_index);
+                }
+
+                if attribute_index == 0 {
+                    break;
+                }
+                attribute_index = attribute_index - 1;
+            }
+        }
+    }
     pub fn quote(self) -> TokenStream {
         let mocked_trait = self.mocked_trait;
         let whey_mock = Self::quote_trait(&mocked_trait);
@@ -35,10 +64,12 @@ impl WheyMock {
 
         quote! {
             #[injected]
+            #[cfg(test)]
             #vis struct #whey_name #generics {
                 #(#mocked_setups),*
             }
 
+            #[cfg(test)]
             impl #base_name for #whey_name {
                 #(#mocked_impls)*
             }
@@ -105,13 +136,5 @@ impl WheyMock {
             },
             _ => panic!("Unexpected trait item: {:?}", item),
         }
-    }
-}
-
-impl Parse for WheyMock {
-    fn parse(input: ParseStream) -> Result<Self> {
-        Ok(WheyMock {
-            mocked_trait: input.parse()?,
-        })
     }
 }

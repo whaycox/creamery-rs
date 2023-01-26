@@ -30,7 +30,28 @@ impl Parse for GeneratedDefinition {
 }
 
 impl GeneratedDefinition {
-    pub fn singleton_type(&self) -> Type { self.implementation.clone() }
+    pub fn requested_type(&self) -> Type {
+        if self.abstraction.is_some() {
+            self.abstraction.clone().unwrap()
+        }
+        else {
+            self.implementation.clone()
+        }
+    }
+    pub fn stored_type(&self) -> Type { 
+        syn::parse2(if self.abstraction.is_some() {
+            let trait_type = self.abstraction.as_ref().unwrap();
+            quote! {
+                std::cell::RefCell<std::option::Option<std::rc::Rc<dyn #trait_type>>>
+            }
+        }
+        else {
+            let concrete_type = &self.implementation;
+            quote! {
+                std::cell::RefCell<std::option::Option<std::rc::Rc<#concrete_type>>>
+            }
+        }).unwrap()
+    }
 
     pub fn quote_transient(&self, provider: &ServiceProviderDefinition) -> TokenStream {
         let producing_abstraction = self.abstraction.is_some();
@@ -56,6 +77,10 @@ impl GeneratedDefinition {
     }
     
     pub fn quote_singleton(&self, provider: &ServiceProviderDefinition) -> TokenStream {
+        let requested_key = match &self.abstraction {
+            Some(abstraction) => abstraction,
+            None => &self.implementation,
+        };
         let mut requested = match &self.abstraction {
             Some(abstraction) => quote! { dyn #abstraction },
             None => self.implementation.to_token_stream(),
@@ -64,7 +89,7 @@ impl GeneratedDefinition {
         let implementation = &self.implementation;
         let name = provider.name();
         let (impl_generics, type_generics, where_clause) = provider.generics().split_for_impl();
-        let singleton_ident = provider.singleton(&self.implementation);
+        let singleton_ident = provider.singleton(requested_key);
 
         quote! {
             impl #impl_generics curds_core_abstraction::dependency_injection::ServiceGenerator<#requested> for #name #type_generics #where_clause {

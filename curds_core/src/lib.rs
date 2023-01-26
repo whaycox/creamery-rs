@@ -1,8 +1,8 @@
 mod dependency_injection;
-mod whey;
+//mod whey;
 //mod message_dispatch;
 //mod cli;
-mod time;
+//mod time;
 
 use curds_core_abstraction::{dependency_injection::*, message_dispatch::*};
 use curds_core_macro::*;

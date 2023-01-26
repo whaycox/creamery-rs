@@ -35,6 +35,13 @@ pub fn whey_context(attr: TokenStream, item: TokenStream) -> TokenStream {
 }
 
 #[proc_macro_attribute]
+pub fn whey_mock(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    parse_macro_input!(item as WheyMock)
+        .quote()
+        .into()
+}
+
+#[proc_macro_attribute]
 pub fn whey(_attr: TokenStream, item: TokenStream) -> TokenStream {
     parse_macro_input!(item as WheyTest)
         .quote()
@@ -49,10 +56,4 @@ pub fn message_dispatch(attr: TokenStream, item: TokenStream) -> TokenStream {
         .quote(message_trait)
         .into()
 }
-
-#[proc_macro_attribute]
-pub fn whey_mock(_attr: TokenStream, item: TokenStream) -> TokenStream {
-    parse_macro_input!(item as WheyMock)
-        .quote()
-        .into()
-} */
+ */

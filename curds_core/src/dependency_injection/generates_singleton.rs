@@ -62,7 +62,7 @@ mod tests {
     }
 
     #[test]
-    fn trait_and_struct_are_same() {
+    fn trait_and_struct_are_not_same() {
         let provider = SingletonProvider::construct();
 
         for i in 0..10 {
@@ -70,8 +70,11 @@ mod tests {
             let foo: Rc<IncrementingFoo> = provider.generate();
 
             assert_eq!(i * 3, foo_trait.foo());
+            assert_eq!(i * 3, foo.foo());
+            assert_eq!(i * 3 + 1, foo_trait.foo());
             assert_eq!(i * 3 + 1, foo.foo());
             assert_eq!(i * 3 + 2, foo_trait.foo());
+            assert_eq!(i * 3 + 2, foo.foo());
         }
     }
 }
