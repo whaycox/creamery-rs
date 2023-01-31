@@ -1,16 +1,13 @@
 use super::*;
 
-pub const EXPECTATION_IDENTIFIER: &str = "expect";
-
 pub struct WheyMock {
     mocked_trait: ItemTrait,
 }
 
 impl Parse for WheyMock {
     fn parse(input: ParseStream) -> Result<Self> {
-        let mut item: ItemTrait = input.parse()?;
-        Self::parse_expectations(&mut item);
-
+        let item: ItemTrait = input.parse()?;
+        
         Ok(WheyMock {
             mocked_trait: item,
         })
@@ -18,22 +15,6 @@ impl Parse for WheyMock {
 }
 
 impl WheyMock {
-    fn parse_expectations(item: &mut ItemTrait) {
-        let length = item.attrs.len();
-        if length > 0 {let mut attribute_index = length - 1;
-            while attribute_index < length {
-                let attribute = &item.attrs[attribute_index];
-                if attribute.path.is_ident(EXPECTATION_IDENTIFIER) {
-                    item.attrs.remove(attribute_index);
-                }
-
-                if attribute_index == 0 {
-                    break;
-                }
-                attribute_index = attribute_index - 1;
-            }
-        }
-    }
     pub fn quote(self) -> TokenStream {
         let mocked_trait = self.mocked_trait;
         let whey_mock = Self::quote_trait(&mocked_trait);
@@ -48,14 +29,19 @@ impl WheyMock {
         let base_name = &mocked_trait.ident;
         let whey_name = format_ident!("Whey{}", mocked_trait.ident);
         let generics = &mocked_trait.generics;
+        let (impl_generics, type_generics, where_clause) = mocked_trait.generics.split_for_impl();
 
         let mocked_items: Vec<&TraitItem> = mocked_trait.items
             .iter()
             .filter(|item| Self::filter_items(item))
             .collect();
-        let mocked_setups: Vec<TokenStream> = mocked_items
+        let call_counts: Vec<TokenStream> = mocked_items
             .iter()
-            .map(|item| Self::quote_setup(item))
+            .map(|item| Self::quote_call_count(item))
+            .collect();
+        let assert_methods: Vec<TokenStream> = mocked_items
+            .iter()
+            .map(|item| Self::quote_assert(item))
             .collect();
         let mocked_impls: Vec<TokenStream> = mocked_items
             .iter()
@@ -66,7 +52,11 @@ impl WheyMock {
             #[injected]
             #[cfg(test)]
             #vis struct #whey_name #generics {
-                #(#mocked_setups),*
+                #(#call_counts),*
+            }
+
+            impl #impl_generics #whey_name #type_generics #where_clause {
+                #(#assert_methods)*
             }
 
             #[cfg(test)]
@@ -81,30 +71,30 @@ impl WheyMock {
             _ => false,
         }
     }
-    fn quote_setup(item: &TraitItem) -> TokenStream {
+    fn call_count_ident(ident: &Ident) -> Ident { format_ident!("call_count_{}", ident) }
+    fn quote_call_count(item: &TraitItem) -> TokenStream {
         match item {
             TraitItem::Method(method) => {
-                let ident = format_ident!("{}_setup", method.sig.ident);
-                let inputs: Vec<TokenStream> = method.sig.inputs
-                    .iter()
-                    .filter_map(|input| {
-                        match input {
-                            FnArg::Typed(arg) => {
-                                let ty = &arg.ty;
-                                Some(quote! { #ty })
-                            },
-                            _ => None,
-                        }
-                    })
-                    .collect();
-                let output = match &method.sig.output {
-                    ReturnType::Type(_, ty) => quote! { #ty },
-                    _ => panic!("Unexpected output: {:?}", method.sig.output),
-                };
+                let call_count_ident = Self::call_count_ident(&method.sig.ident);
 
                 quote! {
                     #[defaulted]
-                    #ident: curds_core_abstraction::whey::WheySetup<(#(#inputs),*), #output>
+                    #call_count_ident: Cell<u32>
+                }
+            },
+            _ => panic!("Unexpected trait item: {:?}", item),
+        }
+    }
+    fn quote_assert(item: &TraitItem) -> TokenStream {
+        match item {
+            TraitItem::Method(method) => {
+                let assert_ident = format_ident!("assert_{}", method.sig.ident);
+                let call_count_ident = Self::call_count_ident(&method.sig.ident);
+
+                quote! {
+                    pub fn #assert_ident(&self, expected_calls: u32) {
+                        assert_eq!(expected_calls, self.#call_count_ident.get())
+                    }
                 }
             },
             _ => panic!("Unexpected trait item: {:?}", item),
@@ -113,24 +103,12 @@ impl WheyMock {
     fn quote_impl(item: &TraitItem) -> TokenStream {
         match item {
             TraitItem::Method(method) => {
-                let sig = &method.sig;
-                let ident = format_ident!("{}_setup", method.sig.ident);
-                let inputs: Vec<TokenStream> = method.sig.inputs
-                    .iter()
-                    .filter_map(|input| {
-                        match input {
-                            FnArg::Typed(arg) => {
-                                let pat = &arg.pat;
-                                Some(quote! { #pat })
-                            },
-                            _ => None,
-                        }
-                    })
-                    .collect();
+                let signature = &method.sig;
+                let call_count_ident = Self::call_count_ident(&method.sig.ident);
 
                 quote! {
-                    #sig {
-                        self.#ident.consume((#(#inputs),*))
+                    #signature { 
+                        self.#call_count_ident.set(self.#call_count_ident.get() + 1)
                     }
                 }
             },
