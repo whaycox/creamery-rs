@@ -3,7 +3,7 @@ mod whey;
 //mod message_dispatch;
 
 use proc_macro::TokenStream;
-use syn::{*, parse::*, punctuated::*, spanned::*};
+use syn::{*, parse::*, punctuated::*, spanned::*, token::Trait};
 use quote::*;
 use std::collections::{HashSet, HashMap};
 use rand::*;
@@ -28,7 +28,11 @@ pub fn service_provider(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
 #[proc_macro_attribute]
 pub fn whey_context(attr: TokenStream, item: TokenStream) -> TokenStream {
-    let test_type = parse_macro_input!(attr as Ident);
+    let mut test_type: Option<Ident> = None;
+    if !attr.is_empty() {
+        test_type = parse_macro_input!(attr as Option<Ident>);
+    }
+    
     parse_macro_input!(item as WheyContext)
         .quote(test_type)
         .into()

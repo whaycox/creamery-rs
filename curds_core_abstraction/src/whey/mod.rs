@@ -12,5 +12,9 @@ use std::cell::Cell;
 use std::borrow::Borrow;
 
 pub trait Whey {
-    fn init(&self) {}
+    fn reset(&self);
+}
+
+pub trait WheyContext<TWheyMock> {
+    fn mocked(&self) -> TWheyMock;
 }
