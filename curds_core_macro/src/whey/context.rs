@@ -76,11 +76,16 @@ impl WheyContext {
         let mocked_singletons: Vec<TokenStream> = self.mocked_singleton_traits
             .iter()
             .map(|singleton| {
-                let whey_type = &singleton.whey_name;
-                quote! { #[generates_singleton(#whey_type)] }
+                let mocked_trait = &singleton.mocked_trait;
+                let whey_name = &singleton.whey_name;
+                let core_name = &singleton.core_name;
+                quote! { 
+                    #[generates_singleton(#core_name)]
+                    #[generates_singleton(dyn #mocked_trait ~ #whey_name)]
+                    #[generates(#whey_name)]
+                }
             })
             .collect();
-
         let mocked_traits: Vec<TokenStream> = self.mocked_traits
             .iter()
             .map(|mocked| {
@@ -94,13 +99,28 @@ impl WheyContext {
                 }
             })
             .collect();
+
         let mocked_generators: Vec<TokenStream> = self.mocked_traits
             .iter()
             .map(|mocked| {
                 let whey_name = &mocked.whey_name;
 
                 quote! { 
-                    impl #impl_generics curds_core_abstraction::whey::WheyContext<#whey_name> for #context_ident #type_generics #where_clause {
+                    impl #impl_generics curds_core_abstraction::whey::MockingContext<#whey_name> for #context_ident #type_generics #where_clause {
+                        fn mocked(&self) -> #whey_name {
+                            self.generate()
+                        }
+                    }
+                }
+            })
+            .collect();
+        let mocked_singleton_generators: Vec<TokenStream> = self.mocked_singleton_traits
+            .iter()
+            .map(|singleton| {
+                let whey_name = &singleton.whey_name;
+
+                quote! { 
+                    impl #impl_generics curds_core_abstraction::whey::MockingContext<#whey_name> for #context_ident #type_generics #where_clause {
                         fn mocked(&self) -> #whey_name {
                             self.generate()
                         }
@@ -118,6 +138,16 @@ impl WheyContext {
                 }
             })
             .collect();
+        let mocked_singleton_resets: Vec<TokenStream> = self.mocked_singleton_traits
+            .iter()
+            .map(|singleton| {
+                let core_name = &singleton.core_name;
+
+                quote! { 
+                    <Self as curds_core_abstraction::dependency_injection::ServiceGenerator<std::rc::Rc<#core_name>>>::generate(&self).reset();
+                }
+            })
+            .collect();
 
         quote! {
             #[service_provider]
@@ -126,10 +156,12 @@ impl WheyContext {
             #item
 
             #(#mocked_generators)*
+            #(#mocked_singleton_generators)*
 
             impl #impl_generics curds_core_abstraction::whey::Whey for #context_ident #type_generics #where_clause {
                 fn reset(&self) {
                     #(#mocked_resets)*
+                    #(#mocked_singleton_resets)*
                 }
             }
         }

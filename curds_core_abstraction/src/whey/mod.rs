@@ -1,20 +1,7 @@
-mod setup;
-mod generate;
-mod compare;
-mod setup_error;
+mod whey;
+mod mocking_context;
+mod dummy_default;
 
-pub use setup::*;
-pub use compare::*;
-pub use setup_error::*;
-pub use generate::*;
-
-use std::cell::Cell;
-use std::borrow::Borrow;
-
-pub trait Whey {
-    fn reset(&self);
-}
-
-pub trait WheyContext<TWheyMock> {
-    fn mocked(&self) -> TWheyMock;
-}
+pub use whey::*;
+pub use mocking_context::*;
+pub use dummy_default::*;

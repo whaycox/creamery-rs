@@ -17,8 +17,7 @@ mod tests {
         for count in 1..10 {
             verifies_shared_counts_helper(&context, count);
             context.reset();
-        }
-        
+        }        
     }
     fn verifies_shared_counts_helper(context: &TransientContext, count: u32) {
         for _ in 0..count {
@@ -28,21 +27,40 @@ mod tests {
 
         context.mocked().assert_shared_foo(count);
     }
-/*
-    #[test]
-    fn verifies_exclusive_counts() {
-        for count in 1..10 {
-            verifies_exclusive_counts_helper(count);
-        }
-        
-    }
-    fn verifies_exclusive_counts_helper(count: u32) {
-        let mut foo = WheyFoo::construct();
 
+    #[whey]
+    fn verifies_exclusive_counts(context: TransientContext) {
+        for count in 1..10 {
+            verifies_exclusive_counts_helper(&context, count);
+            context.reset();
+        }        
+    }
+    fn verifies_exclusive_counts_helper(context: &TransientContext, count: u32) {
         for _ in 0..count {
+            let mut foo: Box<dyn Foo> = context.generate();
             foo.exclusive_foo();
         }
 
-        foo.assert_exclusive_foo(count);
-    }*/
+        context.mocked().assert_exclusive_foo(count);
+    }
+
+    #[whey_context]
+    #[mocks_singleton(dyn Foo)]
+    struct SingletonContext {}
+
+    #[whey]
+    fn verifies_singleton_shared_counts(context: SingletonContext) {
+        for count in 1..10 {
+            verifies_singleton_shared_counts_helper(&context, count);
+            context.reset();
+        }        
+    }
+    fn verifies_singleton_shared_counts_helper(context: &SingletonContext, count: u32) {
+        for _ in 0..count {
+            let foo: Rc<dyn Foo> = context.generate();
+            foo.shared_foo();
+        }
+
+        context.mocked().assert_shared_foo(count);
+    }
 }

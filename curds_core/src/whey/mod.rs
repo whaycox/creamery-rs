@@ -1,4 +1,5 @@
 mod call_count;
+mod dummy_default;
 
 #[cfg(test)]
 use super::*;

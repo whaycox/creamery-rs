@@ -53,6 +53,10 @@ impl WheyMock {
             .iter()
             .map(|item| Self::quote_core_call_count_impls(item))
             .collect();
+        let core_dummy_returns: Vec<TokenStream> = mocked_items
+            .iter()
+            .map(|item| Self::quote_core_dummy_returns(item))
+            .collect();
         let core_asserts: Vec<TokenStream> = mocked_items
             .iter()
             .map(|item| Self::quote_core_asserts(item))
@@ -86,6 +90,7 @@ impl WheyMock {
             
             impl #impl_generics #core_name #type_generics #where_clause {
                 #(#core_call_count_impls)*
+                #(#core_dummy_returns)*
                 #(#core_asserts)*
 
                 pub fn reset(&self) {
@@ -101,6 +106,7 @@ impl WheyMock {
         }
     }
     fn call_count_ident(ident: &Ident) -> Ident { format_ident!("call_count_{}", ident) }
+    fn dummy_ident(ident: &Ident) -> Ident { format_ident!("dummy_{}", ident) }
     fn assert_ident(ident: &Ident) -> Ident { format_ident!("assert_{}", ident) }
 
     fn quote_assert(item: &TraitItem) -> TokenStream {
@@ -122,10 +128,12 @@ impl WheyMock {
             TraitItem::Method(method) => {
                 let signature = &method.sig;
                 let call_count_ident = Self::call_count_ident(&method.sig.ident);
+                let dummy_ident = Self::dummy_ident(&method.sig.ident);
 
                 quote! {
                     #signature {
                         self.core.#call_count_ident();
+                        self.core.#dummy_ident()
                     }
                 }
             },
@@ -154,6 +162,27 @@ impl WheyMock {
                 quote! {
                     pub fn #call_count_ident(&self) {
                         self.#call_count_ident.set(self.#call_count_ident.get() + 1);
+                    }
+                }
+            },
+            _ => panic!("Unexpected trait item: {:?}", item),
+        }
+    }
+    fn quote_core_dummy_returns(item: &TraitItem) -> TokenStream {
+        match item {
+            TraitItem::Method(method) => {
+                let dummy_ident = Self::dummy_ident(&method.sig.ident);
+
+                match &method.sig.output {
+                    ReturnType::Default => quote! {
+                        pub fn #dummy_ident(&self) {}
+                    },
+                    ReturnType::Type(_, ty) => {
+                        quote! {
+                            pub fn #dummy_ident(&self) -> #ty {
+                                curds_core_abstraction::whey::DummyDefault::dummy()
+                            }
+                        }
                     }
                 }
             },
