@@ -52,6 +52,13 @@ pub fn whey(_attr: TokenStream, item: TokenStream) -> TokenStream {
         .into()
 }
 
+#[proc_macro]
+pub fn expect(item: TokenStream) -> TokenStream {
+    parse_macro_input!(item as WheyExpectation)
+        .quote()
+        .into()  
+}
+
 /* 
 #[proc_macro_attribute]
 pub fn message_dispatch(attr: TokenStream, item: TokenStream) -> TokenStream {

@@ -1,5 +1,7 @@
 mod call_count;
 mod dummy_default;
+mod input_compare;
+mod reset;
 
 #[cfg(test)]
 use super::*;

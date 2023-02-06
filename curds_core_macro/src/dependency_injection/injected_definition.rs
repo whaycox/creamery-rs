@@ -4,7 +4,7 @@ pub const DEFAULTED_IDENTIFIER: &str = "defaulted";
 
 pub struct InjectedDefinition {
     item: ItemStruct,
-    defaulted: HashSet<Ident>,
+    defaulted: HashMap<Ident, TokenStream>,
 }
 impl Parse for InjectedDefinition {
     fn parse(input: ParseStream) -> Result<Self> {
@@ -12,15 +12,15 @@ impl Parse for InjectedDefinition {
         let defaulted = Self::parse_defaulted(&mut item)?;
 
         Ok(InjectedDefinition {
-            item: item,
-            defaulted: defaulted,
+            item,
+            defaulted,
         })
     }
 }
 
 impl InjectedDefinition {
-    fn parse_defaulted(item: &mut ItemStruct) -> Result<HashSet<Ident>> {
-        let mut defaulted: HashSet<Ident> = HashSet::new();
+    fn parse_defaulted(item: &mut ItemStruct) -> Result<HashMap<Ident, TokenStream>> {
+        let mut defaulted: HashMap<Ident, TokenStream> = HashMap::new();
         match &mut item.fields {
             Fields::Named(named_fields) => {
                 for field in &mut named_fields.named {
@@ -30,7 +30,13 @@ impl InjectedDefinition {
                         while attribute_index < length {
                             let attribute = &field.attrs[attribute_index];
                             if attribute.path.is_ident(DEFAULTED_IDENTIFIER) {
-                                defaulted.insert(field.ident.clone().unwrap());
+                                let ident = field.ident.clone().unwrap();
+                                let mut default_value = quote! { std::default::Default::default() };
+                                if !attribute.tokens.is_empty() {
+                                    default_value = attribute.parse_args()?;
+                                }
+                                
+                                defaulted.insert(ident, default_value);
                                 field.attrs.remove(attribute_index);
                                 break;
                             }
@@ -79,7 +85,7 @@ impl InjectedDefinition {
         let mut provider_generic = TypeParam::from(Ident::new("TProvider", Span::call_site()));
         for field in &self.item.fields {
             let name = &field.ident.clone().unwrap();
-            if self.defaulted.contains(&name) {
+            if self.defaulted.contains_key(&name) {
                 continue;
             }
             let mut constraint_path = Path::from(PathSegment {
@@ -117,7 +123,7 @@ impl InjectedDefinition {
             Fields::Named(named) => {
                 for field in &named.named {
                     let name = &field.ident.clone().unwrap();
-                    if self.defaulted.contains(&name) {
+                    if self.defaulted.contains_key(&name) {
                         continue;
                     }
                     let dependency = &field.ty;
@@ -153,7 +159,7 @@ impl InjectedDefinition {
             Fields::Named(named) => {
                 for field in &named.named {
                     let name = &field.ident.clone().unwrap();
-                    if self.defaulted.contains(&name) {
+                    if self.defaulted.contains_key(&name) {
                         continue;
                     }
                     let ty = &field.ty;
@@ -174,8 +180,9 @@ impl InjectedDefinition {
             Fields::Named(named) => {
                 for field in &named.named {
                     let name = &field.ident.clone().unwrap();
-                    if self.defaulted.contains(&name) {
-                        initializer_tokens.push(quote! { #name: std::default::Default::default() })
+                    if self.defaulted.contains_key(&name) {
+                        let default_value = &self.defaulted[name];
+                        initializer_tokens.push(quote! { #name: #default_value })
                     }
                     else {
                         initializer_tokens.push(quote! { #name: #name })

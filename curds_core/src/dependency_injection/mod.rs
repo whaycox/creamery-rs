@@ -43,6 +43,19 @@ mod simple {
     }
 
     #[injected]
+    pub struct SeededFoo {
+        #[defaulted(Cell::new(EXPECTED_FOO))]
+        seeded_value: Cell<u32>,
+    }
+    impl Foo for SeededFoo {
+        fn foo(&self) -> u32 {
+            let value = self.seeded_value.get();
+            self.seeded_value.set(value + 1);
+            value
+        }
+    }
+
+    #[injected]
     pub struct BarredFoo {
         bar: Rc<dyn Bar>,
     }

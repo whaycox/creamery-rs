@@ -22,7 +22,7 @@ impl Parse for WheyMockedType {
 }
 
 impl WheyMockedType {
-    fn generate_whey_name(mocked_trait: &Path) -> Path {
+    pub fn generate_whey_name(mocked_trait: &Path) -> Path {
         let mut mocked_trait_segments = mocked_trait.segments.clone();
         let final_index = mocked_trait_segments.len() - 1;
         let type_segment = &mocked_trait_segments[final_index];
@@ -33,7 +33,7 @@ impl WheyMockedType {
             segments: mocked_trait_segments,
         }
     }
-    fn generate_core_name(mocked_trait: &Path) -> Path {
+    pub fn generate_core_name(mocked_trait: &Path) -> Path {
         let mut mocked_trait_segments = mocked_trait.segments.clone();
         let final_index = mocked_trait_segments.len() - 1;
         let type_segment = &mocked_trait_segments[final_index];
