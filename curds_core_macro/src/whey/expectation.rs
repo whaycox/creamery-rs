@@ -43,12 +43,17 @@ impl WheyExpectation {
         let core_name = WheyMockedType::generate_core_name(&self.mocked_trait);
         let expect_ident = WheyMockCore::expect_ident(&self.expected_call);
         let expected_values = self.expected_values;
+        let mut closure_inputs: Vec<Ident> = Vec::new();
+        for i in 0..expected_values.len() {
+            let input_ident = format!("v{}", i);
+            closure_inputs.push(Ident::new(&input_ident, Span::call_site()));
+        }
         let times = self.times;
 
         quote! {
             {
                 let core: std::rc::Rc<#core_name> = #context.generate();
-                core.#expect_ident(Box::new(|value| value == #expected_values), #times);
+                core.#expect_ident(Box::new(|#(#closure_inputs),*| (#(#closure_inputs),*) == (#expected_values)), #times);
             }
         }
     }

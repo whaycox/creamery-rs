@@ -69,6 +69,9 @@ impl WheyMock {
             }
 
             impl #impl_generics #whey_name #type_generics #where_clause {
+                pub fn assert(&self) {
+                    self.core.assert();
+                }
                 #(#assert_methods)*
             }
 

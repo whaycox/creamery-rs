@@ -43,6 +43,10 @@ impl WheyMockCore {
             .iter()
             .map(|item| Self::quote_dummy_returns(item))
             .collect();
+        let assert_expectations: Vec<TokenStream> = mocked_items
+            .iter()
+            .map(|item| Self::quote_assert_expectations(item))
+            .collect();
         let asserts: Vec<TokenStream> = mocked_items
             .iter()
             .map(|item| Self::quote_asserts(item))
@@ -68,6 +72,10 @@ impl WheyMockCore {
                 #(#expectations)*
                 #(#impls)*
                 #(#dummy_returns)*
+
+                pub fn assert(&self) {
+                    #(#assert_expectations)*
+                }
                 #(#asserts)*
 
                 pub fn reset(&self) {
@@ -108,11 +116,29 @@ impl WheyMockCore {
         match item {
             TraitItem::Method(method) => {
                 let input_compare_ident = WheyMock::input_compare_ident(&method.sig.ident);
-                let mut input_signature: Vec<&Box<Type>> = Vec::new();
+                let mut input_signature: Vec<Box<Type>> = Vec::new();
                 for input in &method.sig.inputs {
                     match input {
                         FnArg::Receiver(_) => {},
-                        FnArg::Typed(ty) => input_signature.push(&ty.ty),
+                        FnArg::Typed(ty) => match &*ty.ty {
+                            Type::Reference(ref_type) => {
+                                match ref_type.mutability {
+                                    Some(_) => {
+                                        let mut immutable_ty = ref_type.clone();
+                                        immutable_ty = TypeReference {
+                                            and_token: immutable_ty.and_token,
+                                            lifetime: immutable_ty.lifetime,
+                                            mutability: None,
+                                            elem: immutable_ty.elem,
+                                        };
+
+                                        input_signature.push(Box::new(Type::Reference(immutable_ty)));
+                                    },
+                                    None => input_signature.push(ty.ty.clone()),
+                                }
+                            },
+                            _ => input_signature.push(ty.ty.clone()),
+                        },
                     }
                 }
 
@@ -143,11 +169,29 @@ impl WheyMockCore {
             TraitItem::Method(method) => {
                 let expect_ident = Self::expect_ident(&method.sig.ident);
                 let input_compare_ident = WheyMock::input_compare_ident(&method.sig.ident);
-                let mut input_signature: Vec<&Box<Type>> = Vec::new();
+                let mut input_signature: Vec<Box<Type>> = Vec::new();
                 for input in &method.sig.inputs {
                     match input {
                         FnArg::Receiver(_) => {},
-                        FnArg::Typed(ty) => input_signature.push(&ty.ty),
+                        FnArg::Typed(ty)=> match &*ty.ty {
+                            Type::Reference(ref_type) => {
+                                match ref_type.mutability {
+                                    Some(_) => {
+                                        let mut immutable_ty = ref_type.clone();
+                                        immutable_ty = TypeReference {
+                                            and_token: immutable_ty.and_token,
+                                            lifetime: immutable_ty.lifetime,
+                                            mutability: None,
+                                            elem: immutable_ty.elem,
+                                        };
+
+                                        input_signature.push(Box::new(Type::Reference(immutable_ty)));
+                                    },
+                                    None => input_signature.push(ty.ty.clone()),
+                                }
+                            },
+                            _ => input_signature.push(ty.ty.clone()),
+                        },
                     }
                 }
 
@@ -269,6 +313,22 @@ impl WheyMockCore {
             },
             _ => panic!("Unexpected trait item: {:?}", item),
         }
+    }
+    fn quote_assert_expectations(item: &TraitItem) -> TokenStream {
+        match item {
+            TraitItem::Method(method) => {
+                let input_compare_ident = WheyMock::input_compare_ident(&method.sig.ident);
+                let failure = format!("unfulfilled expectations for {}", method.sig.ident);
+
+                quote! {
+                    if self.#input_compare_ident.borrow().len() > 0 {
+                        self.whey_core_failing.set(true);
+                        panic!(#failure);
+                    }
+                }
+            },
+            _ => panic!("Unexpected trait item: {:?}", item),
+        }        
     }
 
     fn quote_resets(item: &TraitItem) -> TokenStream {

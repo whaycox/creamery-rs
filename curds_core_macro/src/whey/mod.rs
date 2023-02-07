@@ -14,4 +14,4 @@ pub use mock_core::*;
 pub use mocked_type::*;
 pub use expectation::*;
 
-use proc_macro2::TokenStream;
+use proc_macro2::{TokenStream, Span};
