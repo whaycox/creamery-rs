@@ -5,10 +5,6 @@ mod tests {
     #[service_provider]
     #[generates_singleton(dyn Foo ~ IncrementingFoo)]
     #[generates_singleton(IncrementingFoo)]
-    #[generates(UnpromotedProvider)]
-    #[generates(IntermediateUnpromotedProvider)]
-    #[clones_self]
-    #[derive(Clone)]
     struct BaseSingletonProvider {}
 
     #[service_provider]
@@ -17,117 +13,54 @@ mod tests {
     struct UnpromotedProvider {
         base: BaseSingletonProvider,
     }
-    
+
     #[test]
     fn forwards_trait_to_base_singleton() {
-        let base_provider: BaseSingletonProvider = BaseSingletonProvider::construct();
-        let base_foo: Rc<dyn Foo> = base_provider.generate();
-        let provider: UnpromotedProvider = base_provider.generate();
+        for count in 0..10 {
+            forwards_trait_to_base_singleton_helper(count);
+        }
+    }
+    fn forwards_trait_to_base_singleton_helper(count: u32) {
+        let mut base_provider: BaseSingletonProvider = BaseSingletonProvider::construct();
+        {
+            let base_foo: &mut Box<dyn Foo> = base_provider.lend_mut();
+            for _ in 0..count {
+                base_foo.foo();
+            }
+        }
+        let mut provider = UnpromotedProvider::construct(base_provider);
 
         for i in 0..10 {
-            let foo: Rc<dyn Foo> = provider.generate();
+            let foo: &mut Box<dyn Foo> = provider.lend_mut();
 
-            assert_eq!(i * 2, base_foo.foo());
-            assert_eq!(i * 2 + 1, foo.foo());
+            assert_eq!(count + (i * 3), foo.foo());
+            assert_eq!(count + (i * 3) + 1, foo.foo());
+            assert_eq!(count + (i * 3) + 2, foo.foo());
         }
     }
 
     #[test]
     fn forwards_struct_to_base_singleton() {
-        let base_provider: BaseSingletonProvider = BaseSingletonProvider::construct();
-        let base_foo: Rc<IncrementingFoo> = base_provider.generate();
-        let provider: UnpromotedProvider = base_provider.generate();
-
-        for i in 0..10 {
-            let foo: Rc<IncrementingFoo> = provider.generate();
-
-            assert_eq!(i * 2, base_foo.foo());
-            assert_eq!(i * 2 + 1, foo.foo());
+        for count in 0..10 {
+            forwards_struct_to_base_singleton_helper(count);
         }
     }
-
-    #[service_provider]
-    #[forwards_singleton(dyn Foo ~ IncrementingFoo ~ base)]
-    struct IntermediateUnpromotedProvider {
-        base: BaseSingletonProvider,
-    }
-
-    #[test]
-    fn produces_trait_but_forwards_for_struct() {
-        let base_provider: BaseSingletonProvider = BaseSingletonProvider::construct();
-        let base_foo: Rc<IncrementingFoo> = base_provider.generate();
-        let provider: IntermediateUnpromotedProvider = base_provider.generate();
-
-        for i in 0..10 {
-            let foo: Rc<dyn Foo> = provider.generate();
-
-            assert_eq!(i * 3, foo.foo());
-            assert_eq!(i * 3 + 1, base_foo.foo());
-            assert_eq!(i * 3 + 2, foo.foo());
+    fn forwards_struct_to_base_singleton_helper(count: u32) {
+        let mut base_provider: BaseSingletonProvider = BaseSingletonProvider::construct();
+        {
+            let base_foo: &mut IncrementingFoo = base_provider.lend_mut();
+            for _ in 0..count {
+                base_foo.foo();
+            }
         }
-    }
-    
-    #[service_provider]
-    #[generates(IncrementingFoo)]
-    #[generates(dyn Foo ~ IncrementingFoo)]
-    #[generates(PromotedProvider)]
-    #[generates(IntermediatePromotedProvider)]
-    #[clones_self]
-    #[derive(Clone)]
-    struct BaseTransientProvider {}
-
-    #[service_provider]
-    #[forwards_singleton(dyn Foo ^ base)]
-    #[forwards_singleton(IncrementingFoo ^ base)]
-    struct PromotedProvider {
-        base: BaseTransientProvider,
-    }
-
-    #[test]
-    fn promotes_forwarded_box_for_trait() {
-        let base_provider: BaseTransientProvider = BaseTransientProvider::construct();
-        let provider: PromotedProvider = base_provider.generate();
+        let mut provider = UnpromotedProvider::construct(base_provider);
 
         for i in 0..10 {
-            let foo: Rc<dyn Foo> = provider.generate();
+            let foo: &mut IncrementingFoo = provider.lend_mut();
 
-            assert_eq!(i * 3, foo.foo());
-            assert_eq!(i * 3 + 1, foo.foo());
-            assert_eq!(i * 3 + 2, foo.foo());
-        }
-    }
-
-    #[test]
-    fn promotes_forwarded_struct_to_rc() {
-        let base_provider: BaseTransientProvider = BaseTransientProvider::construct();
-        let provider: PromotedProvider = base_provider.generate();
-
-        for i in 0..10 {
-            let foo: Rc<IncrementingFoo> = provider.generate();
-
-            assert_eq!(i * 3, foo.foo());
-            assert_eq!(i * 3 + 1, foo.foo());
-            assert_eq!(i * 3 + 2, foo.foo());
-        }
-    }
-
-    #[service_provider]
-    #[forwards_singleton(dyn Foo ^ IncrementingFoo ~ base)]
-    struct IntermediatePromotedProvider {
-        base: BaseTransientProvider,
-    }
-
-    #[test]
-    fn promotes_intermediate_struct_to_trait() {
-        let base_provider: BaseTransientProvider = BaseTransientProvider::construct();
-        let provider: IntermediatePromotedProvider = base_provider.generate();
-
-        for i in 0..10 {
-            let foo: Rc<dyn Foo> = provider.generate();
-
-            assert_eq!(i * 3, foo.foo());
-            assert_eq!(i * 3 + 1, foo.foo());
-            assert_eq!(i * 3 + 2, foo.foo());
+            assert_eq!(count + (i * 3), foo.foo());
+            assert_eq!(count + (i * 3) + 1, foo.foo());
+            assert_eq!(count + (i * 3) + 2, foo.foo());
         }
     }
 }

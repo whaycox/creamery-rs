@@ -10,7 +10,7 @@ mod tests {
         fn shared_foo(&self, value: &u32);
         fn exclusive_foo(&mut self, value: &u32);
     }
-
+ 
     #[whey_context]
     #[mocks(dyn ReferenceFoo)]
     struct ReferenceContext {}
@@ -22,7 +22,7 @@ mod tests {
         }
     }
     fn shared_compares_provided_helper(context: &ReferenceContext, count: u32) {
-        expect!(context, dyn ReferenceFoo.shared_foo(&EXPECTED_VALUE), count);
+        expect!(context, dyn ReferenceFoo.shared_foo(EXPECTED_VALUE), count);
 
         for _ in 0..count {
             let foo: Box<dyn ReferenceFoo> = context.generate();
@@ -39,7 +39,7 @@ mod tests {
         }
     }
     fn exclusive_compares_provided_helper(context: &ReferenceContext, count: u32) {
-        expect!(context, dyn ReferenceFoo.exclusive_foo(&EXPECTED_VALUE), count);
+        expect!(context, dyn ReferenceFoo.exclusive_foo(EXPECTED_VALUE), count);
 
         for _ in 0..count {
             let mut foo: Box<dyn ReferenceFoo> = context.generate();
@@ -66,7 +66,7 @@ mod tests {
         }
     }
     fn multi_shared_compares_provided_helper(context: &MultiInputReferenceContext, count: u32) {
-        expect!(context, dyn MultiInputReferenceFoo.shared_foo(&EXPECTED_VALUE, &EXPECTED_LONG), count);
+        expect!(context, dyn MultiInputReferenceFoo.shared_foo(EXPECTED_VALUE, EXPECTED_LONG), count);
         let mut test_long = EXPECTED_LONG;
 
         for _ in 0..count {
@@ -84,7 +84,7 @@ mod tests {
         }
     }
     fn multi_exclusive_compares_provided_helper(context: &MultiInputReferenceContext, count: u32) {
-        expect!(context, dyn MultiInputReferenceFoo.exclusive_foo(&EXPECTED_VALUE, &EXPECTED_LONG), count);
+        expect!(context, dyn MultiInputReferenceFoo.exclusive_foo(EXPECTED_VALUE, EXPECTED_LONG), count);
         let mut test_long = EXPECTED_LONG;
 
         for _ in 0..count {

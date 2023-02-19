@@ -4,40 +4,45 @@ mod tests {
 
     #[service_provider]
     #[generates(ConcreteFoo)]
-    #[generates(dyn Foo ~ ConcreteFoo)]
     #[generates(ForwardedStructProvider)]
-    #[generates(ForwardedTraitProvider)]
     #[generates(ForwardedIntermediateProvider)]
     #[clones_self]
     #[derive(Clone)]
-    struct BaseProvider {}
+    struct BaseStructProvider {}
 
     #[service_provider]
     #[forwards(ConcreteFoo ~ base)]
     struct ForwardedStructProvider {
-        base: BaseProvider,
+        base: BaseStructProvider,
     }
 
     #[test]
     fn forwards_generate_struct_to_base() {
-        let base_provider: BaseProvider = BaseProvider::construct();
-        let provider: ForwardedStructProvider = base_provider.generate();
-        let foo: ConcreteFoo = provider.generate();
+        let mut base_provider: BaseStructProvider = BaseStructProvider::construct();
+        let mut provider: ForwardedStructProvider = base_provider.generate();
+        let mut foo: ConcreteFoo = provider.generate();
 
         assert_eq!(EXPECTED_FOO, foo.foo())
     }
 
     #[service_provider]
+    #[generates(dyn Foo ~ ConcreteFoo)]
+    #[generates(ForwardedTraitProvider)]
+    #[clones_self]
+    #[derive(Clone)]
+    struct BaseTraitProvider {}
+
+    #[service_provider]
     #[forwards(dyn Foo ~ base)]
     struct ForwardedTraitProvider {
-        base: BaseProvider,
+        base: BaseTraitProvider,
     }
 
     #[test]
     fn forwards_generate_trait_to_base() {
-        let base_provider: BaseProvider = BaseProvider::construct();
-        let provider: ForwardedTraitProvider = base_provider.generate();
-        let foo: Box<dyn Foo> = provider.generate();
+        let mut base_provider: BaseTraitProvider = BaseTraitProvider::construct();
+        let mut provider: ForwardedTraitProvider = base_provider.generate();
+        let mut foo: Box<dyn Foo> = provider.generate();
 
         assert_eq!(EXPECTED_FOO, foo.foo())
     }
@@ -45,14 +50,14 @@ mod tests {
     #[service_provider]
     #[forwards(dyn Foo ~ ConcreteFoo ~ base)]
     struct ForwardedIntermediateProvider {
-        base: BaseProvider,
+        base: BaseStructProvider,
     }
 
     #[test]
     fn forwards_generate_trait_via_concrete_to_base() {
-        let base_provider: BaseProvider = BaseProvider::construct();
-        let provider: ForwardedIntermediateProvider = base_provider.generate();
-        let foo: Box<dyn Foo> = provider.generate();
+        let mut base_provider: BaseStructProvider = BaseStructProvider::construct();
+        let mut provider: ForwardedIntermediateProvider = base_provider.generate();
+        let mut foo: Box<dyn Foo> = provider.generate();
 
         assert_eq!(EXPECTED_FOO, foo.foo())
     }

@@ -30,7 +30,14 @@ impl Parse for GeneratedDefinition {
 }
 
 impl GeneratedDefinition {
-    pub fn requested_type(&self) -> Type {
+    pub fn singleton_description(&self, item: &ItemStruct) -> SingletonDescription {
+        SingletonDescription {
+            requested: self.requested_type(),
+            stored: self.stored_type(), 
+            generation: self.generation(item),
+        }
+    }
+    fn requested_type(&self) -> Type {
         if self.abstraction.is_some() {
             self.abstraction.clone().unwrap()
         }
@@ -39,18 +46,27 @@ impl GeneratedDefinition {
         }
     }
     pub fn stored_type(&self) -> Type { 
-        syn::parse2(if self.abstraction.is_some() {
-            let trait_type = self.abstraction.as_ref().unwrap();
-            quote! {
-                std::cell::RefCell<std::option::Option<std::rc::Rc<dyn #trait_type>>>
-            }
-        }
-        else {
-            let concrete_type = &self.implementation;
-            quote! {
-                std::cell::RefCell<std::option::Option<std::rc::Rc<#concrete_type>>>
+        syn::parse2(match &self.abstraction {
+            Some(trait_type) => quote! {
+                std::option::Option<std::boxed::Box<dyn #trait_type>>
+            },
+            None => {
+                let concrete_type = &self.implementation;
+                quote! {
+                    std::option::Option<#concrete_type>
+                }
             }
         }).unwrap()
+    }
+    fn generation(&self, item: &ItemStruct) -> TokenStream {
+        let implementation = &self.implementation;
+        let name = &item.ident;
+        let (_, type_generics, _) = item.generics.split_for_impl();
+        let mut generation = quote! { <#implementation as curds_core_abstraction::dependency_injection::Injected::<#name #type_generics>>::inject(&mut constructed) };
+        if self.abstraction.is_some() {
+            generation = quote! { std::boxed::Box::new(#generation) };
+        }
+        generation
     }
 
     pub fn quote_transient(&self, provider: &ServiceProviderDefinition) -> TokenStream {
@@ -69,7 +85,7 @@ impl GeneratedDefinition {
 
         quote! {
             impl #impl_generics curds_core_abstraction::dependency_injection::ServiceGenerator<#requested> for #name #type_generics #where_clause {
-                fn generate(&self) -> #requested {
+                fn generate(&mut self) -> #requested {
                     #generation
                 }
             }
@@ -81,27 +97,26 @@ impl GeneratedDefinition {
             Some(abstraction) => abstraction,
             None => &self.implementation,
         };
-        let mut requested = match &self.abstraction {
-            Some(abstraction) => quote! { dyn #abstraction },
+        let requested = match &self.abstraction {
+            Some(abstraction) => quote! { std::boxed::Box<dyn #abstraction> },
             None => self.implementation.to_token_stream(),
         };
-        requested = quote! { std::rc::Rc<#requested> };
-        let implementation = &self.implementation;
         let name = provider.name();
         let (impl_generics, type_generics, where_clause) = provider.generics().split_for_impl();
         let singleton_ident = provider.singleton(requested_key);
 
         quote! {
-            impl #impl_generics curds_core_abstraction::dependency_injection::ServiceGenerator<#requested> for #name #type_generics #where_clause {
-                fn generate(&self) -> #requested {
-                    if self.#singleton_ident.borrow().is_none() {
-                        self.#singleton_ident.replace(Some(std::rc::Rc::new(<#implementation as curds_core_abstraction::dependency_injection::Injected::<#name>>::inject(self))));
-                    }
+            impl #impl_generics curds_core_abstraction::dependency_injection::ServiceLender<#requested> for #name #type_generics #where_clause {
+                fn lend(&mut self) -> &#requested {
                     self.#singleton_ident
-                        .borrow()
                         .as_ref()
                         .unwrap()
-                        .clone()
+                }
+
+                fn lend_mut(&mut self) -> &mut #requested {
+                    self.#singleton_ident
+                        .as_mut()
+                        .unwrap()
                 }
             }
         }

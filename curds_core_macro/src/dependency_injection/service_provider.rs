@@ -10,7 +10,7 @@ impl Parse for ServiceProviderDefinition {
         let mut item: ItemStruct = input.parse()?;
         let library = Self::parse_productions(&mut item)?;
         let mut singletons = SingletonCollection::new();
-        singletons.register_singletons(&library)?;
+        singletons.register_singletons(&item, &library)?;
         singletons.add_singletons(&mut item)?;
 
         Ok(Self {
@@ -91,12 +91,14 @@ impl ServiceProviderDefinition {
         for production in &self.library {
             library.push(production.quote(&self));
         }
+        let singleton_initializers = self.singletons.quote_initializer_attributes();
         let item = self.item;
 
         quote! {
             #[injected]
+            #(#singleton_initializers)*
             #item
-            #scope_tokens
+            //#scope_tokens
             #(#library)*
         }
     }
@@ -104,13 +106,17 @@ impl ServiceProviderDefinition {
         let name = self.name();        
         let initializer_tokens = self.scope_initializers();
         let (impl_generics, type_generics, where_clause) = self.item.generics.split_for_impl();
+        let singleton_initializers = self.singletons.quote_initializers();
 
         quote! {
             impl #impl_generics curds_core_abstraction::dependency_injection::Scoped for #name #type_generics #where_clause {
                 fn scope(&self) -> Self {
-                    Self {
+                    let mut constructed = Self {
                         #initializer_tokens
-                    }
+                    };
+                    #(#singleton_initializers)*
+
+                    constructed
                 }
             }
         }

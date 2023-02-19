@@ -21,7 +21,7 @@ impl ProviderDefinition {
         let provider_type = definition.provider(&provider);
         quote! {
             impl curds_core_abstraction::dependency_injection::ServiceGenerator<#provider_type> for #name {
-                fn generate(&self) -> #provider_type {
+                fn generate(&mut self) -> #provider_type {
                     self.#provider.clone()
                 }
             }
@@ -34,7 +34,7 @@ impl ProviderDefinition {
         let provider_type = definition.provider(&provider);
         quote! {
             impl curds_core_abstraction::dependency_injection::ServiceGenerator<#provider_type> for #name {
-                fn generate(&self) -> #provider_type {
+                fn generate(&mut self) -> #provider_type {
                     self.#provider.scope()
                 }
             }

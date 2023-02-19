@@ -16,26 +16,26 @@ impl SingletonCollection {
     pub fn singleton(&self, ty: &Type) -> Ident { self.singletons[ty].ident() }
     pub fn is_singleton(&self, ident: &Ident) -> bool { self.consumed.contains(ident) }
 
-    pub fn register_singletons(&mut self, library: &Vec<ServiceProduction>) -> Result<()> {
+    pub fn register_singletons(&mut self, item: &ItemStruct, library: &Vec<ServiceProduction>) -> Result<()> {
         for production in library {
             match production {
-                ServiceProduction::GenerateSingleton(definition) => self.register_singleton(definition.requested_type(), definition.stored_type()),
-                ServiceProduction::ForwardSingleton(definition) => if definition.is_promoted() { self.register_singleton(definition.requested_type(), definition.stored_type()) },
+                ServiceProduction::GenerateSingleton(definition) => self.register_singleton(definition.singleton_description(item)),
+                ServiceProduction::ForwardSingleton(definition) => if definition.is_promoted() { self.register_singleton(definition.singleton_description(item)) },
                 _ => continue,
             }
         }
         Ok(())
     }
-    fn register_singleton(&mut self, requested: Type, stored: Type) {
-        if !self.singletons.contains_key(&requested) {
-            let singleton = self.generate_singleton(&stored);
-            self.singletons.insert(requested, singleton);
+    fn register_singleton(&mut self, description: SingletonDescription) {
+        if !self.singletons.contains_key(&description.requested) {
+            let singleton = self.generate_singleton(&description);
+            self.singletons.insert(description.requested, singleton);
         }
     }
-    fn generate_singleton(&mut self, stored: &Type) -> SingletonIdentifier {
-        let mut generated = SingletonIdentifier::new(stored);
+    fn generate_singleton(&mut self, description: &SingletonDescription) -> SingletonIdentifier {
+        let mut generated = SingletonIdentifier::new(description);
         while self.consumed.contains(&generated.ident()) {
-            generated = SingletonIdentifier::new(stored);
+            generated = SingletonIdentifier::new(description);
         }
         self.consumed.insert(generated.ident());
 
@@ -73,5 +73,22 @@ impl SingletonCollection {
         }
 
         Ok(())
+    }
+
+    pub fn quote_initializers(&self) -> Vec<TokenStream> {
+        let mut initializers: Vec<TokenStream> = Vec::new();
+        for singleton in &self.singletons {
+            initializers.push(singleton.1.quote_initializer());
+        }
+
+        initializers
+    }
+    pub fn quote_initializer_attributes(&self) -> Vec<TokenStream> {
+        let mut initializers: Vec<TokenStream> = Vec::new();
+        for singleton in &self.singletons {
+            initializers.push(singleton.1.quote_initializer_attribute());
+        }
+
+        initializers
     }
 }

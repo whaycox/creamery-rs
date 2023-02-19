@@ -38,7 +38,7 @@ impl ServiceProduction {
         let name = provider.name();
         quote! {
             impl curds_core_abstraction::dependency_injection::ServiceGenerator<Self> for #name {
-                fn generate(&self) -> Self {
+                fn generate(&mut self) -> Self {
                     self.clone()
                 }
             }
@@ -48,7 +48,7 @@ impl ServiceProduction {
         let name = provider.name();
         quote! {
             impl curds_core_abstraction::dependency_injection::ServiceGenerator<Self> for #name {
-                fn generate(&self) -> Self {
+                fn generate(&mut self) -> Self {
                     self.scope()
                 }
             }

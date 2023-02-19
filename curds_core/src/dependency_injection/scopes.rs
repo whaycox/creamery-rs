@@ -4,47 +4,37 @@ mod tests {
 
     #[service_provider]
     #[generates_singleton(IncrementingFoo)]
-    #[generates(ScopedStructProvider)]
     #[scopes_self]
-    #[derive(Clone)]
-    struct BaseProvider {}
+    struct ScopedSelfProvider {}
+
+    #[test]
+    fn scoped_provider_doesnt_keep_clone_singletons() {
+        let mut base_provider = ScopedSelfProvider::construct();
+
+        for i in 0..10 {
+            let mut scoped_provider: ScopedSelfProvider = base_provider.generate();
+            let base_foo: &mut IncrementingFoo = base_provider.lend_mut();
+            let scoped_foo: &mut IncrementingFoo = scoped_provider.lend_mut();
+
+            assert_eq!(i, base_foo.foo());
+            assert_eq!(0, scoped_foo.foo());
+            assert_eq!(1, scoped_foo.foo());
+            assert_eq!(2, scoped_foo.foo());
+        }
+    }
 
     #[service_provider]
-    #[scopes(base)]
-    struct ScopedStructProvider {
-        base: BaseProvider,
-    }
+    #[generates_singleton(IncrementingFoo)]
+    struct BaseProvider {}
+
+    // #[service_provider]
+    // #[forwards(IncrementingFoo ~ base)]
+    // struct ScopedDependencyProvider {
+    //     base: BaseProvider,
+    // }
 
     #[test]
-    fn scoped_provider_doesnt_keep_parent_singletons() {
-        let base_provider = BaseProvider::construct();
-        let base_foo: Rc<IncrementingFoo> = base_provider.generate();
-        let provider: ScopedStructProvider = base_provider.generate();
-
-        for i in 0..10 {
-            let scoped_provider: BaseProvider = provider.generate();
-            let foo: Rc<IncrementingFoo> = scoped_provider.generate();
-
-            assert_eq!(i, base_foo.foo());
-            assert_eq!(0, foo.foo());
-            assert_eq!(1, foo.foo());
-            assert_eq!(2, foo.foo());
-        }
-    }
-
-    #[test]
-    fn can_scope_self() {
-        let base_provider = BaseProvider::construct();
-        let base_foo: Rc<IncrementingFoo> = base_provider.generate();
-
-        for i in 0..10 {
-            let scoped_provider: BaseProvider = base_provider.generate();
-            let foo: Rc<IncrementingFoo> = scoped_provider.generate();
-
-            assert_eq!(i, base_foo.foo());
-            assert_eq!(0, foo.foo());
-            assert_eq!(1, foo.foo());
-            assert_eq!(2, foo.foo());
-        }
+    fn todo() {
+        todo!()
     }
 }

@@ -18,10 +18,10 @@ impl Parse for WheyMock {
 }
 
 impl WheyMock {
-    pub fn filter_items(item: &TraitItem) -> bool {
+    pub fn filter_items(item: &TraitItem) -> Option<&TraitItemMethod> {
         match item {
-            TraitItem::Method(_) => true,
-            _ => false,
+            TraitItem::Method(method) => Some(method),
+            _ => None,
         }
     }
     pub fn input_compare_ident(ident: &Ident) -> Ident { format_ident!("input_compare_{}", ident) }
@@ -48,9 +48,9 @@ impl WheyMock {
         let generics = &mocked_trait.generics;
         let (impl_generics, type_generics, where_clause) = mocked_trait.generics.split_for_impl();
 
-        let mocked_items: Vec<&TraitItem> = mocked_trait.items
+        let mocked_items: Vec<&TraitItemMethod> = mocked_trait.items
             .iter()
-            .filter(|item| Self::filter_items(item))
+            .filter_map(|item| Self::filter_items(item))
             .collect();
         let assert_methods: Vec<TokenStream> = mocked_items
             .iter()
@@ -81,44 +81,34 @@ impl WheyMock {
             }
         }
     }
-    fn quote_assert(item: &TraitItem) -> TokenStream {
-        match item {
-            TraitItem::Method(method) => {
-                let assert_ident = Self::assert_ident(&method.sig.ident);
+    fn quote_assert(method: &TraitItemMethod) -> TokenStream {
+        let assert_ident = Self::assert_ident(&method.sig.ident);
 
-                quote! {
-                    pub fn #assert_ident(&self, expected_calls: u32) {
-                        self.core.#assert_ident(expected_calls);
-                    }
-                }
-            },
-            _ => panic!("Unexpected trait item: {:?}", item),
+        quote! {
+            pub fn #assert_ident(&self, expected_calls: u32) {
+                self.core.#assert_ident(expected_calls);
+            }
         }
     }
-    fn quote_impl(item: &TraitItem) -> TokenStream {
-        match item {
-            TraitItem::Method(method) => {
-                let signature = &method.sig;
-                let input_compare_ident = Self::input_compare_ident(&method.sig.ident);
-                let mut input_signature: Vec<&Box<Pat>> = Vec::new();
-                for input in &method.sig.inputs {
-                    match input {
-                        FnArg::Receiver(_) => {},
-                        FnArg::Typed(ty) => input_signature.push(&ty.pat),
-                    }
-                }
-                let call_count_ident = Self::call_count_ident(&method.sig.ident);
-                let dummy_ident = Self::dummy_ident(&method.sig.ident);
+    fn quote_impl(method: &TraitItemMethod) -> TokenStream {
+        let signature = &method.sig;
+        let input_compare_ident = Self::input_compare_ident(&method.sig.ident);
+        let mut input_signature: Vec<&Box<Pat>> = Vec::new();
+        for input in &method.sig.inputs {
+            match input {
+                FnArg::Receiver(_) => {},
+                FnArg::Typed(ty) => input_signature.push(&ty.pat),
+            }
+        }
+        let call_count_ident = Self::call_count_ident(&method.sig.ident);
+        let dummy_ident = Self::dummy_ident(&method.sig.ident);
 
-                quote! {
-                    #signature {
-                        self.core.#input_compare_ident(#(#input_signature),*);
-                        self.core.#call_count_ident();
-                        self.core.#dummy_ident()
-                    }
-                }
-            },
-            _ => panic!("Unexpected trait item: {:?}", item),
+        quote! {
+            #signature {
+                self.core.#input_compare_ident(#(#input_signature),*);
+                self.core.#call_count_ident();
+                self.core.#dummy_ident()
+            }
         }
     }
 }

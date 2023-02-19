@@ -5,6 +5,7 @@ pub struct WheyExpectation {
     mocked_trait: Path,
     expected_call: Ident,
     expected_values: Punctuated<Expr, Token![,]>,
+    return_value: Option<Expr>,
     times: Expr,
 }
 
@@ -19,6 +20,11 @@ impl Parse for WheyExpectation {
         let value_content;
         parenthesized!(value_content in input);        
         let expected_values: Punctuated::<Expr, Token![,]> = value_content.parse_terminated(Expr::parse)?;
+        let mut return_value: Option<Expr> = None;
+        if input.peek(Token![->]) {
+            input.parse::<Token![->]>()?;
+            return_value = Some(input.parse()?);
+        }
         let times: Expr = if input.peek(Token![,]) {
             input.parse::<Token![,]>()?;
             input.parse()?
@@ -32,6 +38,7 @@ impl Parse for WheyExpectation {
             mocked_trait,
             expected_call,
             expected_values,
+            return_value,
             times,
         })
     }
@@ -43,17 +50,23 @@ impl WheyExpectation {
         let core_name = WheyMockedType::generate_core_name(&self.mocked_trait);
         let expect_ident = WheyMockCore::expect_ident(&self.expected_call);
         let expected_values = self.expected_values;
-        let mut closure_inputs: Vec<Ident> = Vec::new();
-        for i in 0..expected_values.len() {
-            let input_ident = format!("v{}", i);
-            closure_inputs.push(Ident::new(&input_ident, Span::call_site()));
-        }
         let times = self.times;
+        let expect_return = match self.return_value {
+            Some(expected_return) => {
+                let expect_return_ident = WheyMockCore::expect_return_ident(&self.expected_call);
+                quote! {
+                    mutable_core.#expect_return_ident((#expected_return), #times);
+                }
+            },
+            None => quote! {},
+        };
 
         quote! {
             {
-                let core: std::rc::Rc<#core_name> = #context.generate();
-                core.#expect_ident(Box::new(|#(#closure_inputs),*| (#(#closure_inputs),*) == (#expected_values)), #times);
+                let mut core: std::rc::Rc<#core_name> = #context.generate();
+                let mut mutable_core = std::rc::Rc::get_mut(&mut core).unwrap();
+                mutable_core.#expect_ident((#expected_values), #times);
+                #expect_return
             }
         }
     }

@@ -10,7 +10,7 @@ mod tests {
         fn shared_foo(&self, value: u32);
         fn exclusive_foo(&mut self, value: u32);
     }
-
+ 
     #[whey_context]
     #[mocks(dyn ValueFoo)]
     struct ValueContext {}
