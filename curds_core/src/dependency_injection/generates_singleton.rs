@@ -14,7 +14,8 @@ mod tests {
         let mut provider = SingletonProvider::construct();
 
         for i in 0..10 {
-            let foo: &mut IncrementingFoo = provider.lend_mut();
+            let singleton: Rc<RwLock<IncrementingFoo>> = provider.generate();
+            let mut foo = singleton.write().unwrap();
 
             assert_eq!(i * 3, foo.foo());
             assert_eq!(i * 3 + 1, foo.foo());
@@ -40,7 +41,8 @@ mod tests {
         let mut provider = SingletonProvider::construct();
 
         for i in 0..10 {
-            let foo: &mut Box<dyn Foo> = provider.lend_mut();
+            let singleton: Rc<RwLock<Box<dyn Foo>>> = provider.generate();
+            let mut foo = singleton.write().unwrap();
 
             assert_eq!(i * 3, foo.foo());
             assert_eq!(i * 3 + 1, foo.foo());
@@ -66,20 +68,17 @@ mod tests {
         let mut provider = SingletonProvider::construct();
 
         for i in 0..10 {
-            {
-                let foo_trait: &mut Box<dyn Foo> = provider.lend_mut();
+            let trait_singleton: Rc<RwLock<Box<dyn Foo>>> = provider.generate();
+            let struct_singleton: Rc<RwLock<IncrementingFoo>> = provider.generate();
+            let mut trait_foo = trait_singleton.write().unwrap();
+            let mut struct_foo = struct_singleton.write().unwrap();
 
-                assert_eq!(i * 3, foo_trait.foo());
-                assert_eq!(i * 3 + 1, foo_trait.foo());
-                assert_eq!(i * 3 + 2, foo_trait.foo());
-            }
-            {
-                let foo: &mut IncrementingFoo = provider.lend_mut();
-
-                assert_eq!(i * 3, foo.foo());
-                assert_eq!(i * 3 + 1, foo.foo());
-                assert_eq!(i * 3 + 2, foo.foo());
-            }
+            assert_eq!(i * 3, trait_foo.foo());
+            assert_eq!(i * 3 + 1, trait_foo.foo());
+            assert_eq!(i * 3 + 2, trait_foo.foo());
+            assert_eq!(i * 3, struct_foo.foo());
+            assert_eq!(i * 3 + 1, struct_foo.foo());
+            assert_eq!(i * 3 + 2, struct_foo.foo());
         }
     }
 }

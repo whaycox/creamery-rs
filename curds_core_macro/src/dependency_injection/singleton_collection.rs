@@ -19,8 +19,8 @@ impl SingletonCollection {
     pub fn register_singletons(&mut self, item: &ItemStruct, library: &Vec<ServiceProduction>) -> Result<()> {
         for production in library {
             match production {
-                ServiceProduction::GenerateSingleton(definition) => self.register_singleton(definition.singleton_description(item)),
-                ServiceProduction::ForwardSingleton(definition) => if definition.is_promoted() { self.register_singleton(definition.singleton_description(item)) },
+                ServiceProduction::GenerateSingleton(definition) => self.register_singleton(definition.singleton_description()),
+                ServiceProduction::ForwardSingleton(definition) => if definition.is_promoted() { self.register_singleton(definition.singleton_description()) },
                 _ => continue,
             }
         }
@@ -73,22 +73,5 @@ impl SingletonCollection {
         }
 
         Ok(())
-    }
-
-    pub fn quote_initializers(&self) -> Vec<TokenStream> {
-        let mut initializers: Vec<TokenStream> = Vec::new();
-        for singleton in &self.singletons {
-            initializers.push(singleton.1.quote_initializer());
-        }
-
-        initializers
-    }
-    pub fn quote_initializer_attributes(&self) -> Vec<TokenStream> {
-        let mut initializers: Vec<TokenStream> = Vec::new();
-        for singleton in &self.singletons {
-            initializers.push(singleton.1.quote_initializer_attribute());
-        }
-
-        initializers
     }
 }

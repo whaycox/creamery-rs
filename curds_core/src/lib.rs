@@ -9,6 +9,7 @@ use curds_core_macro::*;
 
 use std::{
     rc::Rc,
+    sync::RwLock,
 };
 
 #[cfg(test)]

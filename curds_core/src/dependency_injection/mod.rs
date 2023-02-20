@@ -2,11 +2,11 @@ mod generates_transient;
 mod generates_singleton;
 mod injects_dependencies;
 mod clones;
-//mod scopes;
+mod scopes;
 mod forwards_transient;
 mod forwards_singleton;
 mod forwards_singleton_promoted;
-//mod generic_service;
+mod generic_service;
 
 #[cfg(test)]
 use super::*;
@@ -58,11 +58,11 @@ mod simple {
     }
 
     #[injected]
-    pub struct BarredFoo<'a> {
-        bar: &'a mut Box<dyn Bar>,
+    pub struct BarredFoo {
+        bar: Rc<RwLock<Box<dyn Bar>>>,
     }
-    impl<'a> Foo for BarredFoo<'a> {
-        fn foo(&mut self) -> u32 { EXPECTED_FOO * self.bar.bar() }
+    impl Foo for BarredFoo {
+        fn foo(&mut self) -> u32 { EXPECTED_FOO * self.bar.write().unwrap().bar() }
     }
 
     pub const EXPECTED_BAR: u32 = 72;

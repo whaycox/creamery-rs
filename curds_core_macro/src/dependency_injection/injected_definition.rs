@@ -1,23 +1,19 @@
 use super::*;
 
 pub const DEFAULTED_IDENTIFIER: &str = "defaulted";
-pub const EXPLICIT_INITIALIZER_IDENTIFIER: &str = "initializer";
 
 pub struct InjectedDefinition {
     item: ItemStruct,
     defaulted: HashMap<Ident, TokenStream>,
-    explicit_initializers: Vec<TokenStream>,
 }
 impl Parse for InjectedDefinition {
     fn parse(input: ParseStream) -> Result<Self> {
         let mut item: ItemStruct = input.parse()?;
         let defaulted = Self::parse_defaulted(&mut item)?;
-        let explicit_initializers = Self::parse_explicit_initializers(&mut item)?;
 
         Ok(InjectedDefinition {
             item,
             defaulted,
-            explicit_initializers,
         })
     }
 }
@@ -55,28 +51,6 @@ impl InjectedDefinition {
 
         Ok(defaulted)
     }
-    fn parse_explicit_initializers(item: &mut ItemStruct) -> Result<Vec<TokenStream>> {
-        let mut initializers: Vec<TokenStream> = Vec::new();
-        let length = item.attrs.len();
-        if length > 0 {
-            let mut attribute_index = length - 1;
-            loop {
-                let attribute = &item.attrs[attribute_index];
-                if attribute.path.is_ident(EXPLICIT_INITIALIZER_IDENTIFIER) {
-                    initializers.push(attribute.parse_args()?);
-                    item.attrs.remove(attribute_index);
-                }
-    
-                if attribute_index == 0 {
-                    break;
-                }
-                attribute_index = attribute_index - 1;
-            }
-            initializers.reverse();
-        }
-
-        Ok(initializers)
-    }
 
     pub fn quote(self) -> TokenStream {
         let item = &self.item;
@@ -93,18 +67,6 @@ impl InjectedDefinition {
         let name = &self.item.ident;
         let generics_without_provider = &self.item.generics;
         let mut generics = generics_without_provider.clone();
-        let struct_lifetime = generics
-            .lifetimes()
-            .into_iter()
-            .next();
-        
-        if struct_lifetime.is_some() {
-            let lifetime_bound = struct_lifetime.unwrap();
-            generics.params.push(GenericParam::Lifetime(parse_quote!('provider: #lifetime_bound)));
-        }
-        else {   
-            generics.params.push(GenericParam::Lifetime(parse_quote!('provider)));
-        }
         generics.params.push(GenericParam::Type(self.constraint_param()));
         
         let (impl_generics, _, where_clause) = generics.split_for_impl();
@@ -112,25 +74,12 @@ impl InjectedDefinition {
         let generator_tokens = self.quote_generators();
 
         quote! {
-            impl #impl_generics curds_core_abstraction::dependency_injection::Injected<'provider, TProvider> for #name #type_generics #where_clause {
-                fn inject(provider: &'provider mut TProvider) -> Self {
+            impl #impl_generics curds_core_abstraction::dependency_injection::Injected<TProvider> for #name #type_generics #where_clause {
+                fn inject(provider: &mut TProvider) -> Self {
                     Self::construct(#generator_tokens)
                 }
             }
         }
-    }
-    fn has_reference_constraint(&self) -> bool {
-        for field in &self.item.fields {
-            let name = &field.ident.clone().unwrap();
-            if self.defaulted.contains_key(&name) {
-                continue;
-            }
-            match &field.ty {
-                Type::Reference(_) => return true,
-                _ => continue,
-            }
-        }
-        false
     }
     fn constraint_param(&self) -> TypeParam {
         let mut provider_generic = TypeParam::from(Ident::new("TProvider", Span::call_site()));
@@ -218,17 +167,13 @@ impl InjectedDefinition {
         let (impl_generics, type_generics, where_clause) = self.item.generics.split_for_impl();
         let arguments = self.quote_arguments();
         let initializers = self.quote_initializers();
-        let explicit_initializers = &self.explicit_initializers;
 
         quote! {
             impl #impl_generics #name #type_generics #where_clause {
                 pub fn construct(#arguments) -> Self {
-                    let mut constructed = Self {
+                    Self {
                         #initializers
-                    };
-                    #(#explicit_initializers)*
-
-                    constructed
+                    }
                 }
             }
         }

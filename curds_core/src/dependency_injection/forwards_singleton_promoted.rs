@@ -20,7 +20,8 @@ mod tests {
         let mut provider = PromotedProvider::construct();
         
         for i in 0..10 {
-            let foo: &mut Box<dyn Foo> = provider.lend_mut();
+            let singleton: Rc<RwLock<Box<dyn Foo>>> = provider.generate();
+            let mut foo = singleton.write().unwrap();
 
             assert_eq!(i * 3, foo.foo());
             assert_eq!(i * 3 + 1, foo.foo());
@@ -33,7 +34,8 @@ mod tests {
         let mut provider = PromotedProvider::construct();
         
         for i in 0..10 {
-            let foo: &mut IncrementingFoo = provider.lend_mut();
+            let singleton: Rc<RwLock<IncrementingFoo>> = provider.generate();
+            let mut foo = singleton.write().unwrap();
 
             assert_eq!(i * 3, foo.foo());
             assert_eq!(i * 3 + 1, foo.foo());
@@ -57,7 +59,8 @@ mod tests {
         let mut provider = IntermediateProvider::construct();
         
         for i in 0..10 {
-            let foo: &mut Box<dyn Foo> = provider.lend_mut();
+            let singleton: Rc<RwLock<Box<dyn Foo>>> = provider.generate();
+            let mut foo = singleton.write().unwrap();
 
             assert_eq!(i * 3, foo.foo());
             assert_eq!(i * 3 + 1, foo.foo());

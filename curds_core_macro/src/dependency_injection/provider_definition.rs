@@ -22,7 +22,7 @@ impl ProviderDefinition {
         quote! {
             impl curds_core_abstraction::dependency_injection::ServiceGenerator<#provider_type> for #name {
                 fn generate(&mut self) -> #provider_type {
-                    self.#provider.clone()
+                    std::clone::Clone::clone(&self.#provider)
                 }
             }
         }
@@ -35,7 +35,7 @@ impl ProviderDefinition {
         quote! {
             impl curds_core_abstraction::dependency_injection::ServiceGenerator<#provider_type> for #name {
                 fn generate(&mut self) -> #provider_type {
-                    self.#provider.scope()
+                    curds_core_abstraction::dependency_injection::Scoped::scope(&self.#provider)
                 }
             }
         }

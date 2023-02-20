@@ -39,7 +39,7 @@ impl ServiceProduction {
         quote! {
             impl curds_core_abstraction::dependency_injection::ServiceGenerator<Self> for #name {
                 fn generate(&mut self) -> Self {
-                    self.clone()
+                    std::clone::Clone::clone(self)
                 }
             }
         }
@@ -49,7 +49,7 @@ impl ServiceProduction {
         quote! {
             impl curds_core_abstraction::dependency_injection::ServiceGenerator<Self> for #name {
                 fn generate(&mut self) -> Self {
-                    self.scope()
+                    curds_core_abstraction::dependency_injection::Scoped::scope(self)
                 }
             }
         }

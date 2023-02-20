@@ -23,7 +23,8 @@ mod tests {
     fn forwards_trait_to_base_singleton_helper(count: u32) {
         let mut base_provider: BaseSingletonProvider = BaseSingletonProvider::construct();
         {
-            let base_foo: &mut Box<dyn Foo> = base_provider.lend_mut();
+            let base_singleton: Rc<RwLock<Box<dyn Foo>>> = base_provider.generate();
+            let mut base_foo = base_singleton.write().unwrap();
             for _ in 0..count {
                 base_foo.foo();
             }
@@ -31,7 +32,8 @@ mod tests {
         let mut provider = UnpromotedProvider::construct(base_provider);
 
         for i in 0..10 {
-            let foo: &mut Box<dyn Foo> = provider.lend_mut();
+            let singleton: Rc<RwLock<Box<dyn Foo>>> = provider.generate();
+            let mut foo = singleton.write().unwrap();
 
             assert_eq!(count + (i * 3), foo.foo());
             assert_eq!(count + (i * 3) + 1, foo.foo());
@@ -48,7 +50,8 @@ mod tests {
     fn forwards_struct_to_base_singleton_helper(count: u32) {
         let mut base_provider: BaseSingletonProvider = BaseSingletonProvider::construct();
         {
-            let base_foo: &mut IncrementingFoo = base_provider.lend_mut();
+            let base_singleton: Rc<RwLock<IncrementingFoo>> = base_provider.generate();
+            let mut base_foo = base_singleton.write().unwrap();
             for _ in 0..count {
                 base_foo.foo();
             }
@@ -56,7 +59,8 @@ mod tests {
         let mut provider = UnpromotedProvider::construct(base_provider);
 
         for i in 0..10 {
-            let foo: &mut IncrementingFoo = provider.lend_mut();
+            let singleton: Rc<RwLock<IncrementingFoo>> = provider.generate();
+            let mut foo = singleton.write().unwrap();
 
             assert_eq!(count + (i * 3), foo.foo());
             assert_eq!(count + (i * 3) + 1, foo.foo());

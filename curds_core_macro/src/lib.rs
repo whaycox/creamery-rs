@@ -26,6 +26,13 @@ pub fn service_provider(_attr: TokenStream, item: TokenStream) -> TokenStream {
         .into()
 }
 
+#[proc_macro_derive(Scoped)]
+pub fn derive_scoped(item: TokenStream) -> TokenStream {
+    parse_macro_input!(item as ScopedItem)
+        .quote()
+        .into()
+}
+
 #[proc_macro_attribute]
 pub fn whey_context(attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut test_type: Option<Ident> = None;

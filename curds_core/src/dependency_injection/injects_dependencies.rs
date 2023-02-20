@@ -16,6 +16,19 @@ mod tests {
     }
 
     #[service_provider]
+    #[generates(dyn Foo ~ BarredFoo)]
+    #[generates_singleton(dyn Bar ~ ConcreteBar)]
+    struct SingletonCompositeProvider {}
+
+    #[test]
+    fn injects_singleton_bar_into_foo() {
+        let mut provider = SingletonCompositeProvider::construct();
+        let mut foo: Box<dyn Foo> = provider.generate();
+
+        assert_eq!(EXPECTED_FOO * EXPECTED_BAR, foo.foo())
+    }
+
+    #[service_provider]
     #[generates_singleton(dyn Foo ~ SeededFoo)]
     #[generates(dyn Foo ~ SeededFoo)]
     struct SeededProvider {}
@@ -38,7 +51,8 @@ mod tests {
         let mut provider = SeededProvider::construct();
 
         for i in 0..10 {
-            let foo: &mut Box<dyn Foo> = provider.lend_mut();
+            let singleton: Rc<RwLock<Box<dyn Foo>>> = provider.generate();
+            let mut foo = singleton.write().unwrap();
 
             assert_eq!(EXPECTED_FOO + i * 3, foo.foo());
             assert_eq!(EXPECTED_FOO + i * 3 + 1, foo.foo());

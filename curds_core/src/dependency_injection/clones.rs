@@ -13,20 +13,23 @@ mod tests {
         let mut base_provider = ClonedSelfProvider::construct();
 
         for i in 0..10 {
-            let mut cloned_provider: ClonedSelfProvider = base_provider.generate();
-            let base_foo: &mut IncrementingFoo = base_provider.lend_mut();
-            let cloned_foo: &mut IncrementingFoo = cloned_provider.lend_mut();
-
-            assert_eq!(i, base_foo.foo());
-            assert_eq!(i, cloned_foo.foo());
-            assert_eq!(i + 1, cloned_foo.foo());
-            assert_eq!(i + 2, cloned_foo.foo());
+            {
+                let base_singleton: Rc<RwLock<IncrementingFoo>> = base_provider.generate();
+                let mut base_foo = base_singleton.write().unwrap();
+                assert_eq!(i * 3, base_foo.foo());
+            }
+            {
+                let mut cloned_provider: ClonedSelfProvider = base_provider.generate();
+                let cloned_singleton: Rc<RwLock<IncrementingFoo>> = cloned_provider.generate();
+                let mut cloned_foo = cloned_singleton.write().unwrap();
+                assert_eq!(i * 3 + 1, cloned_foo.foo());
+                assert_eq!(i * 3 + 2, cloned_foo.foo());
+            }
         }
     }
 
     #[service_provider]
     #[clones(base)]
-    #[derive(Clone)]
     struct ClonedDependencyProvider {
         base: IncrementingFoo,
     }
