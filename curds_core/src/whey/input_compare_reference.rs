@@ -18,10 +18,10 @@ mod tests {
     #[whey]
     fn shared_compares_provided(context: ReferenceContext) {
         for count in 1..10 {
-            shared_compares_provided_helper(&context, count);
+            shared_compares_provided_helper(&mut context, count);
         }
     }
-    fn shared_compares_provided_helper(context: &ReferenceContext, count: u32) {
+    fn shared_compares_provided_helper(context: &mut ReferenceContext, count: u32) {
         expect!(context, dyn ReferenceFoo.shared_foo(EXPECTED_VALUE), count);
 
         for _ in 0..count {
@@ -35,10 +35,10 @@ mod tests {
     #[whey]
     fn exclusive_compares_provided(context: ReferenceContext) {
         for count in 1..10 {
-            exclusive_compares_provided_helper(&context, count);
+            exclusive_compares_provided_helper(&mut context, count);
         }
     }
-    fn exclusive_compares_provided_helper(context: &ReferenceContext, count: u32) {
+    fn exclusive_compares_provided_helper(context: &mut ReferenceContext, count: u32) {
         expect!(context, dyn ReferenceFoo.exclusive_foo(EXPECTED_VALUE), count);
 
         for _ in 0..count {
@@ -62,10 +62,10 @@ mod tests {
     #[whey]
     fn multi_shared_compares_provided(context: MultiInputReferenceContext) {
         for count in 1..10 {
-            multi_shared_compares_provided_helper(&context, count);
+            multi_shared_compares_provided_helper(&mut context, count);
         }
     }
-    fn multi_shared_compares_provided_helper(context: &MultiInputReferenceContext, count: u32) {
+    fn multi_shared_compares_provided_helper(context: &mut MultiInputReferenceContext, count: u32) {
         expect!(context, dyn MultiInputReferenceFoo.shared_foo(EXPECTED_VALUE, EXPECTED_LONG), count);
         let mut test_long = EXPECTED_LONG;
 
@@ -80,10 +80,10 @@ mod tests {
     #[whey]
     fn multi_exclusive_compares_provided(context: MultiInputReferenceContext) {
         for count in 1..10 {
-            multi_exclusive_compares_provided_helper(&context, count);
+            multi_exclusive_compares_provided_helper(&mut context, count);
         }
     }
-    fn multi_exclusive_compares_provided_helper(context: &MultiInputReferenceContext, count: u32) {
+    fn multi_exclusive_compares_provided_helper(context: &mut MultiInputReferenceContext, count: u32) {
         expect!(context, dyn MultiInputReferenceFoo.exclusive_foo(EXPECTED_VALUE, EXPECTED_LONG), count);
         let mut test_long = EXPECTED_LONG;
 

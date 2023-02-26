@@ -107,7 +107,7 @@ impl WheyContext {
 
                 quote! { 
                     impl #impl_generics curds_core_abstraction::whey::MockingContext<#whey_name> for #context_ident #type_generics #where_clause {
-                        fn mocked(&self) -> #whey_name {
+                        fn mocked(&mut self) -> #whey_name {
                             self.generate()
                         }
                     }
@@ -121,7 +121,7 @@ impl WheyContext {
 
                 quote! { 
                     impl #impl_generics curds_core_abstraction::whey::MockingContext<#whey_name> for #context_ident #type_generics #where_clause {
-                        fn mocked(&self) -> #whey_name {
+                        fn mocked(&mut self) -> #whey_name {
                             self.generate()
                         }
                     }
@@ -134,7 +134,7 @@ impl WheyContext {
                 let core_name = &mocked.core_name;
 
                 quote! { 
-                    <Self as curds_core_abstraction::dependency_injection::ServiceGenerator<std::rc::Rc<#core_name>>>::generate(&self).reset();
+                    <Self as curds_core_abstraction::dependency_injection::ServiceGenerator<std::rc::Rc<std::sync::RwLock<#core_name>>>>::generate(self).write().unwrap().reset();
                 }
             })
             .collect();
@@ -144,7 +144,7 @@ impl WheyContext {
                 let core_name = &singleton.core_name;
 
                 quote! { 
-                    <Self as curds_core_abstraction::dependency_injection::ServiceGenerator<std::rc::Rc<#core_name>>>::generate(&self).reset();
+                    <Self as curds_core_abstraction::dependency_injection::ServiceGenerator<std::rc::Rc<std::sync::RwLock<#core_name>>>>::generate(self).write().unwrap().reset();
                 }
             })
             .collect();
@@ -158,8 +158,8 @@ impl WheyContext {
             #(#mocked_generators)*
             #(#mocked_singleton_generators)*
 
-            impl #impl_generics curds_core_abstraction::whey::Whey for #context_ident #type_generics #where_clause {
-                fn reset(&self) {
+            impl #impl_generics #context_ident #type_generics #where_clause {
+                fn reset(&mut self) {
                     #(#mocked_resets)*
                     #(#mocked_singleton_resets)*
                 }

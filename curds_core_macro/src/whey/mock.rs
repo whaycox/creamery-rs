@@ -65,12 +65,12 @@ impl WheyMock {
             #[injected]
             #[cfg(test)]
             #vis struct #whey_name #generics {
-                core: std::rc::Rc<#core_name>,
+                core: std::rc::Rc<std::sync::RwLock<#core_name>>,
             }
 
             impl #impl_generics #whey_name #type_generics #where_clause {
                 pub fn assert(&self) {
-                    self.core.assert();
+                    todo!("assert todo")
                 }
                 #(#assert_methods)*
             }
@@ -86,7 +86,8 @@ impl WheyMock {
 
         quote! {
             pub fn #assert_ident(&self, expected_calls: u32) {
-                self.core.#assert_ident(expected_calls);
+                let core = self.core.read().unwrap();
+                core.#assert_ident(expected_calls);
             }
         }
     }
@@ -105,9 +106,10 @@ impl WheyMock {
 
         quote! {
             #signature {
-                self.core.#input_compare_ident(#(#input_signature),*);
-                self.core.#call_count_ident();
-                self.core.#dummy_ident()
+                let mut core = self.core.write().unwrap();
+                //core.#input_compare_ident(#(#input_signature),*);
+                core.#call_count_ident();
+                //core.#dummy_ident()
             }
         }
     }

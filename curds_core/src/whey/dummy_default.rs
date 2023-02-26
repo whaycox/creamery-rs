@@ -27,6 +27,7 @@ mod tests {
         fn returning_exclusive_foo(&mut self) -> u32;
     }
 
+
     #[whey_mock]
     trait DerivedFoo {
         fn returning_foo(&self) -> DerivedStruct;

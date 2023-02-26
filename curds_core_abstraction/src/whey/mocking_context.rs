@@ -1,3 +1,3 @@
 pub trait MockingContext<TWheyMock> {
-    fn mocked(&self) -> TWheyMock;
+    fn mocked(&mut self) -> TWheyMock;
 }

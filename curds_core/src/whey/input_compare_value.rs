@@ -18,10 +18,10 @@ mod tests {
     #[whey]
     fn shared_compares_provided(context: ValueContext) {
         for count in 1..10 {
-            shared_compares_provided_helper(&context, count);
+            shared_compares_provided_helper(&mut context, count);
         }
     }
-    fn shared_compares_provided_helper(context: &ValueContext, count: u32) {
+    fn shared_compares_provided_helper(context: &mut ValueContext, count: u32) {
         expect!(context, dyn ValueFoo.shared_foo(EXPECTED_VALUE), count);
 
         for _ in 0..count {
@@ -35,10 +35,10 @@ mod tests {
     #[whey]
     fn exclusive_compares_provided(context: ValueContext) {
         for count in 1..10 {
-            exclusive_compares_provided_helper(&context, count);
+            exclusive_compares_provided_helper(&mut context, count);
         }
     }
-    fn exclusive_compares_provided_helper(context: &ValueContext, count: u32) {
+    fn exclusive_compares_provided_helper(context: &mut ValueContext, count: u32) {
         expect!(context, dyn ValueFoo.exclusive_foo(EXPECTED_VALUE), count);
 
         for _ in 0..count {
@@ -62,10 +62,10 @@ mod tests {
     #[whey]
     fn multi_shared_compares_provided(context: MultiInputValueContext) {
         for count in 1..10 {
-            multi_shared_compares_provided_helper(&context, count);
+            multi_shared_compares_provided_helper(&mut context, count);
         }
     }
-    fn multi_shared_compares_provided_helper(context: &MultiInputValueContext, count: u32) {
+    fn multi_shared_compares_provided_helper(context: &mut MultiInputValueContext, count: u32) {
         expect!(context, dyn MultiInputValueFoo.shared_foo(EXPECTED_VALUE, EXPECTED_LONG), count);
 
         for _ in 0..count {
@@ -79,10 +79,10 @@ mod tests {
     #[whey]
     fn multi_exclusive_compares_provided(context: MultiInputValueContext) {
         for count in 1..10 {
-            multi_exclusive_compares_provided_helper(&context, count);
+            multi_exclusive_compares_provided_helper(&mut context, count);
         }
     }
-    fn multi_exclusive_compares_provided_helper(context: &MultiInputValueContext, count: u32) {
+    fn multi_exclusive_compares_provided_helper(context: &mut MultiInputValueContext, count: u32) {
         expect!(context, dyn MultiInputValueFoo.exclusive_foo(EXPECTED_VALUE, EXPECTED_LONG), count);
 
         for _ in 0..count {

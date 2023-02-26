@@ -48,7 +48,6 @@ impl WheyExpectation {
     pub fn quote(self) -> TokenStream {
         let context = self.context;
         let core_name = WheyMockedType::generate_core_name(&self.mocked_trait);
-        let expect_ident = WheyMockCore::expect_ident(&self.expected_call);
         let expected_values = self.expected_values;
         let times = self.times;
         let expect_return = match self.return_value {
@@ -63,10 +62,10 @@ impl WheyExpectation {
 
         quote! {
             {
-                let mut core: std::rc::Rc<#core_name> = #context.generate();
-                let mut mutable_core = std::rc::Rc::get_mut(&mut core).unwrap();
-                mutable_core.#expect_ident((#expected_values), #times);
-                #expect_return
+                let mut core: std::rc::Rc<std::sync::RwLock<#core_name>> = #context.generate();
+                let mut mutable_core = core.write().unwrap();
+                //mutable_core.expectation((#expected_values), #times);
+                //#expect_return
             }
         }
     }
