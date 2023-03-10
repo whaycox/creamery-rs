@@ -23,13 +23,11 @@ mod tests {
     }
     fn shared_compares_provided_helper(context: &mut ReferenceContext, count: u32) {
         expect!(context, dyn ReferenceFoo.shared_foo(EXPECTED_VALUE), count);
+        let foo: Box<dyn ReferenceFoo> = context.generate();
 
         for _ in 0..count {
-            let foo: Box<dyn ReferenceFoo> = context.generate();
             foo.shared_foo(&EXPECTED_VALUE);
         }
-
-        context.mocked().assert();
     }
 
     #[whey]
@@ -40,13 +38,11 @@ mod tests {
     }
     fn exclusive_compares_provided_helper(context: &mut ReferenceContext, count: u32) {
         expect!(context, dyn ReferenceFoo.exclusive_foo(EXPECTED_VALUE), count);
+        let mut foo: Box<dyn ReferenceFoo> = context.generate();
 
         for _ in 0..count {
-            let mut foo: Box<dyn ReferenceFoo> = context.generate();
             foo.exclusive_foo(&EXPECTED_VALUE);
         }
-
-        context.mocked().assert();
     }
 
     #[whey_mock]
@@ -68,13 +64,11 @@ mod tests {
     fn multi_shared_compares_provided_helper(context: &mut MultiInputReferenceContext, count: u32) {
         expect!(context, dyn MultiInputReferenceFoo.shared_foo(EXPECTED_VALUE, EXPECTED_LONG), count);
         let mut test_long = EXPECTED_LONG;
+        let foo: Box<dyn MultiInputReferenceFoo> = context.generate();
 
         for _ in 0..count {
-            let foo: Box<dyn MultiInputReferenceFoo> = context.generate();
             foo.shared_foo(&EXPECTED_VALUE, &mut test_long);
         }
-        
-        context.mocked().assert();
     }
 
     #[whey]
@@ -86,12 +80,10 @@ mod tests {
     fn multi_exclusive_compares_provided_helper(context: &mut MultiInputReferenceContext, count: u32) {
         expect!(context, dyn MultiInputReferenceFoo.exclusive_foo(EXPECTED_VALUE, EXPECTED_LONG), count);
         let mut test_long = EXPECTED_LONG;
+        let mut foo: Box<dyn MultiInputReferenceFoo> = context.generate();
 
         for _ in 0..count {
-            let mut foo: Box<dyn MultiInputReferenceFoo> = context.generate();
             foo.exclusive_foo(&EXPECTED_VALUE, &mut test_long);
         }
-        
-        context.mocked().assert();
     }
 }

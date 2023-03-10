@@ -27,7 +27,6 @@ mod tests {
         fn returning_exclusive_foo(&mut self) -> u32;
     }
 
-
     #[whey_mock]
     trait DerivedFoo {
         fn returning_foo(&self) -> DerivedStruct;
@@ -45,7 +44,7 @@ mod tests {
     #[mocks(dyn DerivedFoo)]
     #[mocks(dyn StructFoo)]
     struct DefaultContext {}
-
+ 
     #[whey]
     fn shared_returns_default(context: DefaultContext) {
         let foo: Box<dyn Foo> = context.generate();

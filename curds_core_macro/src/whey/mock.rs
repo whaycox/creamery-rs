@@ -24,9 +24,7 @@ impl WheyMock {
             _ => None,
         }
     }
-    pub fn input_compare_ident(ident: &Ident) -> Ident { format_ident!("input_compare_{}", ident) }
     pub fn call_count_ident(ident: &Ident) -> Ident { format_ident!("call_count_{}", ident) }
-    pub fn dummy_ident(ident: &Ident) -> Ident { format_ident!("dummy_{}", ident) }
     pub fn assert_ident(ident: &Ident) -> Ident { format_ident!("assert_{}", ident) }
 
     pub fn quote(self) -> TokenStream {
@@ -46,15 +44,10 @@ impl WheyMock {
         let whey_name = format_ident!("Whey{}", mocked_trait.ident);
         let core_name = format_ident!("WheyCore{}", mocked_trait.ident);
         let generics = &mocked_trait.generics;
-        let (impl_generics, type_generics, where_clause) = mocked_trait.generics.split_for_impl();
 
         let mocked_items: Vec<&TraitItemMethod> = mocked_trait.items
             .iter()
             .filter_map(|item| Self::filter_items(item))
-            .collect();
-        let assert_methods: Vec<TokenStream> = mocked_items
-            .iter()
-            .map(|item| Self::quote_assert(item))
             .collect();
         let mocked_impls: Vec<TokenStream> = mocked_items
             .iter()
@@ -65,14 +58,7 @@ impl WheyMock {
             #[injected]
             #[cfg(test)]
             #vis struct #whey_name #generics {
-                core: std::rc::Rc<std::sync::RwLock<#core_name>>,
-            }
-
-            impl #impl_generics #whey_name #type_generics #where_clause {
-                pub fn assert(&self) {
-                    todo!("assert todo")
-                }
-                #(#assert_methods)*
+                core: #core_name,
             }
 
             #[cfg(test)]
@@ -93,7 +79,7 @@ impl WheyMock {
     }
     fn quote_impl(method: &TraitItemMethod) -> TokenStream {
         let signature = &method.sig;
-        let input_compare_ident = Self::input_compare_ident(&method.sig.ident);
+        let consume_expectation = WheyMockCore::consume_expectation_ident(&method.sig.ident);
         let mut input_signature: Vec<&Box<Pat>> = Vec::new();
         for input in &method.sig.inputs {
             match input {
@@ -101,15 +87,14 @@ impl WheyMock {
                 FnArg::Typed(ty) => input_signature.push(&ty.pat),
             }
         }
-        let call_count_ident = Self::call_count_ident(&method.sig.ident);
-        let dummy_ident = Self::dummy_ident(&method.sig.ident);
+        let mut input_values = quote! {};
+        if input_signature.len() > 0 {
+            input_values = quote! { (#(#input_signature),*) };
+        }
 
         quote! {
             #signature {
-                let mut core = self.core.write().unwrap();
-                //core.#input_compare_ident(#(#input_signature),*);
-                core.#call_count_ident();
-                //core.#dummy_ident()
+                self.core.#consume_expectation(#input_values)
             }
         }
     }

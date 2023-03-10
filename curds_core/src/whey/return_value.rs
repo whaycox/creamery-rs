@@ -23,14 +23,10 @@ mod tests {
     fn shared_returns_expected_values_helper(context: &mut ValueReturningContext, count: u32) {
         for i in 0..count {
             expect!(context, dyn ValueReturningFoo.shared_foo() -> EXPECTED_RETURN - i, 1);
-        }
-
-        for i in 0..count {
             let foo: Box<dyn ValueReturningFoo> = context.generate();
+
             assert_eq!(EXPECTED_RETURN - i, foo.shared_foo());
         }
-
-        context.mocked().assert();
     }
 
     #[whey]
@@ -42,13 +38,9 @@ mod tests {
     fn exclusive_returns_expected_values_helper(context: &mut ValueReturningContext, count: u32) {
         for i in 0..count {
             expect!(context, dyn ValueReturningFoo.exclusive_foo() -> EXPECTED_RETURN - i, 1);
-        }
-
-        for i in 0..count {
             let mut foo: Box<dyn ValueReturningFoo> = context.generate();
+            
             assert_eq!(EXPECTED_RETURN - i, foo.exclusive_foo());
         }
-
-        context.mocked().assert();
     }
 }

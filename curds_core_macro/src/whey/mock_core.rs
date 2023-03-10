@@ -10,17 +10,16 @@ impl WheyMockCore {
         }
     }
 
-    pub fn namespace_ident(item: &ItemTrait) -> Ident {
-        let name = &item.ident;
-        return format_ident!("Whey{}Internals", name);
-    }
-    pub fn expect_return_ident(ident: &Ident) -> Ident { format_ident!("expect_return_{}", ident) }
+    pub fn load_expectation_ident(ident: &Ident) -> Ident { format_ident!("load_{}", ident) }
+    pub fn consume_expectation_ident(ident: &Ident) -> Ident { format_ident!("consume_{}", ident) }
+    fn core_name(ident: &Ident) -> Ident { format_ident!("WheyCore{}", ident) }
+    fn expect_ident(ident: &Ident) -> Ident { format_ident!("expect_{}", ident) }
+    fn dummy_ident(ident: &Ident) -> Ident { format_ident!("dummy_{}", ident) }
 
     pub fn quote(self) -> TokenStream {
-        let namespace = Self::namespace_ident(&self.mocked_trait);
         let mocked_trait = self.mocked_trait;
         let vis = &mocked_trait.vis;
-        let core_name = format_ident!("WheyCore{}", mocked_trait.ident);
+        let core_name = Self::core_name(&mocked_trait.ident);
         let generics = &mocked_trait.generics;
         let (impl_generics, type_generics, where_clause) = mocked_trait.generics.split_for_impl();
         
@@ -30,35 +29,19 @@ impl WheyMockCore {
             .collect();
         let fields: Vec<TokenStream> = mocked_items
             .iter()
-            .flat_map(|item| Self::quote_fields(item, &namespace))
+            .flat_map(|item| Self::quote_fields(item, &core_name))
             .collect();
-        // let expectations: Vec<TokenStream> = mocked_items
-        //     .iter()
-        //     .map(|item| Self::quote_expectations(item))
-        //     .collect();
         let impls: Vec<TokenStream> = mocked_items
             .iter()
-            .flat_map(|item| Self::quote_impls(item))
+            .flat_map(|item| Self::quote_impls(item, &core_name))
             .collect();
-        // let returns: Vec<TokenStream> = mocked_items
-        //     .iter()
-        //     .flat_map(|item| Self::quote_returns(item))
-        //     .collect();
-        // let assert_expectations: Vec<TokenStream> = mocked_items
-        //     .iter()
-        //     .map(|item| Self::quote_assert_expectations(item))
-        //     .collect();
-        let asserts: Vec<TokenStream> = mocked_items
+        let assert_expectations: Vec<TokenStream> = mocked_items
             .iter()
-            .map(|item| Self::quote_asserts(item))
-            .collect();
-        let resets: Vec<TokenStream> = mocked_items
-            .iter()
-            .map(|item| Self::quote_resets(item))
+            .map(|item| Self::quote_assert_expectations(item))
             .collect();
         let mocked_expectations: Vec<TokenStream> = mocked_items
             .iter()
-            .map(|item| WheyMockExpectation::quote_struct(item))
+            .map(|item| WheyMockExpectation::quote_struct(item, &core_name))
             .collect();
 
         quote! {
@@ -70,233 +53,157 @@ impl WheyMockCore {
             }
         
             impl #impl_generics #core_name #type_generics #where_clause {
-                // #(#expectations)*
                 #(#impls)*
-                // #(#returns)*
 
-                // pub fn assert(&self) {
-                //     #(#assert_expectations)*
-                // }
-                #(#asserts)*
-
-                pub fn reset(&mut self) {
-                    #(#resets)*
+                pub fn assert(&self) {
+                    #(#assert_expectations)*
+                }
+            }
+            impl #impl_generics Drop for #core_name #type_generics #where_clause {
+                fn drop(&mut self) {
+                    self.assert()
                 }
             }
 
-            #[allow(non_snake_case)]
-            mod #namespace {
-                #(#mocked_expectations)*
-            }
+            #(#mocked_expectations)*
         }
     }
     
-    fn quote_fields(method: &TraitItemMethod, namespace: &Ident) -> Vec<TokenStream> {
-        vec![
-            Self::quote_call_count_field(method),
-            Self::quote_expectation_field(method, namespace),
-        ]
-    }
-    fn quote_expectation_field(method: &TraitItemMethod, namespace: &Ident) -> TokenStream {
-        let expectation_name = WheyMockExpectation::expectation_name(&method.sig.ident);
-
-        quote! {
-            #[defaulted]
-            #expectation_name: Vec<#namespace::#expectation_name>
-        }
-    }
-    fn quote_call_count_field(method: &TraitItemMethod) -> TokenStream {
-        let call_count_ident = WheyMock::call_count_ident(&method.sig.ident);
-
-        quote! {
-            #[defaulted]
-            #call_count_ident: u32
-        }
-    }
-
-    fn quote_expectations(method: &TraitItemMethod) -> TokenStream {
-        todo!()
-        // let expect_ident = Self::expect_ident(&method.sig.ident);
-        // let input_compare_ident = WheyMock::input_compare_ident(&method.sig.ident);
-        // let input_signature = Self::quote_expectation_input_signature(&method.sig);
-
-        // quote! {
-        //     pub fn #expect_ident(&mut self, expected: (#(#input_signature),*), times: u32) {
-        //         self.#expect_ident = true;
-        //     }
-        // }
-    }
-
-    fn quote_impls(method: &TraitItemMethod) -> Vec<TokenStream> {
-        vec![
-            //Self::quote_input_comparison_impls(method),
-            Self::quote_call_count_impls(method),
-        ]
-    }
-    fn quote_input_comparison_impls(method: &TraitItemMethod) -> TokenStream {
-        todo!();
-        //let expect_ident = Self::expect_ident(&method.sig.ident);
-        let input_compare_ident = WheyMock::input_compare_ident(&method.sig.ident);
-        let mut input_signature: Vec<&FnArg> = Vec::new();
-        for input in &method.sig.inputs {
-            match input {
-                FnArg::Receiver(_) => {},
-                FnArg::Typed(_) => input_signature.push(input),
-            }
-        }
-        let mut input_values: Vec<TokenStream> = Vec::new();
-        for input in &method.sig.inputs {
-            match input {
-                FnArg::Receiver(_) => {},
-                FnArg::Typed(ty) => {
-                    let input_name = &ty.pat;
-                    match &*ty.ty {
-                        Type::Reference(_) => {
-                            input_values.push(quote!{ *#input_name });
-                        },
-                        _ => input_values.push(quote!{ #input_name }),
-                    }
-                },
-            }
-        }
-        let failed_expectation = format!("failed expectation for {}", method.sig.ident);
-        let unexpected_invocation = format!("unexpected invocation for {}", method.sig.ident);
-
-        quote! {
-            pub fn #input_compare_ident(&mut self, #(#input_signature),*) {
-                todo!("input compare")
-                /* if self.#input_compare_ident.len() > 0 {
-                    let mut expectation = self.#input_compare_ident
-                        .pop()
-                        .unwrap();
-                    let comparison = expectation.1 == (#(#input_values),*);
-                    if expectation.0 > 1 {
-                        expectation.0 -= 1;
-                        self.#input_compare_ident
-                            .push(expectation);
-                    }
-                    if !comparison {
-                        panic!(#failed_expectation);
-                    }
-                }
-                else if self.#expect_ident {
-                    panic!(#unexpected_invocation);
-                } */
-            }
-        }
-    }
-    fn quote_call_count_impls(method: &TraitItemMethod) -> TokenStream {
-        let call_count_ident = WheyMock::call_count_ident(&method.sig.ident);
-
-        quote! {
-            pub fn #call_count_ident(&mut self) {
-                self.#call_count_ident += 1;
-            }
-        }
-    }
-
-    fn quote_returns(method: &TraitItemMethod) -> Vec<TokenStream> {
-        let mut returns = vec![
-            Self::quote_dummy_returns(method),
+    fn quote_fields(method: &TraitItemMethod, core_name: &Ident) -> Vec<TokenStream> {
+        let mut fields = vec![
+            Self::quote_expectation_field(method, core_name),
         ];
-
-        returns
-    }
-    fn quote_dummy_returns(method: &TraitItemMethod) -> TokenStream {
-        let dummy_ident = WheyMock::dummy_ident(&method.sig.ident);
-        let expect_return_ident = Self::expect_return_ident(&method.sig.ident);
-        let mut input_values: Vec<&Box<Pat>> = Vec::new();
-        for input in &method.sig.inputs {
-            match input {
-                FnArg::Receiver(_) => {},
-                FnArg::Typed(ty) => input_values.push(&ty.pat),
-            }
-        }
-
         match &method.sig.output {
-            ReturnType::Default => quote! {
-                pub fn #dummy_ident(&self) {}
-            },
+            ReturnType::Default => {},
             ReturnType::Type(_, ty) => {
                 match &**ty {
                     Type::Reference(ref_type) => {
-                        let unexpected_invocation = format!("unexpected invocation for {}", method.sig.ident);
-                        quote! {
-                            pub fn #dummy_ident(&mut self) -> #ty {
-                                &self.#expect_return_ident
-                                    .iter()
-                                    .find(|expectation| expectation.0 > 0)
-                                    .map(|expectation| &expectation.1)
-                                    .unwrap()
-                            }
-                        }
+                        let value_type = Box::new(Type::from(*ref_type.elem.clone()));
+                        fields.push(Self::quote_dummy_field(method, &value_type));
                     },
-                    Type::Path(_) => {
-                        quote! {
-                            pub fn #dummy_ident(&mut self) -> #ty {
-                                if self.#expect_return_ident.len() > 0 {
-                                    let mut expectation = self.#expect_return_ident
-                                        .pop()
-                                        .unwrap();
-                                    let return_value = expectation.1.clone();
-                                    if expectation.0 > 1 {
-                                        expectation.0 -= 1;
-                                        self.#expect_return_ident
-                                            .push(expectation);
-                                    }
-                                    return return_value;
-                                }
-                                curds_core_abstraction::whey::DummyDefault::dummy()
-                            }
-                        }
-                    },
-                    _ => quote! {},
+                    _ => fields.push(Self::quote_dummy_field(method, ty)),
                 }
-            }
+            },
         }
-    }
 
-    fn quote_asserts(method: &TraitItemMethod) -> TokenStream {
-        let assert_ident = WheyMock::assert_ident(&method.sig.ident);
-        let call_count_ident = WheyMock::call_count_ident(&method.sig.ident);
+        fields
+    }
+    fn quote_expectation_field(method: &TraitItemMethod, core_name: &Ident) -> TokenStream {
+        let expect_ident = Self::expect_ident(&method.sig.ident);
+        let expectation_name = WheyMockExpectation::expectation_name(&method.sig.ident, core_name);
 
         quote! {
-            pub fn #assert_ident(&self, expected_calls: u32) {
-                assert_eq!(expected_calls, self.#call_count_ident)
+            #[defaulted]
+            #expect_ident: Vec<#expectation_name>
+        }
+    }
+    fn quote_dummy_field(method: &TraitItemMethod, dummy_type: &Box<Type>) -> TokenStream {
+        let dummy_name = Self::dummy_ident(&method.sig.ident);
+
+        quote! {
+            #[defaulted(curds_core_abstraction::whey::DummyDefault::dummy())]
+            #dummy_name: #dummy_type
+        }
+    }
+
+    fn quote_impls(method: &TraitItemMethod, core_name: &Ident) -> Vec<TokenStream> {
+        vec![
+            Self::quote_expectation_load(method, core_name),
+            Self::quote_expectation_consume(method),
+        ]
+    }
+    fn quote_expectation_load(method: &TraitItemMethod, core_name: &Ident) -> TokenStream {
+        let load_expectation = Self::load_expectation_ident(&method.sig.ident);
+        let expectation_ident = Self::expect_ident(&method.sig.ident);
+        let expectation_type = WheyMockExpectation::expectation_name(&method.sig.ident, core_name);
+        let mut load_signature = vec![quote! { &mut self }];
+        let mut expectation_fields = vec![quote! { times: std::cell::Cell::new(times) }];
+        match WheyMockExpectation::parse_expectation_input_types(&method.sig) {
+            Some(expected_values) => {
+                load_signature.push(quote! { expected: (#(#expected_values),*) });
+                expectation_fields.push(quote! { input_comparison: expected });
+            },
+            None => load_signature.push(quote! { expected: () }),
+        }
+        match WheyMockExpectation::parse_expectation_return_type(&method.sig) {
+            Some(expected_return) => {
+                load_signature.push(quote! { expected_return: Option<#expected_return> });
+                expectation_fields.push(quote! { expected_return: expected_return.unwrap_or(curds_core_abstraction::whey::DummyDefault::dummy()) });
+            },
+            None => load_signature.push(quote! { expected_return: Option<()> }),
+        }
+        load_signature.push(quote! { times: u32 });
+        quote! {
+            pub fn #load_expectation(#(#load_signature),*) {
+                self.#expectation_ident.push(#expectation_type {
+                    #(#expectation_fields),*
+                });
             }
         }
     }
-    fn quote_assert_expectations(method: &TraitItemMethod) -> TokenStream {
-        let input_compare_ident = WheyMock::input_compare_ident(&method.sig.ident);
-        let failure = format!("unfulfilled expectations for {}", method.sig.ident);
-        let return_expectations = match &method.sig.output {
-            ReturnType::Default => quote! {},
-            ReturnType::Type(_, _) => {
-                let expect_return_ident = Self::expect_return_ident(&method.sig.ident);
-                quote! {
-                    todo!("asserts");
-                    // if self.#expect_return_ident.borrow().len() > 0 {
-                    //     panic!(#failure);
-                    // }
-                }
-            }
+    fn quote_expectation_consume(method: &TraitItemMethod) -> TokenStream {
+        let consume_expectation = Self::consume_expectation_ident(&method.sig.ident);
+        let expect_ident = Self::expect_ident(&method.sig.ident);
+        let mut input_name = quote! {};
+        let mut input_signature: Vec<TokenStream> = vec![];
+        let mut iterate_tokens = quote! { self.#expect_ident.iter().find(|expectation| !expectation.is_consumed()) };
+        match &method.sig.inputs.first().unwrap() {
+            FnArg::Receiver(receiver) => match &receiver.mutability {
+                Some(_) => {
+                    input_signature.push(quote! { &mut self });
+                    iterate_tokens = quote! { self.#expect_ident.iter_mut().find(|expectation| !expectation.is_consumed()) };
+                },
+                None => input_signature.push(quote! { &self }),
+            },
+            _ => {},
+        }
+        match WheyMockExpectation::parse_consume_input_types(&method.sig) {
+            Some(types) => {
+                input_name = quote! { expected };
+                input_signature.push(quote! { expected: (#(#types),*) });
+            },
+            None => {},
+        }
+        let dummy_name = Self::dummy_ident(&method.sig.ident);
+        let mut return_type: Option<TokenStream> = None;
+        let failure = format!("unexpected invocation for {}", method.sig.ident);
+        let mut unexpected_return = quote! { {} };
+        match &method.sig.output {
+            ReturnType::Default => {},
+            ReturnType::Type(_, ty) => {
+                return_type = Some(quote! { -> #ty });
+                unexpected_return = match &**ty {
+                    Type::Reference(reference_type) => match &reference_type.mutability {
+                        Some(_) => quote!{ &mut self.#dummy_name },
+                        None => quote!{ &self.#dummy_name },
+                    },
+                    _ => quote!{ self.#dummy_name.clone() },
+                };
+            },
         };
 
         quote! {
-            if self.#input_compare_ident.len() > 0 {
-                panic!(#failure);
+            pub fn #consume_expectation(#(#input_signature),*) #return_type {
+                if self.#expect_ident.len() == 0 {
+                    #unexpected_return
+                }
+                else {
+                    match #iterate_tokens {
+                        Some(expectation) => expectation.consume(#input_name),
+                        None => panic!(#failure),
+                    }
+                }
             }
-            #return_expectations
-        }      
+        }
     }
 
-    fn quote_resets(method: &TraitItemMethod) -> TokenStream {
-        let call_count_ident = WheyMock::call_count_ident(&method.sig.ident);
-        let expectation_name = WheyMockExpectation::expectation_name(&method.sig.ident);
-
+    fn quote_assert_expectations(method: &TraitItemMethod) -> TokenStream {
+        let expect_ident = Self::expect_ident(&method.sig.ident);
+        let failure = format!("unfulfilled expectations for {}", method.sig.ident);
         quote! {
-            self.#call_count_ident = 0;
-            self.#expectation_name.clear();
-        }
+            if self.#expect_ident.iter().any(|expectation| !expectation.is_consumed()) {
+                panic!(#failure);
+            }
+        }      
     }
 }

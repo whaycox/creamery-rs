@@ -47,25 +47,21 @@ impl Parse for WheyExpectation {
 impl WheyExpectation {
     pub fn quote(self) -> TokenStream {
         let context = self.context;
-        let core_name = WheyMockedType::generate_core_name(&self.mocked_trait);
+        let load_core = WheyMockCore::load_expectation_ident(&self.mocked_trait.get_ident().unwrap());
+        let load_expectation = WheyMockCore::load_expectation_ident(&self.expected_call);
         let expected_values = self.expected_values;
-        let times = self.times;
-        let expect_return = match self.return_value {
-            Some(expected_return) => {
-                let expect_return_ident = WheyMockCore::expect_return_ident(&self.expected_call);
-                quote! {
-                    mutable_core.#expect_return_ident((#expected_return), #times);
-                }
-            },
-            None => quote! {},
+        let mut loaded_values = vec![quote! { (#expected_values) }];
+        match self.return_value {
+            Some(expected_return) => loaded_values.push(quote! { Some(#expected_return) }),
+            None => loaded_values.push(quote! { Some(()) }),
         };
+        let times = self.times;
+        loaded_values.push(quote! { #times });
 
         quote! {
             {
-                let mut core: std::rc::Rc<std::sync::RwLock<#core_name>> = #context.generate();
-                let mut mutable_core = core.write().unwrap();
-                //mutable_core.expectation((#expected_values), #times);
-                //#expect_return
+                let mut core = #context.#load_core();
+                core.#load_expectation(#(#loaded_values),*);
             }
         }
     }
