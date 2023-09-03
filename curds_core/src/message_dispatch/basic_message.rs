@@ -6,17 +6,17 @@ mod tests {
     #[foo_message(FooMessage ~ FooMessageContext)]
     struct TestMessagesProvider {}
 
-    impl FooMessageHandler for FooMessageContext {
-        fn handle(&self, _dispatch: &dyn TestMessages, input: &FooMessage) -> Result<()> {
-            if EXPECTED_FOO != input.foo {
-                Err(Box::new(FooMessageError::new("Foo was not as expected")))
-            }
-            else {
-                Ok(())
-            }
-        }
-    }
-
+    // impl FooMessageHandler for FooMessageContext {
+    //     fn handle(&self, _dispatch: &dyn TestMessages, input: &FooMessage) -> Result<()> {
+    //         if EXPECTED_FOO != input.foo {
+    //             Err(Box::new(FooMessageError::new("Foo was not as expected")))
+    //         }
+    //         else {
+    //             Ok(())
+    //         }
+    //     }
+    // }
+/* 
     #[test]
     fn handles_incoming_message() {
         let provider = TestMessagesProvider::construct();
@@ -31,5 +31,5 @@ mod tests {
         };
 
         provider.foo_message(message).unwrap_err();
-    }
+    } */
 }

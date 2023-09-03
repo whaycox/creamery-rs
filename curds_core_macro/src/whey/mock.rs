@@ -1,40 +1,76 @@
 use super::*;
 
+const MOCKED_RETURN_IDENTIFIER: &str = "mocked_return";
+
 pub struct WheyMock {
-    mocked_trait: ItemTrait,
-    core: WheyMockCore,
+    pub mocked_trait: ItemTrait,
+    //pub mocked_returns: HashSet<Ident>,
 }
 
 impl Parse for WheyMock {
     fn parse(input: ParseStream) -> Result<Self> {
-        let mocked_trait: ItemTrait = input.parse()?;
-        let core = WheyMockCore::new(mocked_trait.clone());
+        let mut mocked_trait: ItemTrait = input.parse()?;
+        //let mocked_returns = Self::parse_mocked_returns(&mut mocked_trait)?;
         
         Ok(WheyMock {
             mocked_trait,
-            core,
+            //mocked_returns,
         })
     }
 }
 
 impl WheyMock {
+    fn core(&self) -> WheyMockCore { WheyMockCore::new(&self) }
+    
     pub fn filter_items(item: &TraitItem) -> Option<&TraitItemMethod> {
         match item {
             TraitItem::Method(method) => Some(method),
             _ => None,
         }
     }
-    pub fn call_count_ident(ident: &Ident) -> Ident { format_ident!("call_count_{}", ident) }
-    pub fn assert_ident(ident: &Ident) -> Ident { format_ident!("assert_{}", ident) }
+
+    fn parse_mocked_returns(mocked_trait: &mut ItemTrait) -> Result<HashSet<Ident>> {
+        let mut types: HashSet<Ident> = HashSet::new();
+        for item in &mut mocked_trait.items {
+            match item {
+                TraitItem::Method(method) => {
+                    match &method.sig.output {
+                        ReturnType::Type(_, _) => {
+                            let length = method.attrs.len();
+                            if length > 0 {
+                                let mut attribute_index = 0;
+                                while attribute_index < length {
+                                    let attribute = &method.attrs[attribute_index];
+                                    if attribute.path.is_ident(MOCKED_RETURN_IDENTIFIER) {
+                                        let method_ident = method.sig.ident.clone();
+                                        
+                                        types.insert(method_ident);
+                                        method.attrs.remove(attribute_index);
+                                        break;
+                                    }
+
+                                    attribute_index = attribute_index + 1;
+                                }
+                            }
+                        },
+                        _ => {},
+                    }
+                },
+                _ => {},
+            }
+        }
+
+        Ok(types)
+    }
 
     pub fn quote(self) -> TokenStream {
-        let mocked_trait = self.mocked_trait;
-        let whey_mock = Self::quote_mocked_trait(&mocked_trait);
-        let core = self.core.quote();
+        let mocked_trait = &self.mocked_trait;
+        //let whey_mock = Self::quote_mocked_trait(&mocked_trait);
+        let core = self.core().quote();
 
         quote! {
             #mocked_trait
-            #whey_mock
+            //#whey_mock
             #core
         }
     }
@@ -64,16 +100,6 @@ impl WheyMock {
             #[cfg(test)]
             impl #base_name for #whey_name {
                 #(#mocked_impls)*
-            }
-        }
-    }
-    fn quote_assert(method: &TraitItemMethod) -> TokenStream {
-        let assert_ident = Self::assert_ident(&method.sig.ident);
-
-        quote! {
-            pub fn #assert_ident(&self, expected_calls: u32) {
-                let core = self.core.read().unwrap();
-                core.#assert_ident(expected_calls);
             }
         }
     }

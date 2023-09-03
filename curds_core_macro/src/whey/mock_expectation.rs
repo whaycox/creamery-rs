@@ -1,8 +1,18 @@
 use super::*;
 
-pub struct WheyMockExpectation {}
+pub struct WheyMockExpectation<'a> {
+    core: &'a WheyMockCore<'a>,
+    method: &'a TraitItemMethod,
+}
 
-impl  WheyMockExpectation {
+impl<'a>  WheyMockExpectation<'a> {
+    pub fn new(core: &'a WheyMockCore<'a>, method: &'a TraitItemMethod) -> Self {
+        Self {
+            core,
+            method,
+        }
+    }
+
     pub fn expectation_name(ident: &Ident, core_name: &Ident) -> Ident { format_ident!("{}_{}_Expectation", core_name, ident) }
 
     pub fn parse_expectation_input_types(signature: &Signature) -> Option<Vec<Box<Type>>> {
@@ -70,10 +80,10 @@ impl  WheyMockExpectation {
         }
     }
 
-    pub fn quote_struct(item: &TraitItemMethod, core_name: &Ident) -> TokenStream {
-        let name = Self::expectation_name(&item.sig.ident, core_name);
-        let fields = Self::quote_fields(item);
-        let consume = Self::quote_consume(item);
+    pub fn quote_struct(&self) -> TokenStream {
+        let name = Self::expectation_name(&self.method.sig.ident, &WheyMockCore::core_name(&self.core.mock.mocked_trait.ident));
+        let fields = Self::quote_fields(self.method);
+        let consume = Self::quote_consume(self.method);
 
         quote! {
             #[allow(non_camel_case_types)]

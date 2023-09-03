@@ -52,6 +52,10 @@ impl WheyContext {
         let item = &self.item;
         let context_ident = &item.ident;
         let (impl_generics, type_generics, where_clause) = item.generics.split_for_impl();
+        let test_type_generator = match test_type {
+            Some(test_ident) => quote! { #[generates(#test_ident)] },
+            None => quote! {},
+        };
 
         let mocked_traits = self.mocked_traits.quote_attributes();
         let core_references = self.mocked_traits.quote_core_reference(item);
@@ -60,6 +64,7 @@ impl WheyContext {
         quote! {
             #[service_provider]
             #(#mocked_traits)*
+            #test_type_generator
             #item
 
             #[allow(non_snake_case)]

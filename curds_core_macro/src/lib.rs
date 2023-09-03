@@ -1,6 +1,6 @@
 mod dependency_injection;
 mod whey;
-//mod message_dispatch;
+mod message_dispatch;
 
 use proc_macro::TokenStream;
 use syn::{*, parse::*, punctuated::*, spanned::*, token::Trait};
@@ -10,7 +10,7 @@ use rand::*;
 
 use dependency_injection::*;
 use whey::*;
-//use message_dispatch::*;
+use message_dispatch::*;
 
 #[proc_macro_attribute]
 pub fn injected(_attr: TokenStream, item: TokenStream) -> TokenStream {
@@ -33,7 +33,7 @@ pub fn derive_scoped(item: TokenStream) -> TokenStream {
         .into()
 }
 
-#[proc_macro_attribute]
+/* #[proc_macro_attribute]
 pub fn whey_context(attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut test_type: Option<Ident> = None;
     if !attr.is_empty() {
@@ -43,7 +43,7 @@ pub fn whey_context(attr: TokenStream, item: TokenStream) -> TokenStream {
     parse_macro_input!(item as WheyContext)
         .quote(test_type)
         .into()
-}
+} */
 
 #[proc_macro_attribute]
 pub fn whey_mock(_attr: TokenStream, item: TokenStream) -> TokenStream {
@@ -52,26 +52,24 @@ pub fn whey_mock(_attr: TokenStream, item: TokenStream) -> TokenStream {
         .into()
 }
 
-#[proc_macro_attribute]
+/* #[proc_macro_attribute]
 pub fn whey(_attr: TokenStream, item: TokenStream) -> TokenStream {
     parse_macro_input!(item as WheyTest)
         .quote()
         .into()
-}
+} */
 
-#[proc_macro]
+/* #[proc_macro]
 pub fn expect(item: TokenStream) -> TokenStream {
     parse_macro_input!(item as WheyExpectation)
         .quote()
         .into()  
-}
+} */
 
-/* 
-#[proc_macro_attribute]
+/* #[proc_macro_attribute]
 pub fn message_dispatch(attr: TokenStream, item: TokenStream) -> TokenStream {
     let message_trait = parse_macro_input!(attr as Ident);
     parse_macro_input!(item as DispatchDefinition)
         .quote(message_trait)
         .into()
-}
- */
+} */
