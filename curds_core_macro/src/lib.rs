@@ -33,7 +33,7 @@ pub fn derive_scoped(item: TokenStream) -> TokenStream {
         .into()
 }
 
-/* #[proc_macro_attribute]
+#[proc_macro_attribute]
 pub fn whey_context(attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut test_type: Option<Ident> = None;
     if !attr.is_empty() {
@@ -43,7 +43,7 @@ pub fn whey_context(attr: TokenStream, item: TokenStream) -> TokenStream {
     parse_macro_input!(item as WheyContext)
         .quote(test_type)
         .into()
-} */
+}
 
 #[proc_macro_attribute]
 pub fn whey_mock(_attr: TokenStream, item: TokenStream) -> TokenStream {

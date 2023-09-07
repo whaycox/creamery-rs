@@ -47,8 +47,8 @@ impl Parse for WheyExpectation {
 impl WheyExpectation {
     pub fn quote(self) -> TokenStream {
         let context = self.context;
-        let load_core = WheyMockCore::load_expectation_ident(&self.mocked_trait.get_ident().unwrap());
-        let load_expectation = WheyMockCore::load_expectation_ident(&self.expected_call);
+        let load_core = WheyMockCore::expect_input(&self.mocked_trait.get_ident().unwrap());
+        let load_expectation = WheyMockCore::expect_input(&self.expected_call);
         let expected_values = self.expected_values;
         let mut loaded_values = vec![quote! { (#expected_values) }];
         match self.return_value {

@@ -17,7 +17,11 @@ impl WheyMockedTrait {
             WheyMockedTrait::Transient(transient) => {
                 let mocked_trait = &transient.mocked_trait;
                 let whey_name = &transient.whey_name;
-                quote! { #[generates(dyn #mocked_trait ~ #whey_name)] }
+                let core_name = &transient.core_name;
+                quote! {
+                    #[generates(dyn #mocked_trait ~ #whey_name)] 
+                    #[generates_singleton(#core_name)] 
+                }
             },
             WheyMockedTrait::Singleton(singleton) => {
                 let mocked_trait = &singleton.mocked_trait;
@@ -27,29 +31,16 @@ impl WheyMockedTrait {
         }
     }
 
-    pub fn quote_core_reference(&self, context: &ItemStruct, identifier: &Ident) -> TokenStream {
-        let definition = self.definition();
-        let core_name = &definition.core_name;
-        let reference_name = WheyMockCore::load_expectation_ident(definition.mocked_trait.get_ident().unwrap());
+    pub fn quote_assert(&self) -> TokenStream {
+        let core_name = match self {
+            WheyMockedTrait::Transient(transient) => &transient.core_name,
+            WheyMockedTrait::Singleton(singleton) => &singleton.core_name,
+        };
 
         quote! {
-            pub fn #reference_name(&mut self) -> &mut #core_name {
-                self.#identifier.get_mut()
-            }
-        }
-    }
-
-    pub fn quote_core_generator(&self, context: &ItemStruct, identifier: &Ident) -> TokenStream {
-        let definition = self.definition();
-        let core_name = &definition.core_name;
-        let context_ident = &context.ident;
-        let (impl_generics, type_generics, where_clause) = context.generics.split_for_impl();
-
-        quote! {
-            impl #impl_generics curds_core_abstraction::dependency_injection::ServiceGenerator<#core_name> for #context_ident #type_generics #where_clause {
-                fn generate(&mut self) -> #core_name {
-                    self.#identifier.replace(#core_name::construct())
-                }
+            {
+                let core = curds_core_abstraction::dependency_injection::ServiceGenerator::<Rc<RwLock<#core_name>>>::generate(self);
+                core.write().unwrap().assert();
             }
         }
     }

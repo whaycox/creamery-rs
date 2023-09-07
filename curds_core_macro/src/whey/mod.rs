@@ -1,7 +1,6 @@
 use super::*;
 
 mod context;
-mod mocked_collection;
 mod test;
 mod mock;
 mod mock_core;
@@ -10,7 +9,6 @@ mod mocked_trait;
 mod expectation;
 
 pub use context::*;
-pub use mocked_collection::*;
 pub use test::*;
 pub use mock::*;
 pub use mock_core::*;
