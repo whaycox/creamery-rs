@@ -7,45 +7,39 @@ mod tests {
         fn parameterless(&self);
     }
 
-    #[whey_context]
-    #[mocks(VoidFoo)]
+    #[whey_context(WheyVoidFoo)]
+    #[mocks(dyn VoidFoo)]
     struct CallCountContext {}
 
-    #[test]
+    #[whey(CallCountContext ~ context)]
     fn void_parameterless_no_expectation() {
-        let mut context = CallCountContext::construct();
-        let mock: Box<dyn VoidFoo> = context.generate();
-
-        mock.parameterless();
+        context
+            .test_type()
+            .parameterless();
     }
 
-    #[test]
+    #[whey(CallCountContext ~ context)]
     fn void_parameterless_expectations() {
-        let mut context = CallCountContext::construct();
-        let core: Rc<RwLock<WheyCoreVoidFoo>> = context.generate();
-
         for expected_counts in 1..=10 {
-            core.write().unwrap().expect_calls_parameterless(expected_counts);
-
-            void_parameterless_expectations_helper(context.generate(), expected_counts);
+            expect_calls!(context ~ VoidFoo ~ parameterless, expected_counts);
+            
+            for _ in 0..expected_counts {
+                context
+                    .test_type()
+                    .parameterless();
+            }
 
             context.assert();
         }
     }
-    fn void_parameterless_expectations_helper(mock: Box<dyn VoidFoo>, count: u32) {
-        for _ in 0..count {
-            mock.parameterless();
-        }
-    }
 
-    #[test]
+    #[whey(CallCountContext ~ context)]
     #[should_panic(expected = "expected 2 calls to VoidFoo::parameterless but recorded 1 instead")]
     fn void_parameterless_unmet_expectation() {
-        let mut context = CallCountContext::construct();
-        let core: Rc<RwLock<WheyCoreVoidFoo>> = context.generate();
-        core.write().unwrap().expect_calls_parameterless(2);
-        let mock: Box<dyn VoidFoo> = context.generate();
+        expect_calls!(context ~ VoidFoo ~ parameterless, 2);
 
-        mock.parameterless();
+        context
+            .test_type()
+            .parameterless();
     }
 }

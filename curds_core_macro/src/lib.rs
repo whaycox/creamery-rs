@@ -52,12 +52,21 @@ pub fn whey_mock(_attr: TokenStream, item: TokenStream) -> TokenStream {
         .into()
 }
 
-/* #[proc_macro_attribute]
-pub fn whey(_attr: TokenStream, item: TokenStream) -> TokenStream {
+#[proc_macro_attribute]
+pub fn whey(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let test_context = parse_macro_input!(attr as WheyTestContext);
+
     parse_macro_input!(item as WheyTest)
+        .quote(test_context)
+        .into()
+}
+
+#[proc_macro]
+pub fn expect_calls(item: TokenStream) -> TokenStream {
+    parse_macro_input!(item as WheyExpectedCalls)
         .quote()
         .into()
-} */
+}
 
 /* #[proc_macro]
 pub fn expect(item: TokenStream) -> TokenStream {

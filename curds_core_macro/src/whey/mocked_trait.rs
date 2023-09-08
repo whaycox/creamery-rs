@@ -5,13 +5,6 @@ pub enum WheyMockedTrait {
     Singleton(MockedTraitDefinition),
 }
 impl WheyMockedTrait {
-    pub fn definition(&self) -> &MockedTraitDefinition {
-        match self {
-            WheyMockedTrait::Transient(transient) => &transient,
-            WheyMockedTrait::Singleton(singleton) => &singleton,
-        }
-    }
-
     pub fn quote_attribute_generator(&self) -> TokenStream {
         match self {
             WheyMockedTrait::Transient(transient) => {

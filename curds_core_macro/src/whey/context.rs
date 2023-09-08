@@ -52,8 +52,16 @@ impl WheyContext {
         let item = &self.item;
         let context_ident = &item.ident;
         let (impl_generics, type_generics, where_clause) = item.generics.split_for_impl();
-        let test_type_generator = match test_type {
+        let test_type_attribute = match &test_type {
             Some(test_ident) => quote! { #[generates(#test_ident)] },
+            None => quote! {},
+        };
+        let test_type_generator = match &test_type {
+            Some(test_ident) => quote! { 
+                pub fn test_type(&mut self) -> #test_ident {
+                    self.generate()
+                }
+            },
             None => quote! {},
         };
 
@@ -69,11 +77,13 @@ impl WheyContext {
         quote! {
             #[service_provider]
             #(#mocked_traits)*
-            #test_type_generator
+            #test_type_attribute
             #item
 
             #[allow(non_snake_case)]
             impl #impl_generics #context_ident #type_generics #where_clause {
+                #test_type_generator
+
                 pub fn assert(&mut self) {
                     #(#mocked_asserts)*
                 }
