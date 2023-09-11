@@ -80,10 +80,22 @@ impl WheyMock {
 
         let record_call = WheyMockCore::record_call(&method.sig.ident);
 
+        let generate_return = match &method.sig.output {
+            ReturnType::Default => quote! {},
+            ReturnType::Type(_, _) => {
+                let core_generator = WheyMockCore::generate_return(&method.sig.ident);
+                quote! {
+                    core.#core_generator()
+                }
+            },
+        };
+
         quote! {
             #signature {
                 let mut core = self.core.write().unwrap();
                 core.#record_call();
+
+                #generate_return
             }
         }
     }

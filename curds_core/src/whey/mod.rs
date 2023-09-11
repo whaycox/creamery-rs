@@ -1,6 +1,5 @@
 mod call_count;
-//mod core_return;
-//mod core_input_compare;
+mod default_return;
 //mod no_expectations;
 //mod input_compare_value;
 //mod input_compare_reference;

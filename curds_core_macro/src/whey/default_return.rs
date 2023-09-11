@@ -1,13 +1,13 @@
 use super::*;
 
-pub struct WheyExpectedCalls {
+pub struct WheyDefaultReturn {
     context: Ident,
     expected_mock: Path,
     method: Ident,
-    times: TokenStream,
+    generator: ExprClosure,
 }
 
-impl Parse for WheyExpectedCalls {
+impl Parse for WheyDefaultReturn {
     fn parse(input: ParseStream) -> Result<Self> {
         let context: Ident = input.parse()?;
         input.parse::<Token![~]>()?;
@@ -15,27 +15,28 @@ impl Parse for WheyExpectedCalls {
         input.parse::<Token![~]>()?;
         let method: Ident = input.parse()?;
         input.parse::<Token![,]>()?;
-        let times: TokenStream = input.parse()?;
+        let generator: ExprClosure = input.parse()?;
 
-        Ok(WheyExpectedCalls {
+
+        Ok(WheyDefaultReturn {
             context,
             expected_mock,
             method,
-            times,
+            generator,
         })
     }
 }
 
-impl WheyExpectedCalls {
+impl WheyDefaultReturn {
     pub fn quote(self) -> TokenStream {
         let context = self.context;
         let expected_mock = MockedTraitDefinition::generate_core_name(&self.expected_mock);
-        let method = WheyMockCore::expect_calls(&self.method);
-        let times = self.times;
+        let method = WheyMockCore::default_return(&self.method);
+        let generator = self.generator;
         quote! {
             {
                 let core: std::rc::Rc<std::sync::RwLock<#expected_mock>> = #context.generate();
-                core.write().unwrap().#method(#times);
+                core.write().unwrap().#method(Box::new(#generator));
             }
         }
     }

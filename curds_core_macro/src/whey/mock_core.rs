@@ -13,11 +13,13 @@ impl<'a> WheyMockCore<'a> {
     pub fn expect_calls(ident: &Ident) -> Ident { format_ident!("expect_calls_{}", ident) }
     pub fn record_call(ident: &Ident) -> Ident { format_ident!("record_call_{}", ident) }
     pub fn expect_input(ident: &Ident) -> Ident { format_ident!("expect_input_{}", ident) }
+    pub fn default_return(ident: &Ident) -> Ident { format_ident!("default_return_{}", ident) }
     pub fn store_return(ident: &Ident) -> Ident { format_ident!("store_return_{}", ident) }
     pub fn generate_return(ident: &Ident) -> Ident { format_ident!("generate_return_{}", ident) }
     pub fn core_name(ident: &Ident) -> Ident { format_ident!("WheyCore{}", ident) }
     fn expected_calls(ident: &Ident) -> Ident { format_ident!("expected_calls_{}", ident) }
     fn recorded_calls(ident: &Ident) -> Ident { format_ident!("recorded_calls_{}", ident) }
+    fn default_generator(ident: &Ident) -> Ident { format_ident!("default_generator_{}", ident) }
     fn expected_input(ident: &Ident) -> Ident { format_ident!("expected_input_{}", ident) }
     fn expect_ident(ident: &Ident) -> Ident { format_ident!("expect_{}", ident) }
     fn returned(ident: &Ident) -> Ident { format_ident!("returned_{}", ident) }
@@ -99,7 +101,8 @@ impl<'a> WheyMockCore<'a> {
         match &method.sig.output {
             ReturnType::Default => {},
             ReturnType::Type(_, ty) => {
-                fields.push(self.quote_returned_field(&method.sig.ident, ty))
+                fields.push(self.quote_default_return_field(method, ty));
+                //fields.push(self.quote_returned_field(&method.sig.ident, ty))
             },
         }
 
@@ -119,6 +122,13 @@ impl<'a> WheyMockCore<'a> {
             #recorded_calls_field: u32
         }
     }
+    fn quote_default_return_field(&self, method: &TraitItemMethod, returned_type: &Box<Type>) -> TokenStream {
+        let default_generator_field = Self::default_generator(&method.sig.ident);
+        quote! {
+            #[defaulted]
+            #default_generator_field: Option<std::boxed::Box<dyn Fn() -> #returned_type>>
+        }
+    }
     fn quote_expected_input_field(&self, method: &TraitItemMethod) -> TokenStream {
         let expected_input_field = Self::expected_input(&method.sig.ident);
         quote! {
@@ -130,7 +140,7 @@ impl<'a> WheyMockCore<'a> {
         let returned_field = Self::returned(ident);
         quote! {
             #[defaulted]
-            #returned_field: Vec<Box<dyn Fn() -> #returned_type>>
+            #returned_field: Vec<std::boxed::Box<dyn Fn() -> #returned_type>>
         }
     }
 
@@ -144,7 +154,8 @@ impl<'a> WheyMockCore<'a> {
         match &method.sig.output {
             ReturnType::Default => {},
             ReturnType::Type(_, ty) => {
-                impls.push(self.quote_store_return(&method.sig.ident, ty));
+                impls.push(self.quote_default_return(&method.sig.ident, ty));
+                // impls.push(self.quote_store_return(&method.sig.ident, ty));
                 impls.push(self.quote_generate_return(&method.sig.ident, ty));
             },
         }
@@ -192,6 +203,15 @@ impl<'a> WheyMockCore<'a> {
             }
         }
     }
+    fn quote_default_return(&self, ident: &Ident, returned_type: &Box<Type>) -> TokenStream {
+        let default_return = Self::default_return(ident);
+        let default_generator_field = Self::default_generator(ident);
+        quote! {
+            pub fn #default_return(&mut self, generator: std::boxed::Box<dyn Fn() -> #returned_type>) {
+                self.#default_generator_field = Some(generator);
+            }
+        }
+    }
     fn quote_store_return(&self, ident: &Ident, returned_type: &Box<Type>) -> TokenStream {
         let store_return = Self::store_return(ident);
         let returned = Self::returned(ident);
@@ -204,9 +224,13 @@ impl<'a> WheyMockCore<'a> {
     fn quote_generate_return(&self, ident: &Ident, returned_type: &Box<Type>) -> TokenStream {
         let generate_return = Self::generate_return(ident);
         let returned = Self::returned(ident);
+        let default_generator_field = Self::default_generator(ident);
         quote! {
             pub fn #generate_return(&mut self) -> #returned_type {
-                panic!("not yet implemented")
+                match &self.#default_generator_field {
+                    Some(generator) => return generator(),
+                    _ => panic!("a return is necessary but none have been supplied"),
+                }
             }
         }
     }
