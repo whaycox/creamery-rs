@@ -1,15 +1,20 @@
 use super::*;
 
+pub const DEFAULT_RETURN_IDENTIFIER: &str = "mock_default_return";
+
 pub struct WheyMock {
     pub mocked_trait: ItemTrait,
+    pub defaulted_returns: HashMap<Ident, TokenStream>,
 }
 
 impl Parse for WheyMock {
     fn parse(input: ParseStream) -> Result<Self> {
-        let mocked_trait: ItemTrait = input.parse()?;
+        let mut mocked_trait: ItemTrait = input.parse()?;
+        let defaulted_returns = Self::parse_defaulted(&mut mocked_trait)?;
         
         Ok(WheyMock {
             mocked_trait,
+            defaulted_returns,
         })
     }
 }
@@ -22,6 +27,40 @@ impl WheyMock {
             TraitItem::Method(method) => Some(method),
             _ => None,
         }
+    }
+
+    fn parse_defaulted(item: &mut ItemTrait) -> Result<HashMap<Ident, TokenStream>> {
+        let mut default_return: HashMap<Ident, TokenStream> = HashMap::new();
+        for method in &mut item.items {
+            match method {
+                TraitItem::Method(trait_method) => {
+                    let length = trait_method.attrs.len();
+                    if length > 0 {
+                        let mut attribute_index = 0;
+                        while attribute_index < length {
+                            let attribute = &trait_method.attrs[attribute_index];
+                            if attribute.path.is_ident(DEFAULT_RETURN_IDENTIFIER) {
+                                let ident = trait_method.sig.ident.clone();
+                                let mut default_value = quote! { Some(std::boxed::Box::new(|| std::default::Default::default())) };
+                                if !attribute.tokens.is_empty() {
+                                    let generator: ExprClosure = attribute.parse_args()?;
+                                    default_value = quote! { Some(std::boxed::Box::new(#generator)) };
+                                }
+                                
+                                default_return.insert(ident, default_value);
+                                trait_method.attrs.remove(attribute_index);
+                                break;
+                            }
+
+                            attribute_index = attribute_index + 1;
+                        }
+                    }
+                },
+                _ => panic!("Only named fields are supported"),
+            }
+        }
+
+        Ok(default_return)
     }
 
     pub fn quote(self) -> TokenStream {
@@ -66,16 +105,12 @@ impl WheyMock {
     }
     fn quote_impl(method: &TraitItemMethod) -> TokenStream {
         let signature = &method.sig;
-        let mut input_signature: Vec<&Box<Pat>> = Vec::new();
+        let mut input_names: Vec<&Box<Pat>> = Vec::new();
         for input in &method.sig.inputs {
             match input {
                 FnArg::Receiver(_) => {},
-                FnArg::Typed(ty) => input_signature.push(&ty.pat),
+                FnArg::Typed(ty) => input_names.push(&ty.pat),
             }
-        }
-        let mut input_values = quote! {};
-        if input_signature.len() > 0 {
-            input_values = quote! { (#(#input_signature),*) };
         }
 
         let record_call = WheyMockCore::record_call(&method.sig.ident);
@@ -85,7 +120,7 @@ impl WheyMock {
             ReturnType::Type(_, _) => {
                 let core_generator = WheyMockCore::generate_return(&method.sig.ident);
                 quote! {
-                    core.#core_generator()
+                    core.#core_generator(#(#input_names),*)
                 }
             },
         };

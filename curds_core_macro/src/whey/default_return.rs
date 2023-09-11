@@ -17,7 +17,6 @@ impl Parse for WheyDefaultReturn {
         input.parse::<Token![,]>()?;
         let generator: ExprClosure = input.parse()?;
 
-
         Ok(WheyDefaultReturn {
             context,
             expected_mock,

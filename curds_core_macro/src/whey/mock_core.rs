@@ -101,7 +101,17 @@ impl<'a> WheyMockCore<'a> {
         match &method.sig.output {
             ReturnType::Default => {},
             ReturnType::Type(_, ty) => {
-                fields.push(self.quote_default_return_field(method, ty));
+                let mut input_types: Vec<Box<Type>> = Vec::new();
+                for input in &method.sig.inputs {
+                    match input {
+                        FnArg::Receiver(_) => {},
+                        FnArg::Typed(ty) => match &*ty.ty {
+                            _ => input_types.push(ty.ty.clone()),
+                        },
+                    }
+                }
+
+                fields.push(self.quote_default_return_field(&method.sig.ident, &input_types, ty));
                 //fields.push(self.quote_returned_field(&method.sig.ident, ty))
             },
         }
@@ -122,11 +132,17 @@ impl<'a> WheyMockCore<'a> {
             #recorded_calls_field: u32
         }
     }
-    fn quote_default_return_field(&self, method: &TraitItemMethod, returned_type: &Box<Type>) -> TokenStream {
-        let default_generator_field = Self::default_generator(&method.sig.ident);
+    fn quote_default_return_field(&self, ident: &Ident, input_types: &Vec<Box<Type>>, returned_type: &Box<Type>) -> TokenStream {
+        let default_generator_field = Self::default_generator(ident);
+        let mut default_attribute = quote! { #[defaulted] };
+        if self.mock.defaulted_returns.contains_key(ident) {
+            let default_generator = &self.mock.defaulted_returns[ident];
+            default_attribute = quote! { #[defaulted(#default_generator)] };
+        }
+
         quote! {
-            #[defaulted]
-            #default_generator_field: Option<std::boxed::Box<dyn Fn() -> #returned_type>>
+            #default_attribute
+            #default_generator_field: Option<std::boxed::Box<dyn Fn(#(#input_types),*) -> #returned_type>>
         }
     }
     fn quote_expected_input_field(&self, method: &TraitItemMethod) -> TokenStream {
@@ -154,9 +170,9 @@ impl<'a> WheyMockCore<'a> {
         match &method.sig.output {
             ReturnType::Default => {},
             ReturnType::Type(_, ty) => {
-                impls.push(self.quote_default_return(&method.sig.ident, ty));
+                impls.push(self.quote_default_return(&method, ty));
                 // impls.push(self.quote_store_return(&method.sig.ident, ty));
-                impls.push(self.quote_generate_return(&method.sig.ident, ty));
+                impls.push(self.quote_generate_return(&method, ty));
             },
         }
 
@@ -203,11 +219,21 @@ impl<'a> WheyMockCore<'a> {
             }
         }
     }
-    fn quote_default_return(&self, ident: &Ident, returned_type: &Box<Type>) -> TokenStream {
-        let default_return = Self::default_return(ident);
-        let default_generator_field = Self::default_generator(ident);
+    fn quote_default_return(&self, method: &TraitItemMethod, returned_type: &Box<Type>) -> TokenStream {
+        let default_return = Self::default_return(&method.sig.ident);
+        let mut input_types: Vec<Box<Type>> = Vec::new();
+        for input in &method.sig.inputs {
+            match input {
+                FnArg::Receiver(_) => {},
+                FnArg::Typed(ty) => match &*ty.ty {
+                    _ => input_types.push(ty.ty.clone()),
+                },
+            }
+        }
+        let default_generator_field = Self::default_generator(&method.sig.ident);
+
         quote! {
-            pub fn #default_return(&mut self, generator: std::boxed::Box<dyn Fn() -> #returned_type>) {
+            pub fn #default_return(&mut self, generator: std::boxed::Box<dyn Fn(#(#input_types),*) -> #returned_type>) {
                 self.#default_generator_field = Some(generator);
             }
         }
@@ -221,14 +247,28 @@ impl<'a> WheyMockCore<'a> {
             }
         }
     }
-    fn quote_generate_return(&self, ident: &Ident, returned_type: &Box<Type>) -> TokenStream {
-        let generate_return = Self::generate_return(ident);
-        let returned = Self::returned(ident);
-        let default_generator_field = Self::default_generator(ident);
+    fn quote_generate_return(&self, method: &TraitItemMethod, returned_type: &Box<Type>) -> TokenStream {
+        let generate_return = Self::generate_return(&method.sig.ident);
+        let mut signature_inputs: Vec<TokenStream> = vec![ quote! { &mut self } ];
+        let mut input_names: Vec<&Box<Pat>> = Vec::new();
+        for input in &method.sig.inputs {
+            match input {
+                FnArg::Receiver(_) => {},
+                FnArg::Typed(ty) => match &*ty.ty {
+                    _ => {
+                        signature_inputs.push(quote! { #input });
+                        input_names.push(&ty.pat);
+                    },
+                },
+            }
+        }
+
+        let returned = Self::returned(&method.sig.ident);
+        let default_generator_field = Self::default_generator(&method.sig.ident);
         quote! {
-            pub fn #generate_return(&mut self) -> #returned_type {
+            pub fn #generate_return(#(#signature_inputs),*) -> #returned_type {
                 match &self.#default_generator_field {
-                    Some(generator) => return generator(),
+                    Some(generator) => return generator(#(#input_names),*),
                     _ => panic!("a return is necessary but none have been supplied"),
                 }
             }
