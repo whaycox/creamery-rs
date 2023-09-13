@@ -24,6 +24,7 @@ impl Parse for ServiceProviderDefinition {
 impl ServiceProviderDefinition {
     pub fn name(&self) -> &Ident { &self.item.ident }
     pub fn generics(&self) -> &Generics { &self.item.generics }
+    pub fn lifetimes(&self) -> Vec<&LifetimeDef> { self.item.generics.lifetimes().collect() }
     pub fn singleton(&self, ty: &Type) -> Ident { self.singletons.singleton(ty) }
     pub fn provider(&self, name: &Ident) -> Type {
         for field in &self.item.fields {

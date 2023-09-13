@@ -84,7 +84,8 @@ impl ForwardedDefinition {
         let requested = 
         if self.trait_production {
             let abstraction = &self.requested;
-            quote! { std::boxed::Box<dyn #abstraction> }
+            let lifetimes = provider.lifetimes();
+            quote! { std::boxed::Box<dyn #abstraction + #(#lifetimes)+*> }
         }
         else {
             self.requested.to_token_stream()
@@ -114,7 +115,8 @@ impl ForwardedDefinition {
     pub fn quote_singleton(&self, definition: &ServiceProviderDefinition) -> TokenStream {
         let mut requested = if self.trait_production {
             let abstraction = &self.requested;
-            quote! { std::boxed::Box<dyn #abstraction> }
+            let lifetimes = definition.lifetimes();
+            quote! { std::boxed::Box<dyn #abstraction + #(#lifetimes)+*> }
         }
         else {
             self.requested.to_token_stream()

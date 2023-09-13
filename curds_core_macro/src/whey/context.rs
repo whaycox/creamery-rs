@@ -48,7 +48,7 @@ impl WheyContext {
         Ok(mocks)
     }
 
-    pub fn quote(self, test_type: Option<Ident>) -> TokenStream {
+    pub fn quote(self, test_type: Option<Type>) -> TokenStream {
         let item = &self.item;
         let context_ident = &item.ident;
         let (impl_generics, type_generics, where_clause) = item.generics.split_for_impl();

@@ -80,6 +80,7 @@ impl WheyMock {
         let whey_name = format_ident!("Whey{}", mocked_trait.ident);
         let core_name = format_ident!("WheyCore{}", mocked_trait.ident);
         let generics = &mocked_trait.generics;
+        let (impl_generics, type_generics, where_clause) = generics.split_for_impl();
 
         let mocked_items: Vec<&TraitItemMethod> = mocked_trait.items
             .iter()
@@ -94,11 +95,11 @@ impl WheyMock {
             #[injected]
             #[cfg(test)]
             #vis struct #whey_name #generics {
-                core: std::rc::Rc<std::sync::RwLock<#core_name>>,
+                core: std::rc::Rc<std::sync::RwLock<#core_name #generics>>,
             }
 
             #[cfg(test)]
-            impl #base_name for #whey_name {
+            impl #impl_generics #base_name #generics for #whey_name #type_generics #where_clause {
                 #(#mocked_impls)*
             }
         }

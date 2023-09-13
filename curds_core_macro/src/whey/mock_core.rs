@@ -22,6 +22,7 @@ impl<'a> WheyMockCore<'a> {
     fn default_generator(ident: &Ident) -> Ident { format_ident!("default_generator_{}", ident) }
     fn expected_input(ident: &Ident) -> Ident { format_ident!("expected_input_{}", ident) }
     fn expect_ident(ident: &Ident) -> Ident { format_ident!("expect_{}", ident) }
+    fn returned_times(ident: &Ident) -> Ident { format_ident!("returned_times_{}", ident) }
     fn returned(ident: &Ident) -> Ident { format_ident!("returned_{}", ident) }
 
     pub fn quote(self) -> TokenStream {
@@ -112,7 +113,8 @@ impl<'a> WheyMockCore<'a> {
                 }
 
                 fields.push(self.quote_default_return_field(&method.sig.ident, &input_types, ty));
-                //fields.push(self.quote_returned_field(&method.sig.ident, ty))
+                fields.push(self.quote_returned_times_field(&method.sig.ident));
+                fields.push(self.quote_returned_field(&method.sig.ident, &input_types, ty));
             },
         }
 
@@ -142,7 +144,7 @@ impl<'a> WheyMockCore<'a> {
 
         quote! {
             #default_attribute
-            #default_generator_field: Option<std::boxed::Box<dyn Fn(#(#input_types),*) -> #returned_type>>
+            #default_generator_field: std::option::Option<std::boxed::Box<dyn Fn(#(#input_types),*) -> #returned_type>>
         }
     }
     fn quote_expected_input_field(&self, method: &TraitItemMethod) -> TokenStream {
@@ -152,11 +154,18 @@ impl<'a> WheyMockCore<'a> {
             #expected_input_field: u32
         }
     }
-    fn quote_returned_field(&self, ident: &Ident, returned_type: &Box<Type>) -> TokenStream {
+    fn quote_returned_times_field(&self, ident: &Ident) -> TokenStream {
+        let returned_times_field = Self::returned_times(ident);
+        quote! {
+            #[defaulted]
+            #returned_times_field: std::vec::Vec<u32>
+        }
+    }
+    fn quote_returned_field(&self, ident: &Ident, input_types: &Vec<Box<Type>>, returned_type: &Box<Type>) -> TokenStream {
         let returned_field = Self::returned(ident);
         quote! {
             #[defaulted]
-            #returned_field: Vec<std::boxed::Box<dyn Fn() -> #returned_type>>
+            #returned_field: std::vec::Vec<std::boxed::Box<dyn Fn(#(#input_types),*) -> #returned_type>>
         }
     }
 
@@ -166,12 +175,12 @@ impl<'a> WheyMockCore<'a> {
             self.quote_record_call(method),
             //self.quote_expect_input(method),
             //self.quote_expectation_consume(method),
-        ];        
+        ];
         match &method.sig.output {
             ReturnType::Default => {},
             ReturnType::Type(_, ty) => {
                 impls.push(self.quote_default_return(&method, ty));
-                // impls.push(self.quote_store_return(&method.sig.ident, ty));
+                impls.push(self.quote_store_return(&method, ty));
                 impls.push(self.quote_generate_return(&method, ty));
             },
         }
@@ -238,12 +247,24 @@ impl<'a> WheyMockCore<'a> {
             }
         }
     }
-    fn quote_store_return(&self, ident: &Ident, returned_type: &Box<Type>) -> TokenStream {
-        let store_return = Self::store_return(ident);
-        let returned = Self::returned(ident);
+    fn quote_store_return(&self, method: &TraitItemMethod, returned_type: &Box<Type>) -> TokenStream {
+        let store_return = Self::store_return(&method.sig.ident);
+        let mut input_types: Vec<Box<Type>> = Vec::new();
+        for input in &method.sig.inputs {
+            match input {
+                FnArg::Receiver(_) => {},
+                FnArg::Typed(ty) => match &*ty.ty {
+                    _ => input_types.push(ty.ty.clone()),
+                },
+            }
+        }
+        let returned_times_field = Self::returned_times(&method.sig.ident);
+        let returned_field = Self::returned(&method.sig.ident);
+
         quote! {
-            pub fn #store_return(&mut self, generator: Box<dyn Fn() -> #returned_type>) {
-                panic!("not yet implemented")
+            pub fn #store_return(&mut self, generator: std::boxed::Box<dyn Fn(#(#input_types),*) -> #returned_type>, times: u32) {
+                self.#returned_times_field.push(times);
+                self.#returned_field.push(generator);
             }
         }
     }
@@ -262,11 +283,19 @@ impl<'a> WheyMockCore<'a> {
                 },
             }
         }
-
-        let returned = Self::returned(&method.sig.ident);
+        let returned_times_field = Self::returned_times(&method.sig.ident);
+        let returned_field = Self::returned(&method.sig.ident);
         let default_generator_field = Self::default_generator(&method.sig.ident);
+
         quote! {
             pub fn #generate_return(#(#signature_inputs),*) -> #returned_type {
+                let length = self.#returned_times_field.len();
+                for i in 0..length {
+                    if self.#returned_times_field[i] > 0 {
+                        self.#returned_times_field[i] -= 1;
+                        return (self.#returned_field[i])(#(#input_names),*)
+                    }
+                }
                 match &self.#default_generator_field {
                     Some(generator) => return generator(#(#input_names),*),
                     _ => panic!("a return is necessary but none have been supplied"),
@@ -280,26 +309,49 @@ impl<'a> WheyMockCore<'a> {
         let recorded_calls = Self::recorded_calls(&method.sig.ident);
         let expected_calls_failure = format!("expected {{}} calls to {}::{} but recorded {{}} instead", self.mock.mocked_trait.ident, method.sig.ident);
         
-        let expect_ident = Self::expect_ident(&method.sig.ident);
-        let failure = format!("unfulfilled expectations for {}", method.sig.ident);
+        let return_assert = match &method.sig.output {
+            ReturnType::Default => quote! {},
+            ReturnType::Type(_, ty) => {
+                let returned_times_field = Self::returned_times(&method.sig.ident);
+                let returned_times_failure = format!("not all stored returns for {}::{} have been consumed", self.mock.mocked_trait.ident, method.sig.ident);
+
+                quote! {
+                    if self.#returned_times_field.iter().any(|generator| *generator != 0) {
+                        panic!(#returned_times_failure);
+                    }
+                }
+            },
+        };
         
         quote! {
             if self.#expected_calls.is_some() && self.#expected_calls.unwrap() != self.#recorded_calls {
                 panic!(#expected_calls_failure, self.#expected_calls.unwrap(), self.#recorded_calls);
             }
-            // if self.#expect_ident.iter().any(|expectation| !expectation.is_consumed()) {
-            //     panic!(#failure);
-            // }
+            #return_assert
         }      
     }
 
     fn quote_reset_expectations(&self, method: &TraitItemMethod) -> TokenStream {
         let expected_calls = Self::expected_calls(&method.sig.ident);
         let recorded_calls = Self::recorded_calls(&method.sig.ident);
+
+        let return_reset = match &method.sig.output {
+            ReturnType::Default => quote! {},
+            ReturnType::Type(_, ty) => {
+                let returned_times_field = Self::returned_times(&method.sig.ident);
+                let returned_field = Self::returned(&method.sig.ident);
+
+                quote! {
+                    self.#returned_times_field.clear();
+                    self.#returned_field.clear();
+                }
+            },
+        };
         
         quote! {
             self.#expected_calls = None;
             self.#recorded_calls = 0;
+            #return_reset
         }      
     }
 

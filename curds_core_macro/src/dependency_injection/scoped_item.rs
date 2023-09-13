@@ -20,7 +20,6 @@ impl ScopedItem {
         let name = &self.item.ident;        
         let initializer_tokens = self.scope_initializers();
         let (impl_generics, type_generics, where_clause) = self.item.generics.split_for_impl();
-        //let singleton_initializers = self.singletons.quote_initializers();
 
         quote! {
             impl #impl_generics curds_core_abstraction::dependency_injection::Scoped for #name #type_generics #where_clause {
@@ -28,7 +27,6 @@ impl ScopedItem {
                     let mut constructed = Self {
                         #initializer_tokens
                     };
-                    //#(#singleton_initializers)*
 
                     constructed
                 }

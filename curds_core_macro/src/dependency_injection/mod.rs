@@ -23,4 +23,4 @@ pub use provider_definition::*;
 pub use forwarded_definition::*;
 
 use proc_macro2::{TokenStream, Span};
-use syn::{ItemStruct};
+use syn::ItemStruct;

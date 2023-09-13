@@ -74,7 +74,10 @@ impl GeneratedDefinition {
         let producing_abstraction = self.abstraction.is_some();
         let implementation = &self.implementation;
         let requested = match &self.abstraction {
-            Some(abstraction) => quote! { std::boxed::Box<dyn #abstraction> },
+            Some(abstraction) => {
+                let lifetimes = provider.lifetimes();
+                quote! { std::boxed::Box<dyn #abstraction + #(#lifetimes)+*> }
+            },
             None => implementation.to_token_stream(),
         };
         let name = provider.name();
@@ -99,7 +102,10 @@ impl GeneratedDefinition {
             None => &self.implementation,
         };
         let mut requested = match &self.abstraction {
-            Some(abstraction) => quote! { std::boxed::Box<dyn #abstraction> },
+            Some(abstraction) => {
+                let lifetimes = provider.lifetimes();
+                quote! { std::boxed::Box<dyn #abstraction + #(#lifetimes)+*> }
+            },
             None => self.implementation.to_token_stream(),
         };
         requested = quote! { std::rc::Rc<std::sync::RwLock<#requested>> };
