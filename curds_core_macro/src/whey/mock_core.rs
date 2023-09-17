@@ -12,7 +12,8 @@ impl<'a> WheyMockCore<'a> {
 
     pub fn expect_calls(ident: &Ident) -> Ident { format_ident!("expect_calls_{}", ident) }
     pub fn record_call(ident: &Ident) -> Ident { format_ident!("record_call_{}", ident) }
-    pub fn expect_input(ident: &Ident) -> Ident { format_ident!("expect_input_{}", ident) }
+    pub fn store_expected_input(ident: &Ident) -> Ident { format_ident!("store_expected_input_{}", ident) }
+    pub fn consume_expected_input(ident: &Ident) -> Ident { format_ident!("consume_expected_input_{}", ident) }
     pub fn default_return(ident: &Ident) -> Ident { format_ident!("default_return_{}", ident) }
     pub fn store_return(ident: &Ident) -> Ident { format_ident!("store_return_{}", ident) }
     pub fn generate_return(ident: &Ident) -> Ident { format_ident!("generate_return_{}", ident) }
@@ -21,7 +22,7 @@ impl<'a> WheyMockCore<'a> {
     fn recorded_calls(ident: &Ident) -> Ident { format_ident!("recorded_calls_{}", ident) }
     fn default_generator(ident: &Ident) -> Ident { format_ident!("default_generator_{}", ident) }
     fn expected_input(ident: &Ident) -> Ident { format_ident!("expected_input_{}", ident) }
-    fn expect_ident(ident: &Ident) -> Ident { format_ident!("expect_{}", ident) }
+    fn expected_input_times(ident: &Ident) -> Ident { format_ident!("expected_input_times_{}", ident) }
     fn returned_times(ident: &Ident) -> Ident { format_ident!("returned_times_{}", ident) }
     fn returned(ident: &Ident) -> Ident { format_ident!("returned_{}", ident) }
 
@@ -52,10 +53,6 @@ impl<'a> WheyMockCore<'a> {
             .iter()
             .map(|item| self.quote_reset_expectations(item))
             .collect();
-        // let mocked_expectations: Vec<TokenStream> = mocked_items
-        //     .iter()
-        //     .map(|item| self.expectation(item).quote_struct())
-        //     .collect();
 
         quote! {
             #[injected]
@@ -87,8 +84,6 @@ impl<'a> WheyMockCore<'a> {
                     }
                 }
             }
-
-            // #(#mocked_expectations)*
         }
     }
     
@@ -96,22 +91,24 @@ impl<'a> WheyMockCore<'a> {
         let mut fields = vec![
             self.quote_expected_calls_field(method),
             self.quote_recorded_calls_field(method),
-            //self.quote_expected_input_field(method),
-            //self.quote_expectation_field(method),
         ];
+        let mut input_types: Vec<Box<Type>> = Vec::new();
+        for input in &method.sig.inputs {
+            match input {
+                FnArg::Receiver(_) => {},
+                FnArg::Typed(ty) => match &*ty.ty {
+                    _ => input_types.push(ty.ty.clone()),
+                },
+            }
+        }
+
+        if input_types.len() > 0 {
+            fields.push(self.quote_expected_input_times_field(&method.sig.ident));
+            fields.push(self.quote_expected_input_field(&method.sig.ident, &input_types));
+        }
         match &method.sig.output {
             ReturnType::Default => {},
             ReturnType::Type(_, ty) => {
-                let mut input_types: Vec<Box<Type>> = Vec::new();
-                for input in &method.sig.inputs {
-                    match input {
-                        FnArg::Receiver(_) => {},
-                        FnArg::Typed(ty) => match &*ty.ty {
-                            _ => input_types.push(ty.ty.clone()),
-                        },
-                    }
-                }
-
                 fields.push(self.quote_default_return_field(&method.sig.ident, &input_types, ty));
                 fields.push(self.quote_returned_times_field(&method.sig.ident));
                 fields.push(self.quote_returned_field(&method.sig.ident, &input_types, ty));
@@ -134,6 +131,20 @@ impl<'a> WheyMockCore<'a> {
             #recorded_calls_field: u32
         }
     }
+    fn quote_expected_input_times_field(&self, ident: &Ident) -> TokenStream {
+        let expected_input_times_field = Self::expected_input_times(ident);
+        quote! {
+            #[defaulted]
+            #expected_input_times_field: std::vec::Vec<u32>
+        }
+    }
+    fn quote_expected_input_field(&self, ident: &Ident, input_types: &Vec<Box<Type>>) -> TokenStream {
+        let expected_input_field = Self::expected_input(ident);
+        quote! {
+            #[defaulted]
+            #expected_input_field: std::vec::Vec<std::boxed::Box<dyn Fn(#(#input_types),*) -> bool>>
+        }
+    }
     fn quote_default_return_field(&self, ident: &Ident, input_types: &Vec<Box<Type>>, returned_type: &Box<Type>) -> TokenStream {
         let default_generator_field = Self::default_generator(ident);
         let mut default_attribute = quote! { #[defaulted] };
@@ -145,13 +156,6 @@ impl<'a> WheyMockCore<'a> {
         quote! {
             #default_attribute
             #default_generator_field: std::option::Option<std::boxed::Box<dyn Fn(#(#input_types),*) -> #returned_type>>
-        }
-    }
-    fn quote_expected_input_field(&self, method: &TraitItemMethod) -> TokenStream {
-        let expected_input_field = Self::expected_input(&method.sig.ident);
-        quote! {
-            #[defaulted]
-            #expected_input_field: u32
         }
     }
     fn quote_returned_times_field(&self, ident: &Ident) -> TokenStream {
@@ -173,14 +177,26 @@ impl<'a> WheyMockCore<'a> {
         let mut impls = vec![
             self.quote_expect_calls(method),
             self.quote_record_call(method),
-            //self.quote_expect_input(method),
-            //self.quote_expectation_consume(method),
         ];
+        let mut input_types: Vec<Box<Type>> = Vec::new();
+        for input in &method.sig.inputs {
+            match input {
+                FnArg::Receiver(_) => {},
+                FnArg::Typed(ty) => match &*ty.ty {
+                    _ => input_types.push(ty.ty.clone()),
+                },
+            }
+        }
+
+        if input_types.len() > 0 {
+            impls.push(self.quote_store_expected_input(&method.sig.ident, &input_types));
+            impls.push(self.quote_consume_expected_input(&method, &input_types));
+        }
         match &method.sig.output {
             ReturnType::Default => {},
             ReturnType::Type(_, ty) => {
-                impls.push(self.quote_default_return(&method, ty));
-                impls.push(self.quote_store_return(&method, ty));
+                impls.push(self.quote_default_return(&method, &input_types, ty));
+                impls.push(self.quote_store_return(&method, &input_types, ty));
                 impls.push(self.quote_generate_return(&method, ty));
             },
         }
@@ -205,40 +221,53 @@ impl<'a> WheyMockCore<'a> {
             }
         }
     }
-    fn quote_expect_input(&self, method: &TraitItemMethod) -> TokenStream {
-        let expect_input = Self::expect_input(&method.sig.ident);
-        // let expectation_ident = Self::expect_ident(&method.sig.ident);
-        // let expectation_type = WheyMockExpectation::expectation_name(&method.sig.ident, &Self::core_name(&self.mock.mocked_trait.ident));
-        let mut load_signature = vec![quote! { &mut self }];
-        //let mut expectation_fields = vec![quote! { times: std::cell::Cell::new(times) }];
-        match WheyMockExpectation::parse_consume_input_types(&method.sig) {
-            Some(expected_values) => {
-                load_signature.push(quote! { expected: Box<dyn Fn(#(#expected_values),*) -> bool> });
-                //expectation_fields.push(quote! { input_comparison: expected });
-            },
-            None => load_signature.push(quote! { expected: () }),
-        }
-        load_signature.push(quote! { times: u32 });
+    fn quote_store_expected_input(&self, ident: &Ident, input_types: &Vec<Box<Type>>) -> TokenStream {
+        let store_input = Self::store_expected_input(ident);
+        let expected_input_times_field = Self::expected_input_times(ident);
+        let expected_input_field = Self::expected_input(ident);
+
         quote! {
-            pub fn #expect_input(#(#load_signature),*) {
-                panic!("not yet implemented");
-                // self.#expectation_ident.push(#expectation_type {
-                //     #(#expectation_fields),*
-                // });
+            pub fn #store_input(&mut self, comparison: std::boxed::Box<dyn Fn(#(#input_types),*) -> bool>, times: u32) {
+                self.#expected_input_times_field.push(times);
+                self.#expected_input_field.push(comparison);
             }
         }
     }
-    fn quote_default_return(&self, method: &TraitItemMethod, returned_type: &Box<Type>) -> TokenStream {
-        let default_return = Self::default_return(&method.sig.ident);
-        let mut input_types: Vec<Box<Type>> = Vec::new();
+    fn quote_consume_expected_input(&self, method: &TraitItemMethod, input_types: &Vec<Box<Type>>) -> TokenStream {
+        let consume_input = Self::consume_expected_input(&method.sig.ident);
+        let mut signature_inputs: Vec<TokenStream> = vec![ quote! { &mut self } ];
+        let mut input_names: Vec<&Box<Pat>> = Vec::new();
         for input in &method.sig.inputs {
             match input {
                 FnArg::Receiver(_) => {},
                 FnArg::Typed(ty) => match &*ty.ty {
-                    _ => input_types.push(ty.ty.clone()),
+                    _ => {
+                        signature_inputs.push(quote! { #input });
+                        input_names.push(&ty.pat);
+                    },
                 },
             }
         }
+        let expected_input_times_field = Self::expected_input_times(&method.sig.ident);
+        let expected_input_field = Self::expected_input(&method.sig.ident);
+        let expected_input_failure = format!("the expected inputs for {}::{} were not supplied", self.mock.mocked_trait.ident, method.sig.ident);
+
+        quote! {
+            pub fn #consume_input(#(#signature_inputs),*) {
+                let length = self.#expected_input_times_field.len();
+                for i in 0..length {
+                    if self.#expected_input_times_field[i] > 0 {
+                        self.#expected_input_times_field[i] -= 1;
+                        if !(self.#expected_input_field[i])(#(#input_names),*) {
+                            panic!(#expected_input_failure);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    fn quote_default_return(&self, method: &TraitItemMethod, input_types: &Vec<Box<Type>>, returned_type: &Box<Type>) -> TokenStream {
+        let default_return = Self::default_return(&method.sig.ident);
         let default_generator_field = Self::default_generator(&method.sig.ident);
 
         quote! {
@@ -247,17 +276,8 @@ impl<'a> WheyMockCore<'a> {
             }
         }
     }
-    fn quote_store_return(&self, method: &TraitItemMethod, returned_type: &Box<Type>) -> TokenStream {
+    fn quote_store_return(&self, method: &TraitItemMethod, input_types: &Vec<Box<Type>>, returned_type: &Box<Type>) -> TokenStream {
         let store_return = Self::store_return(&method.sig.ident);
-        let mut input_types: Vec<Box<Type>> = Vec::new();
-        for input in &method.sig.inputs {
-            match input {
-                FnArg::Receiver(_) => {},
-                FnArg::Typed(ty) => match &*ty.ty {
-                    _ => input_types.push(ty.ty.clone()),
-                },
-            }
-        }
         let returned_times_field = Self::returned_times(&method.sig.ident);
         let returned_field = Self::returned(&method.sig.ident);
 
@@ -309,6 +329,27 @@ impl<'a> WheyMockCore<'a> {
         let recorded_calls = Self::recorded_calls(&method.sig.ident);
         let expected_calls_failure = format!("expected {{}} calls to {}::{} but recorded {{}} instead", self.mock.mocked_trait.ident, method.sig.ident);
         
+        let mut has_inputs = false;
+        for input in &method.sig.inputs {
+            match input {
+                FnArg::Receiver(_) => {},
+                FnArg::Typed(ty) => {
+                    has_inputs = true;
+                    break;
+                },
+            }
+        }
+        let input_assert = if has_inputs {
+            let expected_input_times_field = Self::expected_input_times(&method.sig.ident);
+            let expected_input_times_failure = format!("not all stored input comparisons for {}::{} have been consumed", self.mock.mocked_trait.ident, method.sig.ident);
+
+            quote! {
+                if self.#expected_input_times_field.iter().any(|comparison| *comparison != 0) {
+                    panic!(#expected_input_times_failure);
+                }
+            }
+        }
+        else { quote! {} };
         let return_assert = match &method.sig.output {
             ReturnType::Default => quote! {},
             ReturnType::Type(_, ty) => {
@@ -327,6 +368,7 @@ impl<'a> WheyMockCore<'a> {
             if self.#expected_calls.is_some() && self.#expected_calls.unwrap() != self.#recorded_calls {
                 panic!(#expected_calls_failure, self.#expected_calls.unwrap(), self.#recorded_calls);
             }
+            #input_assert
             #return_assert
         }      
     }
@@ -335,6 +377,26 @@ impl<'a> WheyMockCore<'a> {
         let expected_calls = Self::expected_calls(&method.sig.ident);
         let recorded_calls = Self::recorded_calls(&method.sig.ident);
 
+        let mut has_inputs = false;
+        for input in &method.sig.inputs {
+            match input {
+                FnArg::Receiver(_) => {},
+                FnArg::Typed(ty) => {
+                    has_inputs = true;
+                    break;
+                },
+            }
+        }
+        let input_reset = if has_inputs {
+            let expected_input_times_field = Self::expected_input_times(&method.sig.ident);
+            let expected_input_field = Self::expected_input(&method.sig.ident);
+
+            quote! {
+                self.#expected_input_times_field.clear();
+                self.#expected_input_field.clear();
+            }
+        }
+        else { quote! {} };
         let return_reset = match &method.sig.output {
             ReturnType::Default => quote! {},
             ReturnType::Type(_, ty) => {
@@ -351,9 +413,8 @@ impl<'a> WheyMockCore<'a> {
         quote! {
             self.#expected_calls = None;
             self.#recorded_calls = 0;
+            #input_reset
             #return_reset
         }      
     }
-
-    fn expectation(&'a self, method: &'a TraitItemMethod) -> WheyMockExpectation { WheyMockExpectation::new(self, method) }
 }

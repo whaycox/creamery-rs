@@ -82,12 +82,12 @@ pub fn mock_return(item: TokenStream) -> TokenStream {
         .into()
 }
 
-/* #[proc_macro]
-pub fn expect(item: TokenStream) -> TokenStream {
-    parse_macro_input!(item as WheyExpectation)
+#[proc_macro]
+pub fn mock_input(item: TokenStream) -> TokenStream {
+    parse_macro_input!(item as WheyInputComparison)
         .quote()
-        .into()  
-} */
+        .into()
+}
 
 /* #[proc_macro_attribute]
 pub fn message_dispatch(attr: TokenStream, item: TokenStream) -> TokenStream {

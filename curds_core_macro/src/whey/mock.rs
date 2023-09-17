@@ -116,6 +116,13 @@ impl WheyMock {
 
         let record_call = WheyMockCore::record_call(&method.sig.ident);
 
+        let compare_input = if input_names.len() > 0 {
+            let core_comparer = WheyMockCore::consume_expected_input(&method.sig.ident);
+            quote! {
+                core.#core_comparer(#(#input_names),*);
+            }
+        }
+        else { quote! {} };
         let generate_return = match &method.sig.output {
             ReturnType::Default => quote! {},
             ReturnType::Type(_, _) => {
@@ -131,6 +138,7 @@ impl WheyMock {
                 let mut core = self.core.write().unwrap();
                 core.#record_call();
 
+                #compare_input
                 #generate_return
             }
         }
