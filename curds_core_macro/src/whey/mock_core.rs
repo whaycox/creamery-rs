@@ -37,10 +37,11 @@ impl<'a> WheyMockCore<'a> {
             .iter()
             .filter_map(|item| WheyMock::filter_items(item))
             .collect();
-        let fields: Vec<TokenStream> = mocked_items
+        let mut fields: Vec<TokenStream> = mocked_items
             .iter()
             .flat_map(|item| self.quote_fields(item))
             .collect();
+        fields.insert(0, self.quote_synchronizer_field());
         let impls: Vec<TokenStream> = mocked_items
             .iter()
             .flat_map(|item| self.quote_impls(item))
@@ -116,6 +117,11 @@ impl<'a> WheyMockCore<'a> {
         }
 
         fields
+    }
+    fn quote_synchronizer_field(&self) -> TokenStream {
+        quote! {
+            whey_synchronizer: std::rc::Rc<std::sync::RwLock<curds_core_abstraction::whey::WheySynchronizer>>
+        }
     }
     fn quote_expected_calls_field(&self, method: &TraitItemMethod) -> TokenStream {
         let expected_calls_field = Self::expected_calls(&method.sig.ident);
@@ -215,8 +221,11 @@ impl<'a> WheyMockCore<'a> {
     fn quote_record_call(&self, method: &TraitItemMethod) -> TokenStream {
         let record_call = Self::record_call(&method.sig.ident);
         let recorded_calls = Self::recorded_calls(&method.sig.ident);
+        let method_str = format!("{}", method.sig.ident);
+
         quote! {
             pub fn #record_call(&mut self) {
+                self.whey_synchronizer.write().unwrap().consume(std::any::TypeId::of::<Self>(), #method_str);
                 self.#recorded_calls += 1;
             }
         }
@@ -306,6 +315,7 @@ impl<'a> WheyMockCore<'a> {
         let returned_times_field = Self::returned_times(&method.sig.ident);
         let returned_field = Self::returned(&method.sig.ident);
         let default_generator_field = Self::default_generator(&method.sig.ident);
+        let no_return_failure = format!("a return is necessary for {}::{} but none have been supplied", self.mock.mocked_trait.ident, method.sig.ident);
 
         quote! {
             pub fn #generate_return(#(#signature_inputs),*) -> #returned_type {
@@ -318,7 +328,7 @@ impl<'a> WheyMockCore<'a> {
                 }
                 match &self.#default_generator_field {
                     Some(generator) => return generator(#(#input_names),*),
-                    _ => panic!("a return is necessary but none have been supplied"),
+                    _ => panic!(#no_return_failure),
                 }
             }
         }

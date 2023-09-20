@@ -78,6 +78,7 @@ impl WheyContext {
             #[service_provider]
             #(#mocked_traits)*
             #test_type_attribute
+            #[generates_singleton(curds_core_abstraction::whey::WheySynchronizer)]
             #item
 
             #[allow(non_snake_case)]
@@ -86,6 +87,10 @@ impl WheyContext {
 
                 pub fn assert(&mut self) {
                     #(#mocked_asserts)*
+                    {
+                        let synchronizer = curds_core_abstraction::dependency_injection::ServiceGenerator::<std::rc::Rc<std::sync::RwLock<curds_core_abstraction::whey::WheySynchronizer>>>::generate(self);
+                        synchronizer.write().unwrap().assert();
+                    }
                 }
             }
         }

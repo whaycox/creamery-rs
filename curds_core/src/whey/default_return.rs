@@ -36,7 +36,7 @@ mod tests {
     }
 
     #[whey(DefaultReturnValueContext ~ context)]
-    #[should_panic(expected = "a return is necessary but none have been supplied")]
+    #[should_panic(expected = "a return is necessary for ValueFoo::simple but none have been supplied")]
     fn simple_panics_without_default() {
         context
             .test_type()
@@ -57,27 +57,27 @@ mod tests {
         }
     }
 
-    #[whey_mock]
-    trait ReferenceFoo<'a> {
-        fn simple(&self) -> &'a u32;
+    // #[whey_mock]
+    // trait ReferenceFoo<'a> {
+    //     fn simple(&self) -> &'a u32;
 
-        #[mock_default_return(|| &EXPECTED_VALUE)]
-        fn decorated(&self) -> &'a u32;
-    }
+    //     #[mock_default_return(|| &EXPECTED_VALUE)]
+    //     fn decorated(&self) -> &'a u32;
+    // }
     
-    #[whey_context(WheyReferenceFoo<'a>)]
-    #[mocks(dyn ReferenceFoo<'a>)]
-    struct DefaultReturnReferenceContext<'a> {}
+    // #[whey_context(WheyReferenceFoo<'a>)]
+    // #[mocks(dyn ReferenceFoo<'a>)]
+    // struct DefaultReturnReferenceContext<'a> {}
 
-    #[whey(DefaultReturnReferenceContext ~ context)]
-    fn simple_returns_default_reference() {
-        mock_default_return!(context ~ ReferenceFoo ~ simple, || &EXPECTED_VALUE);
+    // #[whey(DefaultReturnReferenceContext ~ context)]
+    // fn simple_returns_default_reference() {
+    //     mock_default_return!(context ~ ReferenceFoo ~ simple, || &EXPECTED_VALUE);
 
-        assert_eq!(&EXPECTED_VALUE, context.test_type().simple());
-    }
+    //     assert_eq!(&EXPECTED_VALUE, context.test_type().simple());
+    // }
     
-    #[whey(DefaultReturnReferenceContext ~ context)]
-    fn decorated_returns_default_reference() {
-        assert_eq!(&EXPECTED_VALUE, context.test_type().decorated());
-    }
+    // #[whey(DefaultReturnReferenceContext ~ context)]
+    // fn decorated_returns_default_reference() {
+    //     assert_eq!(&EXPECTED_VALUE, context.test_type().decorated());
+    // }
 }

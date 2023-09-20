@@ -89,6 +89,13 @@ pub fn mock_input(item: TokenStream) -> TokenStream {
         .into()
 }
 
+#[proc_macro]
+pub fn mock_sequence(item: TokenStream) -> TokenStream {
+    parse_macro_input!(item as WheySequence)
+        .quote()
+        .into()
+}
+
 /* #[proc_macro_attribute]
 pub fn message_dispatch(attr: TokenStream, item: TokenStream) -> TokenStream {
     let message_trait = parse_macro_input!(attr as Ident);
