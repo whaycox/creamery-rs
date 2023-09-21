@@ -36,14 +36,17 @@ mod tests {
     #[mocks(dyn DependencyB)]
     struct SequenceContext {}
 
+    fn test_comparison(input: u32) -> bool { input == TEST_VALUE }
+    fn test_generator() -> u32 { TEST_VALUE }
+
     #[whey(SequenceContext ~ context)]
     fn calls_in_correct_order_is_expected() {
         let test_object = context.test_type();
 
         for i in 0..=10 {
             mock_sequence!(context ~ [
-                DependencyA ~ generate_value() -> || TEST_VALUE,
-                DependencyB ~ process_value(|input| input == TEST_VALUE) -> move |input| input + i,
+                DependencyA ~ generate_value() -> test_generator,
+                DependencyB ~ process_value(test_comparison) -> move |input| input + i,
                 DependencyA ~ finalize(),
             ]);
             
@@ -69,7 +72,7 @@ mod tests {
     fn sequence_performs_input_comparison() {
         let test_object = context.test_type();
         mock_sequence!(context ~ [
-            DependencyA ~ generate_value() -> || TEST_VALUE,
+            DependencyA ~ generate_value() -> test_generator,
             DependencyB ~ process_value(|input| input != TEST_VALUE),
         ]);
 

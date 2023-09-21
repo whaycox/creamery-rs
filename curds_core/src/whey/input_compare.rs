@@ -15,15 +15,17 @@ mod tests {
     #[mocks(dyn VoidFoo)]
     struct VoidFooContext {}
 
+    fn value_comparison(input: u32) -> bool { input == EXPECTED_INT }
+
     #[whey(VoidFooContext ~ context)]
     #[should_panic(expected = "not all stored input comparisons for VoidFoo::value have been consumed")]
     fn panics_if_inputs_arent_consumed() {
-        mock_input!(context ~ VoidFoo ~ value, |input| input == EXPECTED_INT, 1);
+        mock_input!(context ~ VoidFoo ~ value, value_comparison, 1);
     }
     
     #[whey(VoidFooContext ~ context)]
     fn resets_stored_returns() {
-        mock_input!(context ~ VoidFoo ~ value, |input| input == EXPECTED_INT, 1);        
+        mock_input!(context ~ VoidFoo ~ value, value_comparison, 1);        
         let core: Rc<RwLock<WheyCoreVoidFoo>> = context.generate();
 
         core.write().unwrap().reset();
@@ -32,7 +34,7 @@ mod tests {
     #[whey(VoidFooContext ~ context)]
     #[should_panic(expected = "the expected inputs for VoidFoo::value were not supplied")]
     fn panics_if_inputs_arent_expected() {
-        mock_input!(context ~ VoidFoo ~ value, |input| input == EXPECTED_INT, 1);
+        mock_input!(context ~ VoidFoo ~ value, value_comparison, 1);
         let mut test = context.test_type();
 
         test.value(EXPECTED_INT + 1);

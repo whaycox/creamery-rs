@@ -18,6 +18,7 @@ impl<'a> WheyMockCore<'a> {
     pub fn store_return(ident: &Ident) -> Ident { format_ident!("store_return_{}", ident) }
     pub fn generate_return(ident: &Ident) -> Ident { format_ident!("generate_return_{}", ident) }
     pub fn core_name(ident: &Ident) -> Ident { format_ident!("WheyCore{}", ident) }
+    pub fn whey_name(ident: &Ident) -> Ident { format_ident!("Whey{}", ident) }
     fn expected_calls(ident: &Ident) -> Ident { format_ident!("expected_calls_{}", ident) }
     fn recorded_calls(ident: &Ident) -> Ident { format_ident!("recorded_calls_{}", ident) }
     fn default_generator(ident: &Ident) -> Ident { format_ident!("default_generator_{}", ident) }
@@ -196,7 +197,7 @@ impl<'a> WheyMockCore<'a> {
 
         if input_types.len() > 0 {
             impls.push(self.quote_store_expected_input(&method.sig.ident, &input_types));
-            impls.push(self.quote_consume_expected_input(&method, &input_types));
+            impls.push(self.quote_consume_expected_input(&method));
         }
         match &method.sig.output {
             ReturnType::Default => {},
@@ -220,12 +221,20 @@ impl<'a> WheyMockCore<'a> {
     }
     fn quote_record_call(&self, method: &TraitItemMethod) -> TokenStream {
         let record_call = Self::record_call(&method.sig.ident);
-        let recorded_calls = Self::recorded_calls(&method.sig.ident);
+        let mocked_trait = &self.mock.mocked_trait;
+        let mut mocked_generics = mocked_trait.generics.clone();
+        for generic in &mut mocked_generics.params {
+            if let GenericParam::Lifetime(lifetime) = generic {
+                lifetime.lifetime = Lifetime::new("'static", lifetime.span());
+            }
+        }
+        let core_name = Self::core_name(&mocked_trait.ident);
         let method_str = format!("{}", method.sig.ident);
+        let recorded_calls = Self::recorded_calls(&method.sig.ident);
 
         quote! {
             pub fn #record_call(&mut self) {
-                self.whey_synchronizer.write().unwrap().consume(std::any::TypeId::of::<Self>(), #method_str);
+                self.whey_synchronizer.write().unwrap().consume(std::any::TypeId::of::<#core_name #mocked_generics>(), #method_str);
                 self.#recorded_calls += 1;
             }
         }
@@ -242,7 +251,7 @@ impl<'a> WheyMockCore<'a> {
             }
         }
     }
-    fn quote_consume_expected_input(&self, method: &TraitItemMethod, input_types: &Vec<Box<Type>>) -> TokenStream {
+    fn quote_consume_expected_input(&self, method: &TraitItemMethod) -> TokenStream {
         let consume_input = Self::consume_expected_input(&method.sig.ident);
         let mut signature_inputs: Vec<TokenStream> = vec![ quote! { &mut self } ];
         let mut input_names: Vec<&Box<Pat>> = Vec::new();
@@ -343,7 +352,7 @@ impl<'a> WheyMockCore<'a> {
         for input in &method.sig.inputs {
             match input {
                 FnArg::Receiver(_) => {},
-                FnArg::Typed(ty) => {
+                FnArg::Typed(_) => {
                     has_inputs = true;
                     break;
                 },
@@ -362,7 +371,7 @@ impl<'a> WheyMockCore<'a> {
         else { quote! {} };
         let return_assert = match &method.sig.output {
             ReturnType::Default => quote! {},
-            ReturnType::Type(_, ty) => {
+            ReturnType::Type(_, _) => {
                 let returned_times_field = Self::returned_times(&method.sig.ident);
                 let returned_times_failure = format!("not all stored returns for {}::{} have been consumed", self.mock.mocked_trait.ident, method.sig.ident);
 
@@ -391,7 +400,7 @@ impl<'a> WheyMockCore<'a> {
         for input in &method.sig.inputs {
             match input {
                 FnArg::Receiver(_) => {},
-                FnArg::Typed(ty) => {
+                FnArg::Typed(_) => {
                     has_inputs = true;
                     break;
                 },
@@ -409,7 +418,7 @@ impl<'a> WheyMockCore<'a> {
         else { quote! {} };
         let return_reset = match &method.sig.output {
             ReturnType::Default => quote! {},
-            ReturnType::Type(_, ty) => {
+            ReturnType::Type(_, _) => {
                 let returned_times_field = Self::returned_times(&method.sig.ident);
                 let returned_field = Self::returned(&method.sig.ident);
 

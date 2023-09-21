@@ -3,8 +3,8 @@ use super::*;
 pub struct WheySequenceStage {
     expected_mock: Path,
     method: Ident,
-    input_comparison: Option<ExprClosure>,
-    return_generator: Option<ExprClosure>,
+    input_comparison: Option<WheyExpectation>,
+    return_generator: Option<WheyExpectation>,
 }
 
 impl Parse for WheySequenceStage {
@@ -13,14 +13,14 @@ impl Parse for WheySequenceStage {
         input.parse::<Token![~]>()?;
         let method: Ident = input.parse()?;
 
-        let mut input_comparison: Option<ExprClosure> = None;
+        let mut input_comparison: Option<WheyExpectation> = None;
         let input_content;
         parenthesized!(input_content in input);
         if !input_content.is_empty() {
             input_comparison = Some(input_content.parse()?);
         }
         
-        let mut return_generator: Option<ExprClosure> = None;
+        let mut return_generator: Option<WheyExpectation> = None;
         if input.peek(Token![->]) {
             input.parse::<Token![->]>()?;
             return_generator = Some(input.parse()?);

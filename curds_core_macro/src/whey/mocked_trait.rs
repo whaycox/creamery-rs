@@ -65,7 +65,7 @@ impl MockedTraitDefinition {
         let mut mocked_trait_segments = mocked_trait.segments.clone();
         let final_index = mocked_trait_segments.len() - 1;
         let type_segment = &mocked_trait_segments[final_index];
-        let new_type_ident = format_ident!("Whey{}", type_segment.ident);
+        let new_type_ident = WheyMockCore::whey_name(&type_segment.ident);
         mocked_trait_segments[final_index].ident = new_type_ident;
         Path {
             leading_colon: None,
@@ -76,7 +76,7 @@ impl MockedTraitDefinition {
         let mut mocked_trait_segments = mocked_trait.segments.clone();
         let final_index = mocked_trait_segments.len() - 1;
         let type_segment = &mocked_trait_segments[final_index];
-        let new_type_ident = format_ident!("WheyCore{}", type_segment.ident);
+        let new_type_ident = WheyMockCore::core_name(&type_segment.ident);
         mocked_trait_segments[final_index].ident = new_type_ident;
         Path {
             leading_colon: None,

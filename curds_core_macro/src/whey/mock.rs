@@ -43,7 +43,7 @@ impl WheyMock {
                                 let ident = trait_method.sig.ident.clone();
                                 let mut default_value = quote! { Some(std::boxed::Box::new(|| std::default::Default::default())) };
                                 if !attribute.tokens.is_empty() {
-                                    let generator: ExprClosure = attribute.parse_args()?;
+                                    let generator: WheyExpectation = attribute.parse_args()?;
                                     default_value = quote! { Some(std::boxed::Box::new(#generator)) };
                                 }
                                 
@@ -77,8 +77,8 @@ impl WheyMock {
     fn quote_mocked_trait(mocked_trait: &ItemTrait) -> TokenStream {
         let vis = &mocked_trait.vis;
         let base_name = &mocked_trait.ident;
-        let whey_name = format_ident!("Whey{}", mocked_trait.ident);
-        let core_name = format_ident!("WheyCore{}", mocked_trait.ident);
+        let whey_name = WheyMockCore::whey_name(&mocked_trait.ident);
+        let core_name = WheyMockCore::core_name(&mocked_trait.ident);
         let generics = &mocked_trait.generics;
         let (impl_generics, type_generics, where_clause) = generics.split_for_impl();
 

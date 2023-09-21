@@ -3,7 +3,7 @@ mod whey;
 mod message_dispatch;
 
 use proc_macro::TokenStream;
-use syn::{*, parse::*, punctuated::*, spanned::*, token::Trait};
+use syn::{*, parse::*, punctuated::*, spanned::*};
 use quote::*;
 use std::collections::{HashSet, HashMap};
 use rand::*;
@@ -13,14 +13,14 @@ use whey::*;
 use message_dispatch::*;
 
 #[proc_macro_attribute]
-pub fn injected(_attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn injected(_: TokenStream, item: TokenStream) -> TokenStream {
     parse_macro_input!(item as InjectedDefinition)
         .quote()
         .into()
 }
 
 #[proc_macro_attribute]
-pub fn service_provider(_attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn service_provider(_: TokenStream, item: TokenStream) -> TokenStream {
     parse_macro_input!(item as ServiceProviderDefinition)
         .quote()
         .into()
@@ -46,7 +46,7 @@ pub fn whey_context(attr: TokenStream, item: TokenStream) -> TokenStream {
 }
 
 #[proc_macro_attribute]
-pub fn whey_mock(_attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn whey_mock(_: TokenStream, item: TokenStream) -> TokenStream {
     parse_macro_input!(item as WheyMock)
         .quote()
         .into()

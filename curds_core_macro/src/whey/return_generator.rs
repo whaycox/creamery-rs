@@ -4,7 +4,7 @@ pub struct WheyReturnGenerator {
     context: Ident,
     expected_mock: Path,
     method: Ident,
-    generator: ExprClosure,
+    generator: WheyExpectation,
     times: TokenStream,
 }
 
@@ -16,7 +16,7 @@ impl Parse for WheyReturnGenerator {
         input.parse::<Token![~]>()?;
         let method: Ident = input.parse()?;
         input.parse::<Token![,]>()?;
-        let generator: ExprClosure = input.parse()?;
+        let generator: WheyExpectation = input.parse()?;
         input.parse::<Token![,]>()?;
         let times: TokenStream = input.parse()?;
 

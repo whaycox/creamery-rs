@@ -14,16 +14,18 @@ mod tests {
     #[whey_context(WheyValueFoo)]
     #[mocks(dyn ValueFoo)]
     struct ReturnGeneratorValueContext {}
+
+    fn simple_delegate() -> u32 { 1 }
     
     #[whey(ReturnGeneratorValueContext ~ context)]
     #[should_panic(expected = "not all stored returns for ValueFoo::simple have been consumed")]
     fn panics_if_returns_arent_consumed() {
-        mock_return!(context ~ ValueFoo ~ simple, || 1, 1);
+        mock_return!(context ~ ValueFoo ~ simple, simple_delegate, 1);
     }
     
     #[whey(ReturnGeneratorValueContext ~ context)]
     fn resets_stored_returns() {
-        mock_return!(context ~ ValueFoo ~ simple, || 1, 1);
+        mock_return!(context ~ ValueFoo ~ simple, simple_delegate, 1);
         
         let core: Rc<RwLock<WheyCoreValueFoo>> = context.generate();
         core.write().unwrap().reset();

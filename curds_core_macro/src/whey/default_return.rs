@@ -4,7 +4,7 @@ pub struct WheyDefaultReturn {
     context: Ident,
     expected_mock: Path,
     method: Ident,
-    generator: ExprClosure,
+    generator: WheyExpectation,
 }
 
 impl Parse for WheyDefaultReturn {
@@ -15,7 +15,7 @@ impl Parse for WheyDefaultReturn {
         input.parse::<Token![~]>()?;
         let method: Ident = input.parse()?;
         input.parse::<Token![,]>()?;
-        let generator: ExprClosure = input.parse()?;
+        let generator: WheyExpectation = input.parse()?;
 
         Ok(WheyDefaultReturn {
             context,
@@ -32,6 +32,7 @@ impl WheyDefaultReturn {
         let expected_mock = MockedTraitDefinition::generate_core_name(&self.expected_mock);
         let method = WheyMockCore::default_return(&self.method);
         let generator = self.generator;
+
         quote! {
             {
                 let core: std::rc::Rc<std::sync::RwLock<#expected_mock>> = #context.generate();

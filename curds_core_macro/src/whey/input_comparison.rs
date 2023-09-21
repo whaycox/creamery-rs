@@ -4,7 +4,7 @@ pub struct WheyInputComparison {
     context: Ident,
     expected_mock: Path,
     method: Ident,
-    comparison: ExprClosure,
+    comparison: WheyExpectation,
     times: TokenStream,
 }
 
@@ -16,7 +16,7 @@ impl Parse for WheyInputComparison {
         input.parse::<Token![~]>()?;
         let method: Ident = input.parse()?;
         input.parse::<Token![,]>()?;
-        let comparison: ExprClosure = input.parse()?;
+        let comparison: WheyExpectation = input.parse()?;
         input.parse::<Token![,]>()?;
         let times: TokenStream = input.parse()?;
 
