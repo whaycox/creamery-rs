@@ -36,7 +36,11 @@ impl Parse for WheySequenceStage {
 }
 
 impl WheySequenceStage {
-    pub fn quote(self, context: &Ident) -> TokenStream {
+    pub fn quote(self, context: Option<&Ident>) -> TokenStream {
+        let context = match context {
+            Some(ident) => quote! { #ident },
+            None => quote! { self }
+        };
         let mock_core = MockedTraitDefinition::generate_core_name(&self.expected_mock);
         let expected_mock = self.expected_mock;
         let method_str = format!("{}", self.method);

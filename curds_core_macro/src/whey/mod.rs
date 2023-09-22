@@ -1,6 +1,10 @@
 use super::*;
 
 mod context;
+mod context_default_return;
+mod context_return_generator;
+mod context_input_comparison;
+mod context_sequence;
 mod test;
 mod test_context;
 mod mock;
@@ -15,6 +19,10 @@ mod sequence;
 mod sequence_stage;
 
 pub use context::*;
+pub use context_default_return::*;
+pub use context_return_generator::*;
+pub use context_input_comparison::*;
+pub use context_sequence::*;
 pub use test::*;
 pub use test_context::*;
 pub use mock::*;

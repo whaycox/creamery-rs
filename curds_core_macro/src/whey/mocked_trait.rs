@@ -24,10 +24,10 @@ impl WheyMockedTrait {
         }
     }
 
-    pub fn quote_assert(&self) -> TokenStream {
+    pub fn quote_assert(self) -> TokenStream {
         let core_name = match self {
-            WheyMockedTrait::Transient(transient) => &transient.core_name,
-            WheyMockedTrait::Singleton(singleton) => &singleton.core_name,
+            WheyMockedTrait::Transient(transient) => transient.core_name,
+            WheyMockedTrait::Singleton(singleton) => singleton.core_name,
         };
 
         quote! {

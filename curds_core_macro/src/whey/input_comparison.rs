@@ -1,7 +1,7 @@
 use super::*;
 
 pub struct WheyInputComparison {
-    context: Ident,
+    context: Option<Ident>,
     expected_mock: Path,
     method: Ident,
     comparison: WheyExpectation,
@@ -10,7 +10,12 @@ pub struct WheyInputComparison {
 
 impl Parse for WheyInputComparison {
     fn parse(input: ParseStream) -> Result<Self> {
-        let context: Ident = input.parse()?;
+        let mut context: Option<Ident> = None;
+        if let Ok(_) = input.parse::<Token![self]>() { } 
+        else {
+            context = Some(input.parse()?);
+        }
+
         input.parse::<Token![~]>()?;
         let expected_mock: Path = input.parse()?;
         input.parse::<Token![~]>()?;
@@ -32,7 +37,10 @@ impl Parse for WheyInputComparison {
 
 impl WheyInputComparison {
     pub fn quote(self) -> TokenStream {
-        let context = self.context;
+        let context = match self.context {
+            Some(ident) => quote! { #ident },
+            None => quote! { self }
+        };
         let expected_mock = MockedTraitDefinition::generate_core_name(&self.expected_mock);
         let method = WheyMockCore::store_expected_input(&self.method);
         let comparison = self.comparison;

@@ -1,7 +1,7 @@
 use super::*;
 
 pub struct WheyDefaultReturn {
-    context: Ident,
+    context: Option<Ident>,
     expected_mock: Path,
     method: Ident,
     generator: WheyExpectation,
@@ -9,7 +9,12 @@ pub struct WheyDefaultReturn {
 
 impl Parse for WheyDefaultReturn {
     fn parse(input: ParseStream) -> Result<Self> {
-        let context: Ident = input.parse()?;
+        let mut context: Option<Ident> = None;
+        if let Ok(_) = input.parse::<Token![self]>() { } 
+        else {
+            context = Some(input.parse()?);
+        }
+
         input.parse::<Token![~]>()?;
         let expected_mock: Path = input.parse()?;
         input.parse::<Token![~]>()?;
@@ -28,7 +33,10 @@ impl Parse for WheyDefaultReturn {
 
 impl WheyDefaultReturn {
     pub fn quote(self) -> TokenStream {
-        let context = self.context;
+        let context = match self.context {
+            Some(ident) => quote! { #ident },
+            None => quote! { self }
+        };
         let expected_mock = MockedTraitDefinition::generate_core_name(&self.expected_mock);
         let method = WheyMockCore::default_return(&self.method);
         let generator = self.generator;

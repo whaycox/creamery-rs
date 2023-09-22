@@ -11,6 +11,7 @@ impl WheyTestContext {
         let name = self.name;
         quote! {
             let mut #name = #context::construct();
+            #name.initialize();
         }
     }
 }
