@@ -31,7 +31,6 @@ impl ServiceProduction {
             ServiceProduction::ForwardSingleton(forwards) => forwards.quote_singleton(provider),
             ServiceProduction::ScopeSelf() => Self::quote_scope_self(provider),
             ServiceProduction::ScopeTransient(scopes) => scopes.quote_scope(provider),
-            _ => panic!("Unsupported production"),
         }
     }
     fn quote_clone_self(provider: &ServiceProviderDefinition) -> TokenStream {

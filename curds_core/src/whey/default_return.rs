@@ -1,27 +1,14 @@
 #[cfg(test)]
 mod tests {
     use super::super::*;
-    
-    const EXPECTED_VALUE: u32 = 123;
 
     fn test_delegate(value: u32, reference: &u32) -> u32 { value * reference }
-
-    struct CustomStruct {
-        foo: u32,
-    }
-    impl Default for CustomStruct {
-        fn default() -> Self {
-            Self { 
-                foo: EXPECTED_VALUE
-            }
-        }
-    }
 
     #[whey_mock]
     trait ValueFoo {
         fn simple(&self) -> u32;
 
-        #[mock_default_return(|| EXPECTED_VALUE)]
+        #[mock_default_return(|| EXPECTED_INT)]
         fn decorated(&self) -> u32;
 
         fn input(&self, value: u32, reference: &u32) -> u32;
@@ -36,9 +23,9 @@ mod tests {
     
     #[whey(DefaultReturnValueContext ~ context)]
     fn simple_returns_default_value() {
-        mock_default_return!(context ~ ValueFoo ~ simple, || EXPECTED_VALUE);
+        mock_default_return!(context ~ ValueFoo ~ simple, || EXPECTED_INT);
 
-        assert_eq!(EXPECTED_VALUE, context.test_type().simple());
+        assert_eq!(EXPECTED_INT, context.test_type().simple());
     }
     
     #[whey(DefaultReturnValueContext ~ context)]
@@ -61,7 +48,7 @@ mod tests {
     
     #[whey(DefaultReturnValueContext ~ context)]
     fn decorated_returns_default_value() {
-        assert_eq!(EXPECTED_VALUE, context.test_type().decorated());
+        assert_eq!(EXPECTED_INT, context.test_type().decorated());
     }
     
     #[whey(DefaultReturnValueContext ~ context)]
@@ -69,7 +56,7 @@ mod tests {
         mock_default_return!(context ~ ValueFoo ~ input, |value, reference| value + reference);
 
         for i in 1..=10 {
-            assert_eq!(EXPECTED_VALUE + i, context.test_type().input(EXPECTED_VALUE, &i));
+            assert_eq!(EXPECTED_INT + i, context.test_type().input(EXPECTED_INT, &i));
         }
     }
     
@@ -78,7 +65,7 @@ mod tests {
         mock_default_return!(context ~ ValueFoo ~ input, test_delegate);
 
         for i in 1..=10 {
-            assert_eq!(EXPECTED_VALUE * i, context.test_type().input(EXPECTED_VALUE, &i));
+            assert_eq!(EXPECTED_INT * i, context.test_type().input(EXPECTED_INT, &i));
         }
     }
     
@@ -86,10 +73,10 @@ mod tests {
     fn default_generator_can_use_default_impl() {
         let actual = context.test_type().custom();
 
-        assert_eq!(EXPECTED_VALUE, actual.foo);
+        assert_eq!(EXPECTED_INT, actual.foo);
     }
 
-    fn reference_delegate<'a>() -> &'a u32 { &EXPECTED_VALUE }
+    fn reference_delegate<'a>() -> &'a u32 { &EXPECTED_INT }
 
     #[whey_mock]
     trait ReferenceFoo<'a> {
@@ -105,13 +92,13 @@ mod tests {
 
     #[whey(DefaultReturnReferenceContext ~ context)]
     fn simple_returns_default_reference() {
-        mock_default_return!(context ~ ReferenceFoo ~ simple, || &EXPECTED_VALUE);
+        mock_default_return!(context ~ ReferenceFoo ~ simple, || &EXPECTED_INT);
 
-        assert_eq!(&EXPECTED_VALUE, context.test_type().simple());
+        assert_eq!(&EXPECTED_INT, context.test_type().simple());
     }
     
     #[whey(DefaultReturnReferenceContext ~ context)]
     fn decorated_returns_default_reference() {
-        assert_eq!(&EXPECTED_VALUE, context.test_type().decorated());
+        assert_eq!(&EXPECTED_INT, context.test_type().decorated());
     }
 }

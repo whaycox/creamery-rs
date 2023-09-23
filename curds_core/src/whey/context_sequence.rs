@@ -2,8 +2,6 @@
 mod tests {
     use super::super::*;
 
-    const TEST_VALUE: u32 = 12345;
-
     #[whey_mock]
     trait DependencyA {
         fn generate_value(&self) -> u32;
@@ -36,19 +34,19 @@ mod tests {
     #[mocks(dyn DependencyB)]
     #[mock_sequence([
         DependencyA ~ generate_value() -> test_generator,
-        DependencyB ~ process_value(test_comparison) -> move |input| input + TEST_VALUE,
+        DependencyB ~ process_value(test_comparison) -> move |input| input + EXPECTED_INT,
         DependencyA ~ finalize(),       
     ])]
     struct SequenceContext {}
 
-    fn test_comparison(input: u32) -> bool { input == TEST_VALUE }
-    fn test_generator() -> u32 { TEST_VALUE }
+    fn test_comparison(input: u32) -> bool { input == EXPECTED_INT }
+    fn test_generator() -> u32 { EXPECTED_INT }
 
     #[whey(SequenceContext ~ context)]
     fn calls_in_correct_order_is_expected() {
         let test_object = context.test_type();
 
-        assert_eq!(TEST_VALUE * 2, test_object.value());
+        assert_eq!(EXPECTED_INT * 2, test_object.value());
     }
 
     #[whey(SequenceContext ~ context)]
@@ -66,6 +64,6 @@ mod tests {
         let b: Box<dyn DependencyB> = context.generate();
 
         a.generate_value();
-        b.process_value(TEST_VALUE + 1);
+        b.process_value(EXPECTED_INT + 1);
     }
 }

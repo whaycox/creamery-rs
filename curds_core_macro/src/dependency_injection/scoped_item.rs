@@ -1,5 +1,3 @@
-use std::thread::Scope;
-
 use super::*;
 
 pub struct ScopedItem {

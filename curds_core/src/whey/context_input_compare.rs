@@ -1,10 +1,6 @@
 #[cfg(test)]
 mod tests {
     use super::super::*;
-    
-    const EXPECTED_ITERATIONS: u32 = 10;
-    const EXPECTED_INT: u32 = 123;
-    const EXPECTED_LONG: u64 = 9876543210;
 
     #[whey_mock]
     trait VoidFoo {

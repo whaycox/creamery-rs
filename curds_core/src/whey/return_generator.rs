@@ -2,13 +2,13 @@
 mod tests {
     use super::super::*;
 
-    const EXPECTED_VALUE: u32 = 234;
-
     #[whey_mock]
     trait ValueFoo {
         fn simple(&self) -> u32;
 
         fn input(&self, value: u32, reference: &u32) -> u32;
+
+        fn custom(&self) -> CustomStruct;
     }
 
     #[whey_context(WheyValueFoo)]
@@ -50,7 +50,7 @@ mod tests {
             let test = context.test_type();
 
             for j in 0..i {
-                assert_eq!(EXPECTED_VALUE + &j + i, test.input(EXPECTED_VALUE, &j));
+                assert_eq!(EXPECTED_INT + &j + i, test.input(EXPECTED_INT, &j));
             }
         }
     }

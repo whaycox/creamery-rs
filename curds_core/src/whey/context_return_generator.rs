@@ -2,9 +2,6 @@
 mod tests {
     use super::super::*;
 
-    const EXPECTED_ITERATIONS: u32 = 10;
-    const EXPECTED_VALUE: u32 = 234;
-
     #[whey_mock]
     trait ValueFoo {
         fn simple(&self) -> u32;
@@ -17,7 +14,7 @@ mod tests {
     #[mock_return(ValueFoo ~ input, |value, reference| value + reference, EXPECTED_ITERATIONS)]
     struct ReturnGeneratorValueContext {}
 
-    fn simple_delegate() -> u32 { EXPECTED_VALUE }
+    fn simple_delegate() -> u32 { EXPECTED_INT }
     
     #[whey(ReturnGeneratorValueContext ~ context)]
     #[should_panic(expected = "not all stored returns for ValueFoo::simple have been consumed")]
@@ -35,8 +32,8 @@ mod tests {
         let test = context.test_type();
 
         for i in 1..=EXPECTED_ITERATIONS {
-            assert_eq!(EXPECTED_VALUE, test.simple());
-            assert_eq!(EXPECTED_VALUE + i, test.input(EXPECTED_VALUE, &i));
+            assert_eq!(EXPECTED_INT, test.simple());
+            assert_eq!(EXPECTED_INT + i, test.input(EXPECTED_INT, &i));
         }
     }
 }
