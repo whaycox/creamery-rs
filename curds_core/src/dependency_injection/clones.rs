@@ -4,30 +4,51 @@ mod tests {
 
     #[service_provider]
     #[generates_singleton(IncrementingFoo)]
-    #[generates(ClonedStructProvider)]
     #[clones_self]
     #[derive(Clone)]
-    struct BaseProvider {}
-
-    #[service_provider]
-    #[clones(base)]
-    struct ClonedStructProvider {
-        base: BaseProvider,
-    }
+    struct ClonedSelfProvider {}
 
     #[test]
     fn generated_provider_is_cloned_from_base_each_time() {
-        let base_provider = BaseProvider::construct();
-        let base_foo: Rc<IncrementingFoo> = base_provider.generate();
-        let provider: ClonedStructProvider = base_provider.generate();
+        let mut base_provider = ClonedSelfProvider::construct();
 
         for i in 0..10 {
-            let cloned_provider: BaseProvider = provider.generate();
-            let foo: Rc<IncrementingFoo> = cloned_provider.generate();
+            {
+                let base_singleton: Rc<RwLock<IncrementingFoo>> = base_provider.generate();
+                let mut base_foo = base_singleton.write().unwrap();
+                assert_eq!(i * 3, base_foo.foo());
+            }
+            {
+                let mut cloned_provider: ClonedSelfProvider = base_provider.generate();
+                let cloned_singleton: Rc<RwLock<IncrementingFoo>> = cloned_provider.generate();
+                let mut cloned_foo = cloned_singleton.write().unwrap();
+                assert_eq!(i * 3 + 1, cloned_foo.foo());
+                assert_eq!(i * 3 + 2, cloned_foo.foo());
+            }
+        }
+    }
 
-            assert_eq!(i * 3, foo.foo());
-            assert_eq!(i * 3 + 1, base_foo.foo());
-            assert_eq!(i * 3 + 2, foo.foo());
+    #[service_provider]
+    #[clones(base)]
+    struct ClonedDependencyProvider {
+        base: IncrementingFoo,
+    }
+
+    #[test]
+    fn clones_service_from_dependency() {
+        for i in 0..10 {
+            let mut base_dependency = IncrementingFoo::construct();
+            for _ in 0..i {
+                base_dependency.foo();
+            }
+            let mut provider = ClonedDependencyProvider::construct(base_dependency);
+                        
+            for _ in 0..i {
+                let mut clone: IncrementingFoo = provider.generate();
+
+                assert_eq!(i, clone.foo());
+                assert_eq!(i + 1, clone.foo());
+            }
         }
     }
 }

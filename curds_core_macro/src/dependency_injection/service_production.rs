@@ -31,15 +31,14 @@ impl ServiceProduction {
             ServiceProduction::ForwardSingleton(forwards) => forwards.quote_singleton(provider),
             ServiceProduction::ScopeSelf() => Self::quote_scope_self(provider),
             ServiceProduction::ScopeTransient(scopes) => scopes.quote_scope(provider),
-            _ => panic!("Unsupported production"),
         }
     }
     fn quote_clone_self(provider: &ServiceProviderDefinition) -> TokenStream {
         let name = provider.name();
         quote! {
             impl curds_core_abstraction::dependency_injection::ServiceGenerator<Self> for #name {
-                fn generate(&self) -> Self {
-                    self.clone()
+                fn generate(&mut self) -> Self {
+                    std::clone::Clone::clone(self)
                 }
             }
         }
@@ -48,8 +47,8 @@ impl ServiceProduction {
         let name = provider.name();
         quote! {
             impl curds_core_abstraction::dependency_injection::ServiceGenerator<Self> for #name {
-                fn generate(&self) -> Self {
-                    self.scope()
+                fn generate(&mut self) -> Self {
+                    curds_core_abstraction::dependency_injection::Scoped::scope(self)
                 }
             }
         }

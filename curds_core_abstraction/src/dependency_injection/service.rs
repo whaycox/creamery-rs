@@ -1,3 +1,3 @@
-pub trait ServiceGenerator<TService: 'static> {
-    fn generate(&self) -> TService;
+pub trait ServiceGenerator<TService> {
+    fn generate(&mut self) -> TService;
 }

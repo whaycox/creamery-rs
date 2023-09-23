@@ -31,7 +31,6 @@ impl Parse for DispatchDefinition {
             }
             else if !attribute.path.is_ident(CLONES_IDENTIFIER) &&
                 !attribute.path.is_ident(SCOPES_IDENTIFIER) &&
-                !attribute.path.is_ident(SCOPES_SINGLETON_IDENTIFIER) &&
                 !attribute.path.is_ident(GENERATES_IDENTIFIER) &&
                 !attribute.path.is_ident(GENERATES_SINGLETON_IDENTIFIER) &&
                 !attribute.path.is_ident(FORWARDS_IDENTIFIER) &&
@@ -42,9 +41,9 @@ impl Parse for DispatchDefinition {
                 messages.push(message);
             }
         }
-        for context in contexts {
-            provider_definition.generates(context)
-        }
+        // for context in contexts {
+        //     provider_definition.generates(context)
+        // }
 
         Ok(Self {
             messages: messages,
@@ -60,44 +59,44 @@ impl Parse for DispatchDefinition {
 
 impl DispatchDefinition {
     pub fn quote(self, message_trait: Ident) -> TokenStream {
-        let visibility = self.provider_definition.visibility();
-        let defaults = self.defaults;
-        let expanded_messages: Vec<MessageDefinition> = self.messages
-            .into_iter()
-            .map(|message| message.expand(&defaults))
-            .collect();
+        // let visibility = self.provider_definition.visibility();
+        // let defaults = self.defaults;
+        // let expanded_messages: Vec<MessageDefinition> = self.messages
+        //     .into_iter()
+        //     .map(|message| message.expand(&defaults))
+        //     .collect();
 
-        let message_signatures: Vec<TokenStream> = expanded_messages
-            .clone()
-            .into_iter()
-            .map(|message| message.signature_tokens())
-            .collect();
-        let provider_definition = self.provider_definition
-            .clone()
-            .quote();
-        let message_traits: Vec<TokenStream> = expanded_messages
-            .clone()
-            .into_iter()
-            .map(|message| message.trait_tokens(&visibility, &message_trait))
-            .collect();
-        let provider_name = self.provider_definition.name();
-        let (impl_generics, type_generics, where_clause) = self.provider_definition.definition.generics.split_for_impl();
-        let message_implementations: Vec<TokenStream> = expanded_messages
-            .into_iter()
-            .map(|message| message.implementation_tokens())
-            .collect();
+        // let message_signatures: Vec<TokenStream> = expanded_messages
+        //     .clone()
+        //     .into_iter()
+        //     .map(|message| message.signature_tokens())
+        //     .collect();
+        // let provider_definition = self.provider_definition
+        //     .clone()
+        //     .quote();
+        // let message_traits: Vec<TokenStream> = expanded_messages
+        //     .clone()
+        //     .into_iter()
+        //     .map(|message| message.trait_tokens(&visibility, &message_trait))
+        //     .collect();
+        // let provider_name = self.provider_definition.name();
+        // let (impl_generics, type_generics, where_clause) = self.provider_definition.definition.generics.split_for_impl();
+        // let message_implementations: Vec<TokenStream> = expanded_messages
+        //     .into_iter()
+        //     .map(|message| message.implementation_tokens())
+        //     .collect();
 
         quote! {
-            #visibility trait #message_trait {
-                #(#message_signatures)*
-            }
-            #provider_definition
+            // #visibility trait #message_trait {
+            //     #(#message_signatures)*
+            // }
+            // #provider_definition
 
-            #(#message_traits)*
+            // #(#message_traits)*
 
-            impl #impl_generics #message_trait for #provider_name #type_generics #where_clause {
-                #(#message_implementations)*
-            }
+            // impl #impl_generics #message_trait for #provider_name #type_generics #where_clause {
+            //     #(#message_implementations)*
+            // }
         }
     }
 }

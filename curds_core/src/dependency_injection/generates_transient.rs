@@ -1,15 +1,15 @@
 #[cfg(test)]
 mod tests {
     use super::super::*;
-    
+
     #[service_provider]
     #[generates(ConcreteFoo)]
     struct StructProvider {}
 
     #[test]
     fn generates_foo_struct() {
-        let provider = StructProvider::construct();
-        let foo: ConcreteFoo = provider.generate();
+        let mut provider = StructProvider::construct();
+        let mut foo: ConcreteFoo = provider.generate();
 
         assert_eq!(EXPECTED_FOO, foo.foo())
     }
@@ -20,8 +20,8 @@ mod tests {
 
     #[test]
     fn generates_foo_trait() {
-        let provider = TraitProvider::construct();
-        let foo: Box<dyn Foo> = provider.generate();
+        let mut provider = TraitProvider::construct();
+        let mut foo: Box<dyn Foo> = provider.generate();
 
         assert_eq!(EXPECTED_FOO, foo.foo())
     }

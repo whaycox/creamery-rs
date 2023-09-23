@@ -16,26 +16,26 @@ impl SingletonCollection {
     pub fn singleton(&self, ty: &Type) -> Ident { self.singletons[ty].ident() }
     pub fn is_singleton(&self, ident: &Ident) -> bool { self.consumed.contains(ident) }
 
-    pub fn register_singletons(&mut self, library: &Vec<ServiceProduction>) -> Result<()> {
+    pub fn register_singletons(&mut self, item: &ItemStruct, library: &Vec<ServiceProduction>) -> Result<()> {
         for production in library {
             match production {
-                ServiceProduction::GenerateSingleton(definition) => self.register_singleton(definition.singleton_type(), false),
-                ServiceProduction::ForwardSingleton(definition) => self.register_singleton(definition.singleton_type(), definition.trait_storage()),
+                ServiceProduction::GenerateSingleton(definition) => self.register_singleton(definition.singleton_description()),
+                ServiceProduction::ForwardSingleton(definition) => if definition.is_promoted() { self.register_singleton(definition.singleton_description()) },
                 _ => continue,
             }
         }
         Ok(())
     }
-    fn register_singleton(&mut self, ty: Type, trait_storage: bool) {
-        if !self.singletons.contains_key(&ty) {
-            let singleton = self.generate_singleton(trait_storage);
-            self.singletons.insert(ty, singleton);
+    fn register_singleton(&mut self, description: SingletonDescription) {
+        if !self.singletons.contains_key(&description.requested) {
+            let singleton = self.generate_singleton(&description);
+            self.singletons.insert(description.requested, singleton);
         }
     }
-    fn generate_singleton(&mut self, trait_storage: bool) -> SingletonIdentifier {
-        let mut generated = SingletonIdentifier::new(trait_storage);
+    fn generate_singleton(&mut self, description: &SingletonDescription) -> SingletonIdentifier {
+        let mut generated = SingletonIdentifier::new(description);
         while self.consumed.contains(&generated.ident()) {
-            generated = SingletonIdentifier::new(trait_storage);
+            generated = SingletonIdentifier::new(description);
         }
         self.consumed.insert(generated.ident());
 
@@ -44,30 +44,20 @@ impl SingletonCollection {
 
     pub fn add_singletons(&self, item: &mut ItemStruct) -> Result<()> {
         for singleton in &self.singletons {
-            Self::add_singleton(item, singleton.1, singleton.0)?;
+            Self::add_singleton(item, singleton.1)?;
         }
 
         Ok(())
     }
-    fn add_singleton(item: &mut ItemStruct, singleton: &SingletonIdentifier, ty: &Type) -> Result<()> {
+    fn add_singleton(item: &mut ItemStruct, singleton: &SingletonIdentifier) -> Result<()> {
         match &mut item.fields {
             Fields::Named(named) => {
-                let singleton_type: Type = syn::parse2(if singleton.trait_storage {
-                    quote! {
-                        std::cell::RefCell<std::option::Option<std::rc::Rc<dyn #ty>>>
-                    }
-                }
-                else {
-                    quote! {
-                        std::cell::RefCell<std::option::Option<std::rc::Rc<#ty>>>
-                    }
-                })?;
                 let mut singleton_field = Field {
                     attrs: Default::default(),
                     vis: Visibility::Inherited,
                     ident: Some(singleton.ident()),
                     colon_token: None,
-                    ty: singleton_type,
+                    ty: singleton.stored(),
                 };
                 let defaulted_attribute: Attribute = Attribute { 
                     pound_token: Default::default(), 

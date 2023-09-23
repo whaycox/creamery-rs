@@ -21,8 +21,8 @@ impl ProviderDefinition {
         let provider_type = definition.provider(&provider);
         quote! {
             impl curds_core_abstraction::dependency_injection::ServiceGenerator<#provider_type> for #name {
-                fn generate(&self) -> #provider_type {
-                    self.#provider.clone()
+                fn generate(&mut self) -> #provider_type {
+                    std::clone::Clone::clone(&self.#provider)
                 }
             }
         }
@@ -34,8 +34,8 @@ impl ProviderDefinition {
         let provider_type = definition.provider(&provider);
         quote! {
             impl curds_core_abstraction::dependency_injection::ServiceGenerator<#provider_type> for #name {
-                fn generate(&self) -> #provider_type {
-                    self.#provider.scope()
+                fn generate(&mut self) -> #provider_type {
+                    curds_core_abstraction::dependency_injection::Scoped::scope(&self.#provider)
                 }
             }
         }

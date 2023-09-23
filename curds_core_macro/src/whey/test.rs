@@ -5,31 +5,17 @@ pub struct WheyTest {
 }
 
 impl WheyTest {
-    pub fn quote(self) -> TokenStream {
+    pub fn quote(self, context: WheyTestContext) -> TokenStream {
         let attrs = self.item.attrs;
         let vis = self.item.vis;
-        let mut sig = self.item.sig;
-        let inputs = sig.inputs.clone();
-        let mut injected_inputs: Vec<TokenStream> = Vec::new();
-        for input in inputs {
-            match input {
-                FnArg::Typed(typed) => {
-                    let name = typed.pat;
-                    let injected_type = typed.ty;
-                    injected_inputs.push(quote! {
-                        let #name: std::rc::Rc<#injected_type> = #injected_type::construct();
-                    });
-                },
-                _ => panic!("Unexpected input"),
-            }
-        }
-        sig.inputs.clear();
+        let sig = self.item.sig;
+        let context_type = context.quote();
         let block_pieces = self.item.block.stmts;
         quote! {
             #[test]
             #(#attrs)*
             #vis #sig {
-                #(#injected_inputs)*
+                #context_type
                 #(#block_pieces)*
             }
         }

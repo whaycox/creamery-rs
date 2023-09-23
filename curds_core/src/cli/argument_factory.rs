@@ -1,6 +1,7 @@
 use super::*;
 
-#[cfg_attr(test, whey_mock)]
+#[whey_mock]
+#[expect(has_arguments() -> true)]
 pub trait ArgumentFactory {
     fn has_arguments(&self) -> bool;
     fn next(&self) -> String;

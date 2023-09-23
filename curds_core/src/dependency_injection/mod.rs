@@ -5,6 +5,7 @@ mod clones;
 mod scopes;
 mod forwards_transient;
 mod forwards_singleton;
+mod forwards_singleton_promoted;
 mod generic_service;
 
 #[cfg(test)]
@@ -20,45 +21,59 @@ mod simple {
     pub const EXPECTED_FOO: u32 = 123;
 
     pub trait Foo {
-        fn foo(&self) -> u32;
+        fn foo(&mut self) -> u32;
     }
 
     #[injected]
     pub struct ConcreteFoo {}
     impl Foo for ConcreteFoo {
-        fn foo(&self) -> u32 { EXPECTED_FOO }
+        fn foo(&mut self) -> u32 { EXPECTED_FOO }
+    }
+ 
+    #[injected]
+    #[derive(Clone)]
+    pub struct IncrementingFoo {
+        #[defaulted]
+        value: u32,
+    }
+    impl Foo for IncrementingFoo {
+        fn foo(&mut self) -> u32 {
+            let value = self.value;
+            self.value += 1;
+            value
+        }
     }
 
     #[injected]
-    pub struct IncrementingFoo {
-        #[defaulted]
-        value: Cell<u32>,
+    pub struct SeededFoo {
+        #[defaulted(EXPECTED_FOO)]
+        seeded_value: u32,
     }
-    impl Foo for IncrementingFoo {
-        fn foo(&self) -> u32 {
-            let value = self.value.get();
-            self.value.set(value + 1);
+    impl Foo for SeededFoo {
+        fn foo(&mut self) -> u32 {
+            let value = self.seeded_value;
+            self.seeded_value += 1;
             value
         }
     }
 
     #[injected]
     pub struct BarredFoo {
-        bar: Rc<dyn Bar>,
+        bar: Rc<RwLock<Box<dyn Bar>>>,
     }
     impl Foo for BarredFoo {
-        fn foo(&self) -> u32 { EXPECTED_FOO * self.bar.bar() }
+        fn foo(&mut self) -> u32 { EXPECTED_FOO * self.bar.write().unwrap().bar() }
     }
 
     pub const EXPECTED_BAR: u32 = 72;
     pub trait Bar {
-        fn bar(&self) -> u32;
+        fn bar(&mut self) -> u32;
     }
 
     #[injected]
     pub struct ConcreteBar {}
     impl Bar for ConcreteBar {
-        fn bar(&self) -> u32 { EXPECTED_BAR }
+        fn bar(&mut self) -> u32 { EXPECTED_BAR }
     }
 
     #[injected]
@@ -66,6 +81,6 @@ mod simple {
         foo: Box<dyn Foo>,
     }
     impl Bar for FooedBar {
-        fn bar(&self) -> u32 { EXPECTED_BAR * self.foo.foo() }
+        fn bar(&mut self) -> u32 { EXPECTED_BAR * self.foo.foo() }
     }
 }

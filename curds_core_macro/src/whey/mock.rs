@@ -1,32 +1,90 @@
 use super::*;
 
+pub const DEFAULT_RETURN_IDENTIFIER: &str = "mock_default_return";
+
 pub struct WheyMock {
-    mocked_trait: ItemTrait,
+    pub mocked_trait: ItemTrait,
+    pub defaulted_returns: HashMap<Ident, TokenStream>,
+}
+
+impl Parse for WheyMock {
+    fn parse(input: ParseStream) -> Result<Self> {
+        let mut mocked_trait: ItemTrait = input.parse()?;
+        let defaulted_returns = Self::parse_defaulted(&mut mocked_trait)?;
+        
+        Ok(WheyMock {
+            mocked_trait,
+            defaulted_returns,
+        })
+    }
 }
 
 impl WheyMock {
+    fn core(&self) -> WheyMockCore { WheyMockCore::new(&self) }
+    
+    pub fn filter_items(item: &TraitItem) -> Option<&TraitItemMethod> {
+        match item {
+            TraitItem::Method(method) => Some(method),
+            _ => None,
+        }
+    }
+
+    fn parse_defaulted(item: &mut ItemTrait) -> Result<HashMap<Ident, TokenStream>> {
+        let mut default_return: HashMap<Ident, TokenStream> = HashMap::new();
+        for method in &mut item.items {
+            match method {
+                TraitItem::Method(trait_method) => {
+                    let length = trait_method.attrs.len();
+                    if length > 0 {
+                        let mut attribute_index = 0;
+                        while attribute_index < length {
+                            let attribute = &trait_method.attrs[attribute_index];
+                            if attribute.path.is_ident(DEFAULT_RETURN_IDENTIFIER) {
+                                let ident = trait_method.sig.ident.clone();
+                                let mut default_value = quote! { Some(std::boxed::Box::new(|| std::default::Default::default())) };
+                                if !attribute.tokens.is_empty() {
+                                    let generator: WheyExpectation = attribute.parse_args()?;
+                                    default_value = quote! { Some(std::boxed::Box::new(#generator)) };
+                                }
+                                
+                                default_return.insert(ident, default_value);
+                                trait_method.attrs.remove(attribute_index);
+                                break;
+                            }
+
+                            attribute_index = attribute_index + 1;
+                        }
+                    }
+                },
+                _ => panic!("Only named fields are supported"),
+            }
+        }
+
+        Ok(default_return)
+    }
+
     pub fn quote(self) -> TokenStream {
-        let mocked_trait = self.mocked_trait;
-        let whey_mock = Self::quote_trait(&mocked_trait);
+        let mocked_trait = &self.mocked_trait;
+        let whey_mock = Self::quote_mocked_trait(&mocked_trait);
+        let core = self.core().quote();
 
         quote! {
             #mocked_trait
             #whey_mock
+            #core
         }
     }
-    fn quote_trait(mocked_trait: &ItemTrait) -> TokenStream {
+    fn quote_mocked_trait(mocked_trait: &ItemTrait) -> TokenStream {
         let vis = &mocked_trait.vis;
         let base_name = &mocked_trait.ident;
-        let whey_name = format_ident!("Whey{}", mocked_trait.ident);
+        let whey_name = WheyMockCore::whey_name(&mocked_trait.ident);
+        let core_name = WheyMockCore::core_name(&mocked_trait.ident);
         let generics = &mocked_trait.generics;
+        let (impl_generics, type_generics, where_clause) = generics.split_for_impl();
 
-        let mocked_items: Vec<&TraitItem> = mocked_trait.items
+        let mocked_items: Vec<&TraitItemMethod> = mocked_trait.items
             .iter()
-            .filter(|item| Self::filter_items(item))
-            .collect();
-        let mocked_setups: Vec<TokenStream> = mocked_items
-            .iter()
-            .map(|item| Self::quote_setup(item))
+            .filter_map(|item| Self::filter_items(item))
             .collect();
         let mocked_impls: Vec<TokenStream> = mocked_items
             .iter()
@@ -35,83 +93,54 @@ impl WheyMock {
 
         quote! {
             #[injected]
+            #[cfg(test)]
             #vis struct #whey_name #generics {
-                #(#mocked_setups),*
+                core: std::rc::Rc<std::sync::RwLock<#core_name #generics>>,
             }
 
-            impl #base_name for #whey_name {
+            #[cfg(test)]
+            impl #impl_generics #base_name #generics for #whey_name #type_generics #where_clause {
                 #(#mocked_impls)*
             }
         }
     }
-    fn filter_items(item: &TraitItem) -> bool {
-        match item {
-            TraitItem::Method(_) => true,
-            _ => false,
+    fn quote_impl(method: &TraitItemMethod) -> TokenStream {
+        let signature = &method.sig;
+        let mut input_names: Vec<&Box<Pat>> = Vec::new();
+        for input in &method.sig.inputs {
+            match input {
+                FnArg::Receiver(_) => {},
+                FnArg::Typed(ty) => input_names.push(&ty.pat),
+            }
         }
-    }
-    fn quote_setup(item: &TraitItem) -> TokenStream {
-        match item {
-            TraitItem::Method(method) => {
-                let ident = format_ident!("{}_setup", method.sig.ident);
-                let inputs: Vec<TokenStream> = method.sig.inputs
-                    .iter()
-                    .filter_map(|input| {
-                        match input {
-                            FnArg::Typed(arg) => {
-                                let ty = &arg.ty;
-                                Some(quote! { #ty })
-                            },
-                            _ => None,
-                        }
-                    })
-                    .collect();
-                let output = match &method.sig.output {
-                    ReturnType::Type(_, ty) => quote! { #ty },
-                    _ => panic!("Unexpected output: {:?}", method.sig.output),
-                };
 
+        let record_call = WheyMockCore::record_call(&method.sig.ident);
+
+        let compare_input = if input_names.len() > 0 {
+            let core_comparer = WheyMockCore::consume_expected_input(&method.sig.ident);
+            quote! {
+                core.#core_comparer(#(#input_names),*);
+            }
+        }
+        else { quote! {} };
+        let generate_return = match &method.sig.output {
+            ReturnType::Default => quote! {},
+            ReturnType::Type(_, _) => {
+                let core_generator = WheyMockCore::generate_return(&method.sig.ident);
                 quote! {
-                    #[defaulted]
-                    #ident: curds_core_abstraction::whey::WheySetup<(#(#inputs),*), #output>
+                    core.#core_generator(#(#input_names),*)
                 }
             },
-            _ => panic!("Unexpected trait item: {:?}", item),
-        }
-    }
-    fn quote_impl(item: &TraitItem) -> TokenStream {
-        match item {
-            TraitItem::Method(method) => {
-                let sig = &method.sig;
-                let ident = format_ident!("{}_setup", method.sig.ident);
-                let inputs: Vec<TokenStream> = method.sig.inputs
-                    .iter()
-                    .filter_map(|input| {
-                        match input {
-                            FnArg::Typed(arg) => {
-                                let pat = &arg.pat;
-                                Some(quote! { #pat })
-                            },
-                            _ => None,
-                        }
-                    })
-                    .collect();
+        };
 
-                quote! {
-                    #sig {
-                        self.#ident.consume((#(#inputs),*))
-                    }
-                }
-            },
-            _ => panic!("Unexpected trait item: {:?}", item),
-        }
-    }
-}
+        quote! {
+            #signature {
+                let mut core = self.core.write().unwrap();
+                core.#record_call();
 
-impl Parse for WheyMock {
-    fn parse(input: ParseStream) -> Result<Self> {
-        Ok(WheyMock {
-            mocked_trait: input.parse()?,
-        })
+                #compare_input
+                #generate_return
+            }
+        }
     }
 }

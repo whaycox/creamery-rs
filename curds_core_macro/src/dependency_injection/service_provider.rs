@@ -10,7 +10,7 @@ impl Parse for ServiceProviderDefinition {
         let mut item: ItemStruct = input.parse()?;
         let library = Self::parse_productions(&mut item)?;
         let mut singletons = SingletonCollection::new();
-        singletons.register_singletons(&library)?;
+        singletons.register_singletons(&item, &library)?;
         singletons.add_singletons(&mut item)?;
 
         Ok(Self {
@@ -24,6 +24,7 @@ impl Parse for ServiceProviderDefinition {
 impl ServiceProviderDefinition {
     pub fn name(&self) -> &Ident { &self.item.ident }
     pub fn generics(&self) -> &Generics { &self.item.generics }
+    pub fn lifetimes(&self) -> Vec<&LifetimeDef> { self.item.generics.lifetimes().collect() }
     pub fn singleton(&self, ty: &Type) -> Ident { self.singletons.singleton(ty) }
     pub fn provider(&self, name: &Ident) -> Type {
         for field in &self.item.fields {
@@ -86,7 +87,6 @@ impl ServiceProviderDefinition {
     }
 
     pub fn quote(self) -> TokenStream {
-        let scope_tokens = self.quote_scope();
         let mut library: Vec<TokenStream> = Vec::new();
         for production in &self.library {
             library.push(production.quote(&self));
@@ -96,44 +96,7 @@ impl ServiceProviderDefinition {
         quote! {
             #[injected]
             #item
-            #scope_tokens
             #(#library)*
-        }
-    }
-    fn quote_scope(&self) -> TokenStream {
-        let name = self.name();        
-        let initializer_tokens = self.scope_initializers();
-        let (impl_generics, type_generics, where_clause) = self.item.generics.split_for_impl();
-
-        quote! {
-            impl #impl_generics curds_core_abstraction::dependency_injection::Scoped for #name #type_generics #where_clause {
-                fn scope(&self) -> Self {
-                    Self {
-                        #initializer_tokens
-                    }
-                }
-            }
-        }
-    }
-    fn scope_initializers(&self) -> TokenStream {
-        let mut initializer_tokens: Vec<TokenStream> = Vec::new();
-        match &self.item.fields {
-            Fields::Named(named) => {
-                for field in &named.named {
-                    let name = &field.ident.clone().unwrap();
-                    if self.singletons.is_singleton(name) {
-                        initializer_tokens.push(quote! { #name: std::default::Default::default() })
-                    }
-                    else {
-                        initializer_tokens.push(quote! { #name: self.#name.clone() })
-                    }
-                }
-            },
-            _ => panic!("Only named fields are supported"),
-        }
-
-        quote! {
-            #(#initializer_tokens),*
         }
     }
 }

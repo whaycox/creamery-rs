@@ -1,3 +1,3 @@
 pub trait Injected<TProvider> {
-    fn inject(provider: &TProvider) -> Self;
+    fn inject(provider: &mut TProvider) -> Self;
 }
