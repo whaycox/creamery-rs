@@ -1,4 +1,4 @@
-//mod basic_message;
+mod basic_message;
 //mod basic_request;
 //mod complex_message;
 //mod complex_request;
@@ -70,22 +70,16 @@ mod simple {
         }
     }
 
-    #[derive(Debug)]
-    pub struct FooMessageError {
-        message: String,
+    pub struct FooMessageError {}
+    impl FooMessageError {
+        pub fn test() -> Self {
+            FooMessageError {}
+        }
     }
 
-    impl FooMessageError {
-        pub fn new(message: &str) -> Self {
-            Self {
-                message: message.to_owned()
-            }
+    impl Into<DispatchError> for FooMessageError {
+        fn into(self) -> DispatchError { 
+            DispatchError::PipelineError("FooMessage".to_owned()) 
         }
     }
-    impl Display for FooMessageError {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            f.write_str(&self.message)
-        }
-    }
-    impl Error for FooMessageError {}
 }

@@ -1,9 +1,25 @@
 use super::*;
 
-#[derive(Clone)]
 pub struct PipelineStage {
-    pub name: Ident,
+    name: Ident,
     pub return_type: Option<Type>,
+}
+
+impl Default for PipelineStage {
+    fn default() -> Self {
+        Self { 
+            name: Ident::new(HANDLER_NAME, Span::call_site()), 
+            return_type: None,
+        }
+    }
+}
+impl From<Type> for PipelineStage {
+    fn from(value: Type) -> Self {
+        Self {
+            name: Ident::new(HANDLER_NAME, Span::call_site()),
+            return_type: Some(value),
+        }
+    }
 }
 
 impl Parse for PipelineStage {
@@ -27,5 +43,6 @@ impl Parse for PipelineStage {
 }
 
 impl PipelineStage {
-    pub fn return_type(&self) -> Option<Type> { self.return_type.clone() }
+    pub fn trait_name(&self, base_name: &Ident) -> Ident { format_ident!("{}{}", base_name, self.name) }
+    pub fn return_type(&self) -> &Option<Type> { &self.return_type }
 }

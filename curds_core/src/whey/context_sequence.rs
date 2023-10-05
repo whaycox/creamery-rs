@@ -39,7 +39,7 @@ mod tests {
     ])]
     struct SequenceContext {}
 
-    fn test_comparison(input: u32) -> bool { input == EXPECTED_INT }
+    fn test_comparison(input: &u32) -> bool { *input == EXPECTED_INT }
     fn test_generator() -> u32 { EXPECTED_INT }
 
     #[whey(SequenceContext ~ context)]

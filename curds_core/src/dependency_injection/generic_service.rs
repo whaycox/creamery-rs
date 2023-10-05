@@ -38,7 +38,7 @@ mod tests {
 
     #[test]
     fn generates_generic_struct() {
-        let mut provider = RepositoryProvider::construct();
+        let provider = RepositoryProvider::construct();
 
         test_bool_repository(provider.generate());
         test_u32_repository(provider.generate());

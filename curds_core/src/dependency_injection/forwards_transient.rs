@@ -18,8 +18,8 @@ mod tests {
 
     #[test]
     fn forwards_generate_struct_to_base() {
-        let mut base_provider: BaseStructProvider = BaseStructProvider::construct();
-        let mut provider: ForwardedStructProvider = base_provider.generate();
+        let base_provider: BaseStructProvider = BaseStructProvider::construct();
+        let provider: ForwardedStructProvider = base_provider.generate();
         let mut foo: ConcreteFoo = provider.generate();
 
         assert_eq!(EXPECTED_FOO, foo.foo())
@@ -40,8 +40,8 @@ mod tests {
 
     #[test]
     fn forwards_generate_trait_to_base() {
-        let mut base_provider: BaseTraitProvider = BaseTraitProvider::construct();
-        let mut provider: ForwardedTraitProvider = base_provider.generate();
+        let base_provider: BaseTraitProvider = BaseTraitProvider::construct();
+        let provider: ForwardedTraitProvider = base_provider.generate();
         let mut foo: Box<dyn Foo> = provider.generate();
 
         assert_eq!(EXPECTED_FOO, foo.foo())
@@ -55,8 +55,8 @@ mod tests {
 
     #[test]
     fn forwards_generate_trait_via_concrete_to_base() {
-        let mut base_provider: BaseStructProvider = BaseStructProvider::construct();
-        let mut provider: ForwardedIntermediateProvider = base_provider.generate();
+        let base_provider: BaseStructProvider = BaseStructProvider::construct();
+        let provider: ForwardedIntermediateProvider = base_provider.generate();
         let mut foo: Box<dyn Foo> = provider.generate();
 
         assert_eq!(EXPECTED_FOO, foo.foo())

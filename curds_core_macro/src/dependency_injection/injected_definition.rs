@@ -75,7 +75,7 @@ impl InjectedDefinition {
 
         quote! {
             impl #impl_generics curds_core_abstraction::dependency_injection::Injected<TProvider> for #name #type_generics #where_clause {
-                fn inject(provider: &mut TProvider) -> Self {
+                fn inject(provider: &TProvider) -> Self {
                     Self::construct(#generator_tokens)
                 }
             }
@@ -102,24 +102,11 @@ impl InjectedDefinition {
                 args: Punctuated::new(),
                 gt_token: syn::token::Gt { spans: [Span::call_site()] },
             };
-            match &field.ty {
-                Type::Reference(ref_type) => {
-                    let reference_dependency = Type::from(*ref_type.elem.clone());
-                    generic_arguments.args.push(GenericArgument::Type(reference_dependency));
-                    constraint_path.segments.push(PathSegment {
-                        ident: Ident::new("ServiceLender", Span::call_site()),
-                        arguments: PathArguments::AngleBracketed(generic_arguments),
-                    });
-                },
-                Type::Path(_) => {
-                    generic_arguments.args.push(GenericArgument::Type(field.ty.clone()));
-                    constraint_path.segments.push(PathSegment {
-                        ident: Ident::new("ServiceGenerator", Span::call_site()),
-                        arguments: PathArguments::AngleBracketed(generic_arguments),
-                    });
-                }
-                _ => {},
-            }
+            generic_arguments.args.push(GenericArgument::Type(field.ty.clone()));
+            constraint_path.segments.push(PathSegment {
+                ident: Ident::new("ServiceGenerator", Span::call_site()),
+                arguments: PathArguments::AngleBracketed(generic_arguments),
+            });            
             let bound = TypeParamBound::Trait(TraitBound {
                 paren_token: None,
                 modifier: TraitBoundModifier::None,
@@ -140,19 +127,7 @@ impl InjectedDefinition {
                         continue;
                     }
                     let dependency = &field.ty;
-                    match dependency {
-                        Type::Reference(ref_type) => {
-                            let reference_dependency = &Type::from(*ref_type.elem.clone());
-                            match ref_type.mutability {
-                                Some(_) => generator_tokens.push(quote! { curds_core_abstraction::dependency_injection::ServiceLender::<#reference_dependency>::lend_mut(provider) }),
-                                None => generator_tokens.push(quote! { curds_core_abstraction::dependency_injection::ServiceLender::<#reference_dependency>::lend(provider) }),
-                            }
-                        },
-                        Type::Path(_) => {
-                            generator_tokens.push(quote! { curds_core_abstraction::dependency_injection::ServiceGenerator::<#dependency>::generate(provider) })
-                        }
-                        _ => {},
-                    }
+                    generator_tokens.push(quote! { curds_core_abstraction::dependency_injection::ServiceGenerator::<#dependency>::generate(provider) })
                 }
             },
             _ => panic!("Only named fields are supported"),

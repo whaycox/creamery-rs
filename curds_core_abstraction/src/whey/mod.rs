@@ -8,7 +8,7 @@ pub struct WheySynchronizer {
 }
 
 impl<TProvider> Injected<TProvider> for WheySynchronizer {
-    fn inject(_: &mut TProvider) -> Self { Default::default() }
+    fn inject(_: &TProvider) -> Self { Default::default() }
 }
 
 impl WheySynchronizer {

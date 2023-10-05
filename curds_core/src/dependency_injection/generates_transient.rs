@@ -8,7 +8,7 @@ mod tests {
 
     #[test]
     fn generates_foo_struct() {
-        let mut provider = StructProvider::construct();
+        let provider = StructProvider::construct();
         let mut foo: ConcreteFoo = provider.generate();
 
         assert_eq!(EXPECTED_FOO, foo.foo())
@@ -20,7 +20,7 @@ mod tests {
 
     #[test]
     fn generates_foo_trait() {
-        let mut provider = TraitProvider::construct();
+        let provider = TraitProvider::construct();
         let mut foo: Box<dyn Foo> = provider.generate();
 
         assert_eq!(EXPECTED_FOO, foo.foo())

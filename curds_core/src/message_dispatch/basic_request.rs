@@ -8,17 +8,17 @@ mod tests {
     #[foo_request(FooMessage ~ FooMessageContext -> u32)]
     struct TestMessagesProvider {}
 
-    impl FooRequestHandler for FooMessageContext {
-        fn handle(&self, _dispatch: &dyn TestMessages, input: &FooMessage) -> Result<u32> {
-            if input.foo > FOO_MOD {
-                Ok(input.foo % FOO_MOD)
-            }
-            else {
-                Err(Box::new(FooMessageError::new("Foo was too small")))
-            }
-        }
-    }
-
+    // impl FooRequestHandler for FooMessageContext {
+    //     fn handle(&self, _dispatch: &dyn TestMessages, input: &FooMessage) -> Result<u32> {
+    //         if input.foo > FOO_MOD {
+    //             Ok(input.foo % FOO_MOD)
+    //         }
+    //         else {
+    //             Err(Box::new(FooMessageError::new("Foo was too small")))
+    //         }
+    //     }
+    // }
+/* 
     #[test]
     fn handles_incoming_request() {
         let provider = TestMessagesProvider::construct();
@@ -36,5 +36,5 @@ mod tests {
         };
 
         provider.foo_request(message).unwrap_err();
-    }
+    } */
 }

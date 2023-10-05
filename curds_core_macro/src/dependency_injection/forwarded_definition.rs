@@ -58,10 +58,12 @@ impl ForwardedDefinition {
         let requested = &self.requested;
         syn::parse2(if self.trait_production {
             quote! {
-                std::option::Option<
-                    std::rc::Rc<
-                        std::sync::RwLock<
-                            std::boxed::Box<dyn #requested>
+                std::cell::RefCell<
+                    std::option::Option<
+                        std::rc::Rc<
+                            std::sync::RwLock<
+                                std::boxed::Box<dyn #requested>
+                            >
                         >
                     >
                 >
@@ -69,10 +71,12 @@ impl ForwardedDefinition {
         }
         else {
             quote! {
-                std::option::Option<
-                    std::rc::Rc<
-                        std::sync::RwLock<
-                            #requested
+                std::cell::RefCell<
+                    std::option::Option<
+                        std::rc::Rc<
+                            std::sync::RwLock<
+                                #requested
+                            >
                         >
                     >
                 >
@@ -98,14 +102,14 @@ impl ForwardedDefinition {
         let name = provider.name();
         let forwarded_provider = &self.provider;
         let (impl_generics, type_generics, where_clause) = provider.generics().split_for_impl();
-        let mut generation = quote! { curds_core_abstraction::dependency_injection::ServiceGenerator::<#intermediate>::generate(&mut self.#forwarded_provider) };
+        let mut generation = quote! { curds_core_abstraction::dependency_injection::ServiceGenerator::<#intermediate>::generate(&self.#forwarded_provider) };
         if self.trait_production && self.intermediate.is_some() {
             generation = quote! { std::boxed::Box::new(#generation) };
         }
 
         quote! {
             impl #impl_generics curds_core_abstraction::dependency_injection::ServiceGenerator<#requested> for #name #type_generics #where_clause {
-                fn generate(&mut self) -> #requested {
+                fn generate(&self) -> #requested {
                     #generation
                 }
             }
@@ -133,16 +137,18 @@ impl ForwardedDefinition {
         if self.promoted {
             let singleton_ident = definition.singleton(&self.requested);
 
-            let mut generation = quote! { curds_core_abstraction::dependency_injection::ServiceGenerator::<#intermediate>::generate(&mut self.#provider) };
+            let mut generation = quote! { curds_core_abstraction::dependency_injection::ServiceGenerator::<#intermediate>::generate(&self.#provider) };
             if self.trait_production && self.intermediate.is_some() {
                 generation = quote! { std::boxed::Box::new(#generation) };
             }
             generation = quote! { std::rc::Rc::new(std::sync::RwLock::new(#generation)) };
             singleton_generation = quote! {
-                if self.#singleton_ident.is_none() {
-                    self.#singleton_ident = Some(#generation);
+                if self.#singleton_ident.borrow().is_none() {
+                    let mut singleton = self.#singleton_ident.borrow_mut();
+                    *singleton = Some(#generation);
                 }
                 self.#singleton_ident
+                    .borrow()
                     .as_ref()
                     .unwrap()
                     .clone()
@@ -151,7 +157,7 @@ impl ForwardedDefinition {
 
         quote! {
             impl #impl_generics curds_core_abstraction::dependency_injection::ServiceGenerator<#requested> for #name #type_generics #where_clause {
-                fn generate(&mut self) -> #requested {
+                fn generate(&self) -> #requested {
                     #singleton_generation
                 }
             }

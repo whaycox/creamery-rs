@@ -1,19 +1,14 @@
 use super::*;
 
-#[derive(Clone, Debug)]
 pub struct MessageDefinition {
-    name: Ident,
+    message_name: Ident,
     base_name: Ident,
     routing: DispatchRouting,
 }
 
 impl MessageDefinition {
-    pub fn parse(attribute: Attribute) -> Result<Self> {
-        let name = attribute.path
-            .get_ident()
-            .unwrap()
-            .clone();
-        let formatted_name: String = name
+    pub fn new(message_name: &Ident, span: Span, routing: DispatchRouting) -> Self {
+        let formatted_name: String = message_name
             .clone()
             .to_string()
             .split("_")
@@ -26,41 +21,45 @@ impl MessageDefinition {
                 title_part
             })
             .collect();
-        let routing: DispatchRouting = attribute.parse_args()?;
 
-        Ok(Self {
-            name: name,
-            base_name: Ident::new(&formatted_name, attribute.path.span()),
-            routing: routing,
-        })
-    }
-
-    pub fn expand(self, defaults: &DispatchDefaults) -> Self {
         Self {
-            name: self.name,
-            base_name: self.base_name,
-            routing: self.routing.expand(defaults),
+            message_name: message_name.clone(),
+            base_name: Ident::new(&formatted_name, span),
+            routing,
         }
     }
 
     pub fn context_type(&self) -> Type { self.routing.context_type() }
 
-    pub fn signature_tokens(self) -> TokenStream {
-        let name = self.name;
-        let routing_signature = self.routing.signature_tokens();
-        quote! { fn #name #routing_signature; }
+    pub fn signature(&self) -> TokenStream {
+        let name = &self.message_name;
+        let message = self.routing.message_type();
+        let message_return = match &self.routing.return_type() {
+            Some(message_output) => quote! { #message_output },
+            None => quote! { () }
+        };
+
+        quote! {
+            fn #name(&self, message: #message) -> curds_core_abstraction::message_dispatch::Result<#message_return>;
+        }
     }
 
-    pub fn trait_tokens(self, visibility: &Visibility, parent_trait: &Ident) -> TokenStream { self.routing.trait_tokens(visibility, parent_trait, &self.base_name) }
+    pub fn trait_tokens(&self, visibility: &Visibility, message_trait: &Ident) -> TokenStream {
+        self.routing.trait_tokens(visibility, message_trait, &self.base_name)
+    }
 
-    pub fn implementation_tokens(self) -> TokenStream {
-        let name = self.name;
-        let routing_signature = self.routing.clone().signature_tokens();
-        let routing = self.routing.quote(&self.base_name);
+    pub fn implementation_tokens(&self) -> TokenStream {
+        let name = &self.message_name;
+        let message = self.routing.message_type();
+        let message_return = match &self.routing.return_type() {
+            Some(message_output) => quote! { #message_output },
+            None => quote! { () }
+        };
+        let routing_implementation = self.routing.implementation_tokens(&self.base_name);
+
         quote! {
-            #[allow(non_snake_case)]
-            fn #name #routing_signature {
-                #routing
+            fn #name(&self, message: #message) -> curds_core_abstraction::message_dispatch::Result<#message_return> {
+                #routing_implementation
             }
         }
     }

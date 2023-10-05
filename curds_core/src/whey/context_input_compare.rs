@@ -14,7 +14,7 @@ mod tests {
     #[mock_input(VoidFoo ~ reference, move |one, two| *one == EXPECTED_INT && *two == EXPECTED_LONG, EXPECTED_ITERATIONS)]
     struct VoidFooContext {}
 
-    fn value_comparison(input: u32) -> bool { input == EXPECTED_INT }
+    fn value_comparison(input: &u32) -> bool { *input == EXPECTED_INT }
 
     #[whey(VoidFooContext ~ context)]
     #[should_panic(expected = "not all stored input comparisons for VoidFoo::value have been consumed")]

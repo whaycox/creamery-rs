@@ -1,6 +1,6 @@
 mod dependency_injection;
 mod whey;
-//mod message_dispatch;
+mod message_dispatch;
 //mod cli;
 //mod time;
 

@@ -9,7 +9,7 @@ mod tests {
 
     #[test]
     fn injects_foo_into_bar() {
-        let mut provider = CompositeProvider::construct();
+        let provider = CompositeProvider::construct();
         let mut bar: Box<dyn Bar> = provider.generate();
 
         assert_eq!(EXPECTED_FOO * EXPECTED_BAR, bar.bar())
@@ -22,7 +22,7 @@ mod tests {
 
     #[test]
     fn injects_singleton_bar_into_foo() {
-        let mut provider = SingletonCompositeProvider::construct();
+        let provider = SingletonCompositeProvider::construct();
         let mut foo: Box<dyn Foo> = provider.generate();
 
         assert_eq!(EXPECTED_FOO * EXPECTED_BAR, foo.foo())
@@ -35,7 +35,7 @@ mod tests {
   
     #[test]
     fn generates_defaulted_with_value() {
-        let mut provider = SeededProvider::construct();
+        let provider = SeededProvider::construct();
 
         for _ in 0..10 {
             let mut foo: Box<dyn Foo> = provider.generate();
@@ -48,7 +48,7 @@ mod tests {
   
     #[test]
     fn generates_singleton_defaulted_with_value() {
-        let mut provider = SeededProvider::construct();
+        let provider = SeededProvider::construct();
 
         for i in 0..10 {
             let singleton: Rc<RwLock<Box<dyn Foo>>> = provider.generate();

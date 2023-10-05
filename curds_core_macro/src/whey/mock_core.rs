@@ -27,6 +27,27 @@ impl<'a> WheyMockCore<'a> {
     fn returned_times(ident: &Ident) -> Ident { format_ident!("returned_times_{}", ident) }
     fn returned(ident: &Ident) -> Ident { format_ident!("returned_{}", ident) }
 
+    fn input_types(inputs: &Vec<Box<Type>>) -> Vec<Box<Type>> {
+        let mut input_types: Vec<Box<Type>> = Vec::new();
+        for input in inputs {
+            match &**input {
+                Type::Reference(_) => input_types.push(input.clone()),
+                _ => {
+                    let value_type = *input.clone();
+                    let type_reference = TypeReference {
+                        and_token: Default::default(),
+                        lifetime: None,
+                        mutability: None,
+                        elem: Box::new(value_type),
+                    };
+                    input_types.push(Box::new(Type::Reference(type_reference)));
+                },
+            }
+        }
+
+        input_types
+    }
+
     pub fn quote(self) -> TokenStream {
         let mocked_trait = &self.mock.mocked_trait;
         let vis = &mocked_trait.vis;
@@ -106,7 +127,7 @@ impl<'a> WheyMockCore<'a> {
 
         if input_types.len() > 0 {
             fields.push(self.quote_expected_input_times_field(&method.sig.ident));
-            fields.push(self.quote_expected_input_field(&method.sig.ident, &input_types));
+            fields.push(self.quote_expected_input_field(&method.sig.ident, Self::input_types(&input_types)));
         }
         match &method.sig.output {
             ReturnType::Default => {},
@@ -145,7 +166,7 @@ impl<'a> WheyMockCore<'a> {
             #expected_input_times_field: std::vec::Vec<u32>
         }
     }
-    fn quote_expected_input_field(&self, ident: &Ident, input_types: &Vec<Box<Type>>) -> TokenStream {
+    fn quote_expected_input_field(&self, ident: &Ident, input_types: Vec<Box<Type>>) -> TokenStream {
         let expected_input_field = Self::expected_input(ident);
         quote! {
             #[defaulted]
@@ -196,7 +217,7 @@ impl<'a> WheyMockCore<'a> {
         }
 
         if input_types.len() > 0 {
-            impls.push(self.quote_store_expected_input(&method.sig.ident, &input_types));
+            impls.push(self.quote_store_expected_input(&method.sig.ident, Self::input_types(&input_types)));
             impls.push(self.quote_consume_expected_input(&method));
         }
         match &method.sig.output {
@@ -239,7 +260,7 @@ impl<'a> WheyMockCore<'a> {
             }
         }
     }
-    fn quote_store_expected_input(&self, ident: &Ident, input_types: &Vec<Box<Type>>) -> TokenStream {
+    fn quote_store_expected_input(&self, ident: &Ident, input_types: Vec<Box<Type>>) -> TokenStream {
         let store_input = Self::store_expected_input(ident);
         let expected_input_times_field = Self::expected_input_times(ident);
         let expected_input_field = Self::expected_input(ident);
@@ -259,8 +280,21 @@ impl<'a> WheyMockCore<'a> {
             match input {
                 FnArg::Receiver(_) => {},
                 FnArg::Typed(ty) => match &*ty.ty {
-                    _ => {
+                    Type::Reference(_) => {
                         signature_inputs.push(quote! { #input });
+                        input_names.push(&ty.pat);
+                    },
+                    _ => {
+                        let value_type = *ty.ty.clone();
+                        let type_reference = TypeReference {
+                            and_token: Default::default(),
+                            lifetime: None,
+                            mutability: None,
+                            elem: Box::new(value_type),
+                        };
+                        let name = &ty.pat;
+
+                        signature_inputs.push(quote! { #name: #type_reference });
                         input_names.push(&ty.pat);
                     },
                 },
@@ -279,6 +313,7 @@ impl<'a> WheyMockCore<'a> {
                         if !(self.#expected_input_field[i])(#(#input_names),*) {
                             panic!(#expected_input_failure);
                         }
+                        break;
                     }
                 }
             }

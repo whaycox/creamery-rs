@@ -17,7 +17,7 @@ mod tests {
 
     #[test]
     fn promotes_singleton_trait_from_base_transient() {
-        let mut provider = PromotedProvider::construct();
+        let provider = PromotedProvider::construct();
         
         for i in 0..10 {
             let singleton: Rc<RwLock<Box<dyn Foo>>> = provider.generate();
@@ -31,7 +31,7 @@ mod tests {
 
     #[test]
     fn promotes_singleton_struct_from_base_transient() {
-        let mut provider = PromotedProvider::construct();
+        let provider = PromotedProvider::construct();
         
         for i in 0..10 {
             let singleton: Rc<RwLock<IncrementingFoo>> = provider.generate();
@@ -56,7 +56,7 @@ mod tests {
     
     #[test]
     fn promotes_singleton_struct_from_base_using_intermediate() {
-        let mut provider = IntermediateProvider::construct();
+        let provider = IntermediateProvider::construct();
         
         for i in 0..10 {
             let singleton: Rc<RwLock<Box<dyn Foo>>> = provider.generate();

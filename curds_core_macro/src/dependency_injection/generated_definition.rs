@@ -5,6 +5,15 @@ pub struct GeneratedDefinition {
     implementation: Type,
 }
 
+impl From<Type> for GeneratedDefinition {
+    fn from(value: Type) -> Self {
+        Self {
+            abstraction: None,
+            implementation: value,
+        }
+    }
+}
+
 impl Parse for GeneratedDefinition {
     fn parse(input: ParseStream) -> Result<Self> {
         let trait_production: Option<Token![dyn]> = input.parse()?;
@@ -44,13 +53,15 @@ impl GeneratedDefinition {
             self.implementation.clone()
         }
     }
-    pub fn stored_type(&self) -> Type { 
+    pub fn stored_type(&self) -> Type {
         syn::parse2(match &self.abstraction {
             Some(trait_type) => quote! {
-                std::option::Option<
-                    std::rc::Rc<
-                        std::sync::RwLock<
-                            std::boxed::Box<dyn #trait_type>
+                std::cell::RefCell<
+                    std::option::Option<
+                        std::rc::Rc<
+                            std::sync::RwLock<
+                                std::boxed::Box<dyn #trait_type>
+                            >
                         >
                     >
                 >
@@ -58,10 +69,12 @@ impl GeneratedDefinition {
             None => {
                 let concrete_type = &self.implementation;
                 quote! {
-                    std::option::Option<
-                        std::rc::Rc<
-                            std::sync::RwLock<
-                                #concrete_type
+                    std::cell::RefCell<
+                        std::option::Option<
+                            std::rc::Rc<
+                                std::sync::RwLock<
+                                    #concrete_type
+                                >
                             >
                         >
                     >
@@ -89,7 +102,7 @@ impl GeneratedDefinition {
 
         quote! {
             impl #impl_generics curds_core_abstraction::dependency_injection::ServiceGenerator<#requested> for #name #type_generics #where_clause {
-                fn generate(&mut self) -> #requested {
+                fn generate(&self) -> #requested {
                     #generation
                 }
             }
@@ -121,11 +134,13 @@ impl GeneratedDefinition {
 
         quote! {
             impl #impl_generics curds_core_abstraction::dependency_injection::ServiceGenerator<#requested> for #name #type_generics #where_clause {
-                fn generate(&mut self) -> #requested {
-                    if self.#singleton_ident.is_none() {
-                        self.#singleton_ident = Some(#generation);
+                fn generate(&self) -> #requested {
+                    if self.#singleton_ident.borrow().is_none() {
+                        let mut singleton = self.#singleton_ident.borrow_mut();
+                        *singleton = Some(#generation);
                     }
                     self.#singleton_ident
+                        .borrow()
                         .as_ref()
                         .unwrap()
                         .clone()

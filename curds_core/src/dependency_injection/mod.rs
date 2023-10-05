@@ -2,10 +2,10 @@ mod generates_transient;
 mod generates_singleton;
 mod injects_dependencies;
 mod clones;
-mod scopes;
 mod forwards_transient;
 mod forwards_singleton;
 mod forwards_singleton_promoted;
+mod scopes;
 mod generic_service;
 
 #[cfg(test)]

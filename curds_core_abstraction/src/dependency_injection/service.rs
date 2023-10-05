@@ -1,3 +1,3 @@
 pub trait ServiceGenerator<TService> {
-    fn generate(&mut self) -> TService;
+    fn generate(&self) -> TService;
 }

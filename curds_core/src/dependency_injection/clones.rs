@@ -10,7 +10,7 @@ mod tests {
 
     #[test]
     fn generated_provider_is_cloned_from_base_each_time() {
-        let mut base_provider = ClonedSelfProvider::construct();
+        let base_provider = ClonedSelfProvider::construct();
 
         for i in 0..10 {
             {
@@ -19,7 +19,7 @@ mod tests {
                 assert_eq!(i * 3, base_foo.foo());
             }
             {
-                let mut cloned_provider: ClonedSelfProvider = base_provider.generate();
+                let cloned_provider: ClonedSelfProvider = base_provider.generate();
                 let cloned_singleton: Rc<RwLock<IncrementingFoo>> = cloned_provider.generate();
                 let mut cloned_foo = cloned_singleton.write().unwrap();
                 assert_eq!(i * 3 + 1, cloned_foo.foo());
@@ -41,7 +41,7 @@ mod tests {
             for _ in 0..i {
                 base_dependency.foo();
             }
-            let mut provider = ClonedDependencyProvider::construct(base_dependency);
+            let provider = ClonedDependencyProvider::construct(base_dependency);
                         
             for _ in 0..i {
                 let mut clone: IncrementingFoo = provider.generate();

@@ -1,113 +1,39 @@
 use super::*;
 
-#[derive(Clone, Debug)]
 pub enum DispatchRouting {
     Pipeline(PipelineDefinition),
-    Chain(ChainDefinition)
 }
-impl Parse for DispatchRouting {
-    fn parse(input: ParseStream) -> Result<Self> {
-        let message_type: Type = input.parse()?;
-        input.parse::<Token![~]>()?;
-        let context_type: Type = input.parse()?;
-        let mut response_type: Option<Type> = None;
-        let parsed: Self = if input.peek(Token![->]) {
-            input.parse::<Token![->]>()?;
-            response_type = Some(input.parse()?);
-            Self::Pipeline(PipelineDefinition::implicit(RoutingParameters {
-                message_type: message_type,
-                context_type: context_type,
-                response_type: response_type,
-            }))
-        }
-        else if input.peek(Token![&]) {
-            input.parse::<Token![&]>()?;
-            if input.peek(token::Brace) {
-                let route: SerialRoute = SerialRoute::parse_explicit(input)?;
-                response_type = route.explicit_return();
-                Self::Pipeline(PipelineDefinition::explicit(RoutingParameters {
-                    message_type: message_type,
-                    context_type: context_type,
-                    response_type: response_type,
-                }, route))
-            }
-            else {
-                if input.peek(Token![->]) {
-                    input.parse::<Token![->]>()?;
-                    response_type = Some(input.parse()?);
-                }
-                Self::Pipeline(PipelineDefinition::implicit(RoutingParameters {
-                    message_type: message_type,
-                    context_type: context_type,
-                    response_type: response_type,
-                }))
-            }
-        }
-        else if input.peek(Token![|]) {
-            input.parse::<Token![|]>()?;
-            let mut route: Option<ParallelRoute> = None;
-            if input.peek(Token![->]) {
-                input.parse::<Token![->]>()?;
-                response_type = Some(input.parse()?);
-            }
-            else if input.peek(token::Bracket) {
-                route = Some(input.parse()?);
-                if input.peek(Token![->]) {
-                    input.parse::<Token![->]>()?;
-                    response_type = Some(input.parse()?);
-                }
-            }
-            Self::Chain(ChainDefinition::new(RoutingParameters {
-                message_type: message_type,
-                context_type: context_type,
-                response_type: response_type,
-            }, route))
-        }
-        else {
-            Self::Pipeline(PipelineDefinition::implicit(RoutingParameters {
-                message_type: message_type,
-                context_type: context_type,
-                response_type: response_type,
-            })) 
-        };
 
-        Ok(parsed)
-    }
+impl From<PipelineDefinition> for DispatchRouting {
+    fn from(value: PipelineDefinition) -> Self { DispatchRouting::Pipeline(value) }
 }
 
 impl DispatchRouting {
-    pub fn context_type(&self) -> Type { 
+    pub fn message_type(&self) -> &Type {
         match self {
-            Self::Pipeline(definition) => definition.context_type(),
-            Self::Chain(definition) => definition.context_type(),
+            DispatchRouting::Pipeline(pipeline) => &pipeline.message,
         }
-     }
-
-    pub fn expand(self, defaults: &DispatchDefaults) -> Self {
+    }
+    pub fn context_type(&self) -> Type {
         match self {
-            Self::Pipeline(definition) => Self::Pipeline(definition.expand(defaults)),
-            Self::Chain(definition) => Self::Chain(definition.expand(defaults)),
+            DispatchRouting::Pipeline(pipeline) => pipeline.context.clone(),
+        }
+    }
+    pub fn return_type(&self) -> &Option<Type> {
+        match self {
+            DispatchRouting::Pipeline(pipeline) => pipeline.return_type(),
         }
     }
 
-    pub fn signature_tokens(self) -> TokenStream {
+    pub fn trait_tokens(&self, visibility: &Visibility, parent_trait: &Ident, base_name: &Ident) -> TokenStream {
         match self {
-            Self::Pipeline(definition) => definition.signature_tokens(),
-            Self::Chain(definition) => definition.signature_tokens(),
+            Self::Pipeline(pipeline_definition) => pipeline_definition.trait_tokens(visibility, parent_trait, base_name),
         }
     }
 
-    pub fn quote(self, base_name: &Ident) -> TokenStream {
+    pub fn implementation_tokens(&self, base_name: &Ident) -> TokenStream {
         match self {
-            Self::Pipeline(definition) => definition.quote(base_name),
-            Self::Chain(definition) => definition.quote(base_name),
-        }
-    }
-
-    pub fn trait_tokens(self, visibility: &Visibility, parent_trait: &Ident, base_name: &Ident) -> TokenStream {
-        match self {
-            Self::Pipeline(definition) => definition.trait_tokens(visibility, parent_trait, base_name),
-            Self::Chain(definition) => definition.trait_tokens(visibility, parent_trait, base_name),
+            Self::Pipeline(pipeline_definition) => pipeline_definition.implementation_tokens(base_name),
         }
     }
 }
