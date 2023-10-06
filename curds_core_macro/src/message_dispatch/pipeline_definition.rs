@@ -42,42 +42,69 @@ impl PipelineDefinition {
     }
 
     pub fn trait_tokens(&self, visibility: &Visibility, parent_trait: &Ident, base_name: &Ident) -> TokenStream {
-        let trait_name = format_ident!("{}Handler", base_name);
+        let mut stage_traits: Vec<TokenStream> = Vec::new();
+        let mut previous_stage_output: Option<Type> = None;
         let message_type = &self.message;
-        let message_return = match &self.return_type() {
-            Some(message_output) => quote! { #message_output },
-            None => quote! { () }
-        };
 
-        quote! {
-            #visibility trait #trait_name {
-                fn handle(&self, dispatch: &dyn #parent_trait, input: &#message_type) -> curds_core_abstraction::message_dispatch::Result<#message_return>;
-            }
+        let stage_length = self.stages.len();
+        for i in 0..stage_length {
+            let stage = &self.stages[i];
+            let trait_name = stage.trait_name(base_name);
+            let mut input_token = match &previous_stage_output {
+                Some(output) => quote! { #output },
+                None => quote! { #message_type }
+            };
+            let return_token = match stage.return_type() {
+                Some(return_type) => {
+                    previous_stage_output = Some(return_type.clone());
+                    quote! { #return_type }
+                },
+                None => {
+                    if i < stage_length - 1 {
+                        input_token = quote! { &#input_token };
+                    }
+                    quote! { () }
+                },
+            };
+
+            stage_traits.push(quote! {
+                #visibility trait #trait_name {
+                    fn handle(&self, dispatch: &dyn #parent_trait, input: #input_token) -> curds_core_abstraction::message_dispatch::Result<#return_token>;
+                }
+            });
         }
+
+        quote! { #(#stage_traits)* }
     }
 
     pub fn implementation_tokens(&self, base_name: &Ident) -> TokenStream {
         let context = &self.context;
         let mut stage_implementations: Vec<TokenStream> = Vec::new();
         let mut previous_stage_output: Option<Ident> = None;
-        for stage in &self.stages {
+
+        let stage_length = self.stages.len();
+        for i in 0..stage_length {
+            let stage = &self.stages[i];
             let trait_name = stage.trait_name(&base_name);
-            let input_token = match &previous_stage_output {
+            let mut input_token = match &previous_stage_output {
                 Some(name) => quote! { #name },
                 None => quote! { message },
             };
             let assign_token = match &stage.return_type {
-                Some(_return_type) => {
-                    previous_stage_output = Some(trait_name.clone());
-                    quote! { let #trait_name = }
+                Some(_) => {
+                    previous_stage_output = Some(stage.name.clone());
+                    quote! { let #previous_stage_output = }
                 },
                 None => {
+                    if i < stage_length - 1 {
+                        input_token = quote! { &#input_token };
+                    }
                     previous_stage_output = None;
                     quote! { }
                 },
             };
             stage_implementations.push(quote! {
-                #assign_token <#context as #trait_name>::handle(&context, self, &#input_token)?;
+                #assign_token <#context as #trait_name>::handle(&context, self, #input_token)?;
             });
         }
         stage_implementations.push(match previous_stage_output {

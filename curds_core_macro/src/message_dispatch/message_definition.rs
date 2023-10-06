@@ -58,6 +58,7 @@ impl MessageDefinition {
         let routing_implementation = self.routing.implementation_tokens(&self.base_name);
 
         quote! {
+            #[allow(non_snake_case)]
             fn #name(&self, message: #message) -> curds_core_abstraction::message_dispatch::Result<#message_return> {
                 #routing_implementation
             }

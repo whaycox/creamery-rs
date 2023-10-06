@@ -1,7 +1,7 @@
 use super::*;
 
 pub struct PipelineStage {
-    name: Ident,
+    pub name: Ident,
     pub return_type: Option<Type>,
 }
 

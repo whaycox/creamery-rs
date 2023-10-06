@@ -7,7 +7,7 @@ mod tests {
     struct TestMessagesProvider {}
 
     impl FooMessageHandler for FooMessageContext {
-        fn handle(&self, _dispatch: &dyn TestMessages, input: &FooMessage) -> Result<()> {
+        fn handle(&self, _: &dyn TestMessages, input: FooMessage) -> Result<()> {
             if EXPECTED_FOO != input.foo {
                 Err(FooMessageError::test().into())
             }

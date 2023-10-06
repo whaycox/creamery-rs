@@ -8,33 +8,39 @@ mod tests {
     #[foo_request(FooMessage ~ FooMessageContext -> u32)]
     struct TestMessagesProvider {}
 
-    // impl FooRequestHandler for FooMessageContext {
-    //     fn handle(&self, _dispatch: &dyn TestMessages, input: &FooMessage) -> Result<u32> {
-    //         if input.foo > FOO_MOD {
-    //             Ok(input.foo % FOO_MOD)
-    //         }
-    //         else {
-    //             Err(Box::new(FooMessageError::new("Foo was too small")))
-    //         }
-    //     }
-    // }
-/* 
-    #[test]
+    impl FooRequestHandler for FooMessageContext {
+        fn handle(&self, _: &dyn TestMessages, input: FooMessage) -> Result<u32> {
+            if input.foo > FOO_MOD {
+                Ok(input.foo % FOO_MOD)
+            }
+            else {
+                Err(FooMessageError::test().into())
+            }
+        }
+    }
+
+    #[whey_context(TestMessagesProvider)]
+    struct FooRequestContext {}
+
+    #[whey(FooRequestContext ~ context)]
     fn handles_incoming_request() {
-        let provider = TestMessagesProvider::construct();
-        
-        let actual = provider.foo_request(FooMessage::new()).unwrap();
+        let actual = context
+            .test_type()
+            .foo_request(FooMessage::new())
+            .unwrap();
 
         assert_eq!(EXPECTED_FOO % FOO_MOD, actual)
     }
 
-    #[test]
+    #[whey(FooRequestContext ~ context)]
     fn returns_error() {
-        let provider = TestMessagesProvider::construct();
         let message = FooMessage {
             foo: 0,
         };
 
-        provider.foo_request(message).unwrap_err();
-    } */
+        context
+            .test_type()
+            .foo_request(message)
+            .unwrap_err();
+    }
 }

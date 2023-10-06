@@ -10,44 +10,53 @@ mod tests {
     struct TestMessagesProvider {}
 
     impl FooMessagePreValidator for FooMessageContext {
-        fn handle(&self, _dispatch: &dyn TestMessages, input: &FooMessage) -> Result<()> {
+        fn handle(&self, _: &dyn TestMessages, input: &FooMessage) -> Result<()> {
             if input.foo > MAX_INPUT {
-                return Err(Box::new(FooMessageError::new("Foo was too big")))
+                return Err(FooMessageError::test().into())
             }
             Ok(())
         }
     }
 
     impl FooMessageHandler for FooMessageContext {
-        fn handle(&self, _dispatch: &dyn TestMessages, input: &FooMessage) -> Result<u32> {
+        fn handle(&self, _: &dyn TestMessages, input: FooMessage) -> Result<u32> {
             Ok(input.foo / 3)
         }
     }
 
     impl FooMessagePostValidator for FooMessageContext {
-        fn handle(&self, _dispatch: &dyn TestMessages, input: &u32) -> Result<()> {
-            if input < &MIN_OUTPUT {
-                return Err(Box::new(FooMessageError::new("Foo was too small")))
+        fn handle(&self, _: &dyn TestMessages, input: u32) -> Result<()> {
+            if input < MIN_OUTPUT {
+                return Err(FooMessageError::test().into())
             }
             Ok(())
         }
     }
 
-    #[test]
+    #[whey_context(TestMessagesProvider)]
+    struct ComplexMessageContext {}
+
+    #[whey(ComplexMessageContext ~ context)]
     fn handles_incoming_message() {
-        let provider = TestMessagesProvider::construct();
-        provider.foo_message(FooMessage::test(325)).unwrap();
+        context
+            .test_type()
+            .foo_message(FooMessage::test(325))
+            .unwrap();
     }
 
-    #[test]
+    #[whey(ComplexMessageContext ~ context)]
     fn prevalidator_fires() {
-        let provider = TestMessagesProvider::construct();
-        provider.foo_message(FooMessage::test(MAX_INPUT + 1)).unwrap_err();
+        context
+            .test_type()
+            .foo_message(FooMessage::test(MAX_INPUT + 1))
+            .unwrap_err();
     }
 
-    #[test]
+    #[whey(ComplexMessageContext ~ context)]
     fn postvalidator_fires() {
-        let provider = TestMessagesProvider::construct();
-        provider.foo_message(FooMessage::test(MIN_OUTPUT)).unwrap_err();
+        context
+            .test_type()
+            .foo_message(FooMessage::test(MIN_OUTPUT))
+            .unwrap_err();
     }
 }
