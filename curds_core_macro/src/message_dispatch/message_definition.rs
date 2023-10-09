@@ -31,35 +31,41 @@ impl MessageDefinition {
 
     pub fn context_type(&self) -> Type { self.routing.context_type() }
 
-    pub fn signature(&self) -> TokenStream {
+    pub fn signature(&self, message_trait: &MessageTraitDefinition) -> TokenStream {
         let name = &self.message_name;
-        let message = self.routing.message_type();
-        let message_return = match &self.routing.return_type() {
-            Some(message_output) => quote! { #message_output },
-            None => quote! { () }
+        let receiver_token = if self.routing.mutable() {
+            quote! { &mut self }
+        }
+        else {
+            quote! { &self }
         };
+        let message = self.routing.message_type();
+        let message_return = self.routing.return_type(&message_trait.error_type);
 
         quote! {
-            fn #name(&self, message: #message) -> curds_core_abstraction::message_dispatch::Result<#message_return>;
+            fn #name(#receiver_token, message: #message) -> #message_return;
         }
     }
 
-    pub fn trait_tokens(&self, visibility: &Visibility, message_trait: &Ident) -> TokenStream {
+    pub fn trait_tokens(&self, visibility: &Visibility, message_trait: &MessageTraitDefinition) -> TokenStream {
         self.routing.trait_tokens(visibility, message_trait, &self.base_name)
     }
 
-    pub fn implementation_tokens(&self) -> TokenStream {
+    pub fn implementation_tokens(&self, message_trait: &MessageTraitDefinition) -> TokenStream {
         let name = &self.message_name;
-        let message = self.routing.message_type();
-        let message_return = match &self.routing.return_type() {
-            Some(message_output) => quote! { #message_output },
-            None => quote! { () }
+        let receiver_token = if self.routing.mutable() {
+            quote! { &mut self }
+        }
+        else {
+            quote! { &self }
         };
+        let message = self.routing.message_type();
+        let message_return = self.routing.return_type(&message_trait.error_type);
         let routing_implementation = self.routing.implementation_tokens(&self.base_name);
 
         quote! {
             #[allow(non_snake_case)]
-            fn #name(&self, message: #message) -> curds_core_abstraction::message_dispatch::Result<#message_return> {
+            fn #name(#receiver_token, message: #message) -> #message_return {
                 #routing_implementation
             }
         }

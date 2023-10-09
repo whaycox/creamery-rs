@@ -2,14 +2,14 @@
 mod tests {
     use super::super::*;
 
-    #[message_dispatch(TestMessages)]
+    #[message_dispatch(TestMessages ! FooMessageError)]
     #[foo_message(FooMessage ~ FooMessageContext)]
     struct TestMessagesProvider {}
 
     impl FooMessageHandler for FooMessageContext {
-        fn handle(&self, _: &dyn TestMessages, input: FooMessage) -> Result<()> {
+        fn handle(&self, _: &dyn TestMessages, input: FooMessage) -> Result<(), FooMessageError> {
             if EXPECTED_FOO != input.foo {
-                Err(FooMessageError::test().into())
+                Err(FooMessageError {})
             }
             else {
                 Ok(())

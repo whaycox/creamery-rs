@@ -5,29 +5,29 @@ mod tests {
     const MAX_INPUT: u32 = 350;
     const MIN_OUTPUT: u32 = 100;
 
-    #[message_dispatch(TestMessages)]
-    #[foo_message(FooMessage ~ FooMessageContext & { PreValidator, Handler -> u32, PostValidator })]
+    #[message_dispatch(TestMessages ! FooMessageError)]
+    #[foo_message(FooMessage ~ mut FooMessageContext & { PreValidator, Handler -> u32, PostValidator })]
     struct TestMessagesProvider {}
 
     impl FooMessagePreValidator for FooMessageContext {
-        fn handle(&self, _: &dyn TestMessages, input: &FooMessage) -> Result<()> {
+        fn handle(&mut self, _: &mut dyn TestMessages, input: &FooMessage) -> Result<(), FooMessageError> {
             if input.foo > MAX_INPUT {
-                return Err(FooMessageError::test().into())
+                return Err(FooMessageError {})
             }
             Ok(())
         }
     }
 
     impl FooMessageHandler for FooMessageContext {
-        fn handle(&self, _: &dyn TestMessages, input: FooMessage) -> Result<u32> {
+        fn handle(&mut self, _: &mut dyn TestMessages, input: FooMessage) -> Result<u32, FooMessageError> {
             Ok(input.foo / 3)
         }
     }
 
     impl FooMessagePostValidator for FooMessageContext {
-        fn handle(&self, _: &dyn TestMessages, input: u32) -> Result<()> {
+        fn handle(&mut self, _: &mut dyn TestMessages, input: u32) -> Result<(), FooMessageError> {
             if input < MIN_OUTPUT {
-                return Err(FooMessageError::test().into())
+                return Err(FooMessageError {})
             }
             Ok(())
         }

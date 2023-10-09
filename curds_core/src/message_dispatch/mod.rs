@@ -2,8 +2,8 @@ mod basic_message;
 mod basic_request;
 mod complex_message;
 mod complex_request;
-//mod chain_message;
-//mod chain_request;
+mod chain_message;
+mod chain_request;
 //mod default_pipeline_message;
 //mod default_pipeline_request;
 //mod default_chain;
@@ -70,16 +70,12 @@ mod simple {
         }
     }
 
+    #[derive(Debug)]
     pub struct FooMessageError {}
-    impl FooMessageError {
-        pub fn test() -> Self {
-            FooMessageError {}
+    impl Display for FooMessageError {
+        fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(formatter, "FooMessageError")
         }
     }
-
-    impl Into<DispatchError> for FooMessageError {
-        fn into(self) -> DispatchError { 
-            DispatchError::PipelineError("FooMessage".to_owned()) 
-        }
-    }
+    impl Error for FooMessageError {}
 }

@@ -38,6 +38,10 @@ impl DispatchDefinition {
                             messages.push(MessageDefinition::new(message_name, attribute.path.span(), pipeline_definition.into()));
                             provider.attrs.remove(attribute_index);
                         }
+                        else if let Ok(chain_definition) = attribute.parse_args::<ChainDefinition>() {
+                            messages.push(MessageDefinition::new(message_name, attribute.path.span(), chain_definition.into()));
+                            provider.attrs.remove(attribute_index);
+                        }
                     },
                     None => {},
                 }
@@ -54,11 +58,12 @@ impl DispatchDefinition {
     }
 
 
-    pub fn quote(self, message_trait: Ident) -> TokenStream {
+    pub fn quote(self, message_trait: MessageTraitDefinition) -> TokenStream {
         let visibility = self.provider_definition.visibility();
+        let message_trait_name = &message_trait.name;
         let message_signatures: Vec<TokenStream> = self.messages
             .iter()
-            .map(|message| message.signature())
+            .map(|message| message.signature(&message_trait))
             .collect();
         let provider_definition = self.provider_definition.quote();
         let message_traits: Vec<TokenStream> = self.messages
@@ -69,19 +74,19 @@ impl DispatchDefinition {
         let (impl_generics, type_generics, where_clause) = self.provider_definition.generics().split_for_impl();
         let message_implementations: Vec<TokenStream> = self.messages
             .iter()
-            .map(|message| message.implementation_tokens())
+            .map(|message| message.implementation_tokens(&message_trait))
             .collect();
 
         quote! {
-            #[whey_mock]
-            #visibility trait #message_trait {
+            //#[whey_mock]
+            #visibility trait #message_trait_name {
                 #(#message_signatures)*
             }
             #provider_definition
 
             #(#message_traits)*
 
-            impl #impl_generics #message_trait for #provider_name #type_generics #where_clause {
+            impl #impl_generics #message_trait_name for #provider_name #type_generics #where_clause {
                 #(#message_implementations)*
             }
         }
