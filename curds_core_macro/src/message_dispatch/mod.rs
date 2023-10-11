@@ -1,36 +1,30 @@
 use super::*;
 
 mod dispatch_definition;
+mod message_trait_definition;
 mod message_definition;
 mod pipeline_definition;
 mod chain_definition;
 mod dispatch_routing;
 mod pipeline_stage;
-mod serial_template;
-mod parallel_template;
+mod chain_stage;
+mod message_defaults;
+mod pipeline_default;
 mod stage_return;
-mod dispatch_defaults;
-mod routing_parameters;
-mod serial_route;
-mod serial_stage;
-mod parallel_route;
-mod serial_template_stage;
+mod chain_default;
 
 pub use dispatch_definition::*;
+pub use message_trait_definition::*;
 pub use message_definition::*;
 pub use pipeline_definition::*;
 pub use chain_definition::*;
 pub use dispatch_routing::*;
 pub use pipeline_stage::*;
-pub use serial_template::*;
-pub use parallel_template::*;
+pub use chain_stage::*;
+pub use message_defaults::*;
+pub use pipeline_default::*;
 pub use stage_return::*;
-pub use dispatch_defaults::*;
-pub use routing_parameters::*;
-pub use serial_route::*;
-pub use serial_stage::*;
-pub use parallel_route::*;
-pub use serial_template_stage::*;
+pub use chain_default::*;
 
 use proc_macro2::{TokenStream, Span};
 

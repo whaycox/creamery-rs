@@ -1,13 +1,13 @@
-//mod basic_message;
-//mod basic_request;
-//mod complex_message;
-//mod complex_request;
-//mod chain_message;
-//mod chain_request;
-//mod default_pipeline_message;
-//mod default_pipeline_request;
-//mod default_chain;
-//mod generic_dispatch;
+mod basic_message;
+mod basic_request;
+mod complex_message;
+mod complex_request;
+mod chain_message;
+mod chain_request;
+mod default_pipeline_message;
+mod default_pipeline_request;
+mod default_chain;
+mod generic_dispatch;
 
 #[cfg(test)]
 use super::*;
@@ -49,42 +49,32 @@ mod simple {
 
     #[injected]
     pub struct FooRepositoryContext {
-        pub repo: Rc<dyn FooRepository>,
+        pub repo: Singleton<Box<dyn FooRepository>>,
     }
 
     pub trait FooRepository {
-        fn store(&self, foo: u32);
-        fn get(&self) -> Option<u32>;
+        fn store(&mut self, foo: u32);
+        fn get(&self) -> &Option<u32>;
     }
     #[injected]
     pub struct ConcreteRepository {
         #[defaulted]
-        repo: Cell<Option<u32>>,
+        repo: Option<u32>,
     }
     impl FooRepository for ConcreteRepository {
-        fn store(&self, foo: u32) {
-            self.repo.set(Some(foo))
+        fn store(&mut self, foo: u32) {
+            self.repo = Some(foo)
         }
-        fn get(&self) -> Option<u32> {
-            self.repo.get()
+        fn get(&self) -> &Option<u32> {
+            &self.repo
         }
     }
 
     #[derive(Debug)]
-    pub struct FooMessageError {
-        message: String,
-    }
-
-    impl FooMessageError {
-        pub fn new(message: &str) -> Self {
-            Self {
-                message: message.to_owned()
-            }
-        }
-    }
+    pub struct FooMessageError {}
     impl Display for FooMessageError {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            f.write_str(&self.message)
+        fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(formatter, "FooMessageError")
         }
     }
     impl Error for FooMessageError {}

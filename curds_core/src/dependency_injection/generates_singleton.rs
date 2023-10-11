@@ -11,10 +11,10 @@ mod tests {
 
     #[test]
     fn generates_singleton_foo_struct() {
-        let mut provider = SingletonProvider::construct();
+        let provider = SingletonProvider::construct();
 
         for i in 0..10 {
-            let singleton: Rc<RwLock<IncrementingFoo>> = provider.generate();
+            let singleton: Singleton<IncrementingFoo> = provider.generate();
             let mut foo = singleton.write().unwrap();
 
             assert_eq!(i * 3, foo.foo());
@@ -25,7 +25,7 @@ mod tests {
 
     #[test]
     fn transient_foo_struct_resets() {
-        let mut provider = SingletonProvider::construct();
+        let provider = SingletonProvider::construct();
 
         for _ in 0..10 {
             let mut foo: IncrementingFoo = provider.generate();
@@ -38,10 +38,10 @@ mod tests {
 
     #[test]
     fn generates_singleton_foo_trait() {
-        let mut provider = SingletonProvider::construct();
+        let provider = SingletonProvider::construct();
 
         for i in 0..10 {
-            let singleton: Rc<RwLock<Box<dyn Foo>>> = provider.generate();
+            let singleton: Singleton<Box<dyn Foo>> = provider.generate();
             let mut foo = singleton.write().unwrap();
 
             assert_eq!(i * 3, foo.foo());
@@ -52,7 +52,7 @@ mod tests {
 
     #[test]
     fn transient_foo_trait_resets() {
-        let mut provider = SingletonProvider::construct();
+        let provider = SingletonProvider::construct();
 
         for _ in 0..10 {
             let mut foo: Box<dyn Foo> = provider.generate();
@@ -65,11 +65,11 @@ mod tests {
 
     #[test]
     fn trait_and_struct_are_not_same() {
-        let mut provider = SingletonProvider::construct();
+        let provider = SingletonProvider::construct();
 
         for i in 0..10 {
-            let trait_singleton: Rc<RwLock<Box<dyn Foo>>> = provider.generate();
-            let struct_singleton: Rc<RwLock<IncrementingFoo>> = provider.generate();
+            let trait_singleton: Singleton<Box<dyn Foo>> = provider.generate();
+            let struct_singleton: Singleton<IncrementingFoo> = provider.generate();
             let mut trait_foo = trait_singleton.write().unwrap();
             let mut struct_foo = struct_singleton.write().unwrap();
 

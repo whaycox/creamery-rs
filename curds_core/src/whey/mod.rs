@@ -7,6 +7,7 @@ mod context_default_return;
 mod context_return_generator;
 mod context_input_compare;
 mod context_sequence;
+mod complex;
 
 #[cfg(test)]
 use super::*;
@@ -20,6 +21,7 @@ mod simple {
     pub const EXPECTED_INT: u32 = 123;
     pub const EXPECTED_LONG: u64 = 9876543210;
 
+    #[derive(PartialEq)]
     pub struct CustomStruct {
         pub foo: u32,
     }

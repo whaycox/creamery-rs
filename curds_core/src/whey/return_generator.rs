@@ -27,7 +27,7 @@ mod tests {
     fn resets_stored_returns() {
         mock_return!(context ~ ValueFoo ~ simple, simple_delegate, 1);
         
-        let core: Rc<RwLock<WheyCoreValueFoo>> = context.generate();
+        let core: Singleton<WheyCoreValueFoo> = context.generate();
         core.write().unwrap().reset();
     }
     

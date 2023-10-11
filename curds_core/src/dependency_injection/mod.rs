@@ -2,10 +2,10 @@ mod generates_transient;
 mod generates_singleton;
 mod injects_dependencies;
 mod clones;
-mod scopes;
 mod forwards_transient;
 mod forwards_singleton;
 mod forwards_singleton_promoted;
+mod scopes;
 mod generic_service;
 
 #[cfg(test)]
@@ -59,7 +59,7 @@ mod simple {
 
     #[injected]
     pub struct BarredFoo {
-        bar: Rc<RwLock<Box<dyn Bar>>>,
+        bar: Singleton<Box<dyn Bar>>,
     }
     impl Foo for BarredFoo {
         fn foo(&mut self) -> u32 { EXPECTED_FOO * self.bar.write().unwrap().bar() }

@@ -23,6 +23,7 @@ impl Parse for ServiceProviderDefinition {
 
 impl ServiceProviderDefinition {
     pub fn name(&self) -> &Ident { &self.item.ident }
+    pub fn visibility(&self) -> &Visibility { &self.item.vis }
     pub fn generics(&self) -> &Generics { &self.item.generics }
     pub fn lifetimes(&self) -> Vec<&LifetimeDef> { self.item.generics.lifetimes().collect() }
     pub fn singleton(&self, ty: &Type) -> Ident { self.singletons.singleton(ty) }
@@ -33,6 +34,12 @@ impl ServiceProviderDefinition {
             }
         }
         panic!("no provider found");
+    }
+
+    pub fn item(&mut self) -> &mut ItemStruct { &mut self.item }
+    
+    pub fn add_production(&mut self, transient_type: Type) {
+        self.library.push(ServiceProduction::GenerateTransient(transient_type.into()))
     }
 
     fn parse_productions(item: &mut ItemStruct) -> Result<Vec<ServiceProduction>> {
@@ -86,12 +93,12 @@ impl ServiceProviderDefinition {
         Ok(parsed)
     }
 
-    pub fn quote(self) -> TokenStream {
+    pub fn quote(&self) -> TokenStream {
         let mut library: Vec<TokenStream> = Vec::new();
         for production in &self.library {
             library.push(production.quote(&self));
         }
-        let item = self.item;
+        let item = &self.item;
 
         quote! {
             #[injected]

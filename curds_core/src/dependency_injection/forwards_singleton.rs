@@ -21,18 +21,18 @@ mod tests {
         }
     }
     fn forwards_trait_to_base_singleton_helper(count: u32) {
-        let mut base_provider: BaseSingletonProvider = BaseSingletonProvider::construct();
+        let base_provider: BaseSingletonProvider = BaseSingletonProvider::construct();
         {
-            let base_singleton: Rc<RwLock<Box<dyn Foo>>> = base_provider.generate();
+            let base_singleton: Singleton<Box<dyn Foo>> = base_provider.generate();
             let mut base_foo = base_singleton.write().unwrap();
             for _ in 0..count {
                 base_foo.foo();
             }
         }
-        let mut provider = UnpromotedProvider::construct(base_provider);
+        let provider = UnpromotedProvider::construct(base_provider);
 
         for i in 0..10 {
-            let singleton: Rc<RwLock<Box<dyn Foo>>> = provider.generate();
+            let singleton: Singleton<Box<dyn Foo>> = provider.generate();
             let mut foo = singleton.write().unwrap();
 
             assert_eq!(count + (i * 3), foo.foo());
@@ -48,18 +48,18 @@ mod tests {
         }
     }
     fn forwards_struct_to_base_singleton_helper(count: u32) {
-        let mut base_provider: BaseSingletonProvider = BaseSingletonProvider::construct();
+        let base_provider: BaseSingletonProvider = BaseSingletonProvider::construct();
         {
-            let base_singleton: Rc<RwLock<IncrementingFoo>> = base_provider.generate();
+            let base_singleton: Singleton<IncrementingFoo> = base_provider.generate();
             let mut base_foo = base_singleton.write().unwrap();
             for _ in 0..count {
                 base_foo.foo();
             }
         }
-        let mut provider = UnpromotedProvider::construct(base_provider);
+        let provider = UnpromotedProvider::construct(base_provider);
 
         for i in 0..10 {
-            let singleton: Rc<RwLock<IncrementingFoo>> = provider.generate();
+            let singleton: Singleton<IncrementingFoo> = provider.generate();
             let mut foo = singleton.write().unwrap();
 
             assert_eq!(count + (i * 3), foo.foo());

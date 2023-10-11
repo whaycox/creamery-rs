@@ -3,7 +3,24 @@ use super::*;
 #[derive(Clone)]
 pub struct PipelineStage {
     pub name: Ident,
-    pub return_type: Option<Type>,
+    pub return_type: StageReturn,
+}
+
+impl Default for PipelineStage {
+    fn default() -> Self {
+        Self { 
+            name: Ident::new(HANDLER_NAME, Span::call_site()), 
+            return_type: StageReturn::None,
+        }
+    }
+}
+impl From<Type> for PipelineStage {
+    fn from(value: Type) -> Self {
+        Self {
+            name: Ident::new(HANDLER_NAME, Span::call_site()),
+            return_type: StageReturn::Explicit(value),
+        }
+    }
 }
 
 impl Parse for PipelineStage {
@@ -11,21 +28,29 @@ impl Parse for PipelineStage {
         let name: Ident = input.parse()?;
         if input.peek(Token![->]) {
             input.parse::<Token![->]>()?;
-            let return_type: Type = input.parse()?;
+            let return_type: StageReturn = input.parse()?;
             Ok(Self {
-                name: name,
-                return_type: Some(return_type),
+                name,
+                return_type,
             })
         }
         else {
             Ok(Self {
-                name: name,
-                return_type: None,
+                name,
+                return_type: StageReturn::None,
             })
         }
     }
 }
 
 impl PipelineStage {
-    pub fn return_type(&self) -> Option<Type> { self.return_type.clone() }
+    pub fn replace_return(self, return_type: &StageReturn) -> Self {
+        Self {
+            name: self.name,
+            return_type: return_type.clone(),
+        }
+    }
+
+    pub fn trait_name(&self, base_name: &Ident) -> Ident { format_ident!("{}{}", base_name, self.name) }
+    pub fn return_type(&self) -> &StageReturn { &self.return_type }
 }

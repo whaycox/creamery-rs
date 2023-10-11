@@ -96,10 +96,10 @@ pub fn mock_sequence(item: TokenStream) -> TokenStream {
         .into()
 }
 
-/* #[proc_macro_attribute]
+#[proc_macro_attribute]
 pub fn message_dispatch(attr: TokenStream, item: TokenStream) -> TokenStream {
-    let message_trait = parse_macro_input!(attr as Ident);
+    let message_trait = parse_macro_input!(attr as MessageTraitDefinition);
     parse_macro_input!(item as DispatchDefinition)
         .quote(message_trait)
         .into()
-} */
+}

@@ -34,7 +34,7 @@ mod tests {
     #[mocks(dyn DependencyB)]
     struct SequenceContext {}
 
-    fn test_comparison(input: u32) -> bool { input == EXPECTED_INT }
+    fn test_comparison(input: &u32) -> bool { *input == EXPECTED_INT }
     fn test_generator() -> u32 { EXPECTED_INT }
 
     #[whey(SequenceContext ~ context)]
@@ -71,7 +71,7 @@ mod tests {
         let test_object = context.test_type();
         mock_sequence!(context ~ [
             DependencyA ~ generate_value() -> test_generator,
-            DependencyB ~ process_value(|input| input != EXPECTED_INT),
+            DependencyB ~ process_value(|input| *input != EXPECTED_INT),
         ]);
 
         test_object.value();

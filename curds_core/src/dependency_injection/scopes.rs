@@ -10,13 +10,13 @@ mod tests {
 
     #[test]
     fn scoped_provider_doesnt_keep_singletons() {
-        let mut base_provider = ScopedSelfProvider::construct();
+        let base_provider = ScopedSelfProvider::construct();
 
         for i in 0..10 {
-            let base_singleton: Rc<RwLock<IncrementingFoo>> = base_provider.generate();
+            let base_singleton: Singleton<IncrementingFoo> = base_provider.generate();
             let mut base_foo = base_singleton.write().unwrap();
-            let mut scoped_provider: ScopedSelfProvider = base_provider.generate();
-            let scoped_singleton: Rc<RwLock<IncrementingFoo>> = scoped_provider.generate();
+            let scoped_provider: ScopedSelfProvider = base_provider.generate();
+            let scoped_singleton: Singleton<IncrementingFoo> = scoped_provider.generate();
             let mut scoped_foo = scoped_singleton.write().unwrap();
 
             assert_eq!(i, base_foo.foo());
@@ -41,13 +41,13 @@ mod tests {
 
     #[test]
     fn scoped_base_doesnt_keep_singletons() {
-        let mut provider = ScopedDependencyProvider::construct();
+        let provider = ScopedDependencyProvider::construct();
 
         for i in 0..10 {
-            let mut scoped_base: BaseProvider = provider.generate();
-            let singleton: Rc<RwLock<IncrementingFoo>> = provider.generate();
+            let scoped_base: BaseProvider = provider.generate();
+            let singleton: Singleton<IncrementingFoo> = provider.generate();
             let mut foo = singleton.write().unwrap();
-            let scoped_singleton: Rc<RwLock<IncrementingFoo>> = scoped_base.generate();
+            let scoped_singleton: Singleton<IncrementingFoo> = scoped_base.generate();
             let mut scoped_foo = scoped_singleton.write().unwrap();
 
             assert_eq!(i, foo.foo());

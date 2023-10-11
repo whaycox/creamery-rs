@@ -118,11 +118,26 @@ impl WheyMock {
 
         let compare_input = if input_names.len() > 0 {
             let core_comparer = WheyMockCore::consume_expected_input(&method.sig.ident);
+            let mut comparer_names: Vec<TokenStream> = Vec::new();
+            for input in &method.sig.inputs {
+                match input {
+                    FnArg::Receiver(_) => {},
+                    FnArg::Typed(ty) => {
+                        let name = &ty.pat;
+                        match *ty.ty {
+                            Type::Reference(_) => comparer_names.push(quote! { #name }),
+                            _ => comparer_names.push(quote! { &#name }),
+                        }
+                    }
+                }
+            }
+
             quote! {
-                core.#core_comparer(#(#input_names),*);
+                core.#core_comparer(#(#comparer_names),*);
             }
         }
         else { quote! {} };
+        
         let generate_return = match &method.sig.output {
             ReturnType::Default => quote! {},
             ReturnType::Type(_, _) => {
