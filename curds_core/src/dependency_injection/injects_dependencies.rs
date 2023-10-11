@@ -51,7 +51,7 @@ mod tests {
         let provider = SeededProvider::construct();
 
         for i in 0..10 {
-            let singleton: Rc<RwLock<Box<dyn Foo>>> = provider.generate();
+            let singleton: Singleton<Box<dyn Foo>> = provider.generate();
             let mut foo = singleton.write().unwrap();
 
             assert_eq!(EXPECTED_FOO + i * 3, foo.foo());

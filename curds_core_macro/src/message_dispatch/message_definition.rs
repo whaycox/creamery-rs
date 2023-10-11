@@ -28,6 +28,13 @@ impl MessageDefinition {
             routing,
         }
     }
+    pub fn apply_template(self, defaults: &MessageDefaults) -> Self {
+        Self {
+            message_name: self.message_name,
+            base_name: self.base_name,
+            routing: self.routing.apply_template(defaults),
+        }
+    }
 
     pub fn context_type(&self) -> Type { self.routing.context_type() }
 
@@ -40,9 +47,11 @@ impl MessageDefinition {
             quote! { &self }
         };
         let message = self.routing.message_type();
+        let mock_return_attribute = self.routing.mock_return_attribute();
         let message_return = self.routing.return_type(&message_trait.error_type);
 
         quote! {
+            //#mock_return_attribute
             fn #name(#receiver_token, message: #message) -> #message_return;
         }
     }

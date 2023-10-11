@@ -21,14 +21,16 @@ impl Parse for PipelineDefinition {
         let mut stages: Vec<PipelineStage> = vec![PipelineStage::default()];
         if input.peek(Token![&]) {
             input.parse::<Token![&]>()?;
-            let stage_content;
-            braced!(stage_content in input);
-            let parsed_stages: Punctuated<PipelineStage, Token![,]> = stage_content.parse_terminated(PipelineStage::parse)?;
-            stages = parsed_stages
-                .into_iter()
-                .collect();
+            if input.peek(token::Brace) {
+                let stage_content;
+                braced!(stage_content in input);
+                let parsed_stages: Punctuated<PipelineStage, Token![,]> = stage_content.parse_terminated(PipelineStage::parse)?;
+                stages = parsed_stages
+                    .into_iter()
+                    .collect();
+            }
         }
-        else if input.peek(Token![->]) {
+        if input.peek(Token![->]) {
             input.parse::<Token![->]>()?;
             let return_total: Type = input.parse()?;
             stages = vec![return_total.into()];
@@ -44,11 +46,35 @@ impl Parse for PipelineDefinition {
 }
 
 impl PipelineDefinition {
-    pub fn return_type(&self, error_type: &Type) -> TokenStream {
-        match &self.stages[self.stages.len() - 1].return_type() {
-            Some(output) => quote! { std::result::Result<#output, #error_type> },
-            None => quote! { std::result::Result<(), #error_type> },
+    pub fn apply_template(self, defaults: &MessageDefaults) -> Self {
+        match &defaults.pipeline {
+            Some(pipeline_default) => {
+                Self {
+                    message: self.message,
+                    mutable: self.mutable,
+                    context: self.context,
+                    stages: pipeline_default.stages(self.stages[self.stages.len() - 1].return_type())
+                }
+            },
+            None => self,
         }
+    }
+
+    pub fn return_type(&self, error_type: &Type) -> TokenStream {
+        match self.stages[self.stages.len() - 1].return_type() {
+            StageReturn::None => quote! { std::result::Result<(), #error_type> },
+            StageReturn::Explicit(output) => quote! { std::result::Result<#output, #error_type> },
+            StageReturn::Message => {
+                let message = &self.message;
+                quote! { std::result::Result<#message, #error_type> }
+            }
+        }
+    }
+    pub fn mock_return_attribute(&self) -> TokenStream { 
+        if let StageReturn::None = self.stages[self.stages.len() - 1].return_type() {
+            quote! { #[mock_default_return(|_| Ok(()))] }
+        }
+        else { quote! {} }
     }
 
     pub fn trait_tokens(&self, visibility: &Visibility, message_trait: &MessageTraitDefinition, base_name: &Ident) -> TokenStream {
@@ -79,16 +105,21 @@ impl PipelineDefinition {
                 None => quote! { #message_type }
             };
             let return_token = match stage.return_type() {
-                Some(return_type) => {
-                    previous_stage_output = Some(return_type.clone());
-                    quote! { std::result::Result<#return_type, #error_type> }
-                },
-                None => {
+                StageReturn::None => {
                     if i < stage_length - 1 {
                         input_token = quote! { &#input_token };
                     }
                     quote! { std::result::Result<(), #error_type> }
                 },
+                StageReturn::Explicit(return_type) => {
+                    previous_stage_output = Some(return_type.clone());
+                    quote! { std::result::Result<#return_type, #error_type> }
+                },
+                StageReturn::Message => {
+                    let message = &self.message;
+                    previous_stage_output = Some(message.clone());
+                    quote! { std::result::Result<#message, #error_type> }
+                }
             };
 
             stage_traits.push(quote! {
@@ -121,11 +152,11 @@ impl PipelineDefinition {
                 None => quote! { message },
             };
             let assign_token = match &stage.return_type {
-                Some(_) => {
+                StageReturn::Explicit(_) | StageReturn::Message => {
                     previous_stage_output = Some(stage.name.clone());
                     quote! { let #previous_stage_output = }
                 },
-                None => {
+                StageReturn::None => {
                     if i < stage_length - 1 {
                         input_token = quote! { &#input_token };
                     }

@@ -14,13 +14,13 @@ mod tests {
 
         for i in 0..10 {
             {
-                let base_singleton: Rc<RwLock<IncrementingFoo>> = base_provider.generate();
+                let base_singleton: Singleton<IncrementingFoo> = base_provider.generate();
                 let mut base_foo = base_singleton.write().unwrap();
                 assert_eq!(i * 3, base_foo.foo());
             }
             {
                 let cloned_provider: ClonedSelfProvider = base_provider.generate();
-                let cloned_singleton: Rc<RwLock<IncrementingFoo>> = cloned_provider.generate();
+                let cloned_singleton: Singleton<IncrementingFoo> = cloned_provider.generate();
                 let mut cloned_foo = cloned_singleton.write().unwrap();
                 assert_eq!(i * 3 + 1, cloned_foo.foo());
                 assert_eq!(i * 3 + 2, cloned_foo.foo());

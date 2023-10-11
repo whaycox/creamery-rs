@@ -1,23 +1,25 @@
 use super::*;
 
-const MESSAGE_KEYWORD: &str = "message";
-
 #[derive(Clone)]
 pub enum StageReturn {
     None,
-    Explicit(Type),
     Message,
-    Request,
-    Response,
+    Explicit(Type)
 }
 
-impl StageReturn {
-    pub fn parse_message(keyword: Ident) -> Result<Self> {
-        if keyword == Ident::new(MESSAGE_KEYWORD, Span::call_site()) {
-            Ok(StageReturn::Message)
+impl Parse for StageReturn {
+    fn parse(input: ParseStream) -> Result<Self> {
+        if input.peek(Token![$]) {
+            input.parse::<Token![$]>()?;
+            if input.parse::<Ident>()?.to_string().as_str() == "message" {
+                Ok(Self::Message)
+            }
+            else { 
+                panic!("Unrecognized request template keyword") 
+            }
         }
         else {
-            Err(Error::new(keyword.span(), format!("Unexpected keyword: {}", keyword)))
+            Ok(Self::Explicit(input.parse()?))
         }
     }
 }

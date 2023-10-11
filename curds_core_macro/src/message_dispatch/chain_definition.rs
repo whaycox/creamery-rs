@@ -45,11 +45,22 @@ impl Parse for ChainDefinition {
 }
 
 impl ChainDefinition {
+    pub fn apply_template(self, defaults: &MessageDefaults) -> Self {
+        self
+    }
+
+    pub fn has_return(&self) -> bool { self.return_type.is_some() }
     pub fn return_type(&self, error_type: &Type) -> TokenStream { 
         match &self.return_type {
             Some(output) => quote! { std::option::Option<std::result::Result<#output, #error_type>> },
             None => quote! { std::option::Option<std::result::Result<(), #error_type>> },
         } 
+    }
+    pub fn mock_return_attribute(&self) -> TokenStream { 
+        if self.return_type.is_none() {
+            quote! { #[mock_default_return(|_| Some(Ok(())))] }
+        }
+        else { quote! {} }
     }
     
     pub fn trait_tokens(&self, visibility: &Visibility, message_trait: &MessageTraitDefinition, base_name: &Ident) -> TokenStream {

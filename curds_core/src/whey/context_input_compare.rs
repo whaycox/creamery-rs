@@ -22,7 +22,7 @@ mod tests {
     
     #[whey(VoidFooContext ~ context)]
     fn resets_stored_returns() {       
-        let core: Rc<RwLock<WheyCoreVoidFoo>> = context.generate();
+        let core: Singleton<WheyCoreVoidFoo> = context.generate();
 
         core.write().unwrap().reset();
     }

@@ -4,123 +4,135 @@ mod tests {
 
     const FOO_MOD: u32 = 3;
 
-    #[message_dispatch(TestMessages)]
+    #[message_dispatch(TestMessages ! FooMessageError)]
     #[first(FooMessage ~ FooRepositoryContext)]
     #[second(FooMessage ~ FooRepositoryContext)]
     #[third(FooMessage ~ FooRepositoryContext &)]
-    #[message(Validator, Handler)]
+    #[pipeline_default(Validator, Handler)]
     #[generates_singleton(dyn FooRepository ~ ConcreteRepository)]
     struct TestMessagesProvider {}
 
     impl FirstValidator for FooRepositoryContext {
-        fn handle(&self, _dispatch: &dyn TestMessages, input: &FooMessage) -> Result<()> {
+        fn handle(&self, _: &dyn TestMessages, input: &FooMessage) -> Result<(), FooMessageError> {
             if input.foo % FOO_MOD == 0 {
                 Ok(())
             }
             else {
-                Err(Box::new(FooMessageError::new(&format!("Foo wasn't a multiple of {}", FOO_MOD))))
+                Err(FooMessageError {})
             }
         }
     }
 
     impl FirstHandler for FooRepositoryContext {
-        fn handle(&self, _dispatch: &dyn TestMessages, input: &FooMessage) -> Result<()> {
-            self.repo.store(input.foo);
+        fn handle(&self, _: &dyn TestMessages, input: FooMessage) -> Result<(), FooMessageError> {
+            self.repo
+                .write()
+                .unwrap()
+                .store(input.foo);
             Ok(())
         }
     }
 
     impl SecondValidator for FooRepositoryContext {
-        fn handle(&self, _dispatch: &dyn TestMessages, input: &FooMessage) -> Result<()> {
+        fn handle(&self, _dispatch: &dyn TestMessages, input: &FooMessage) -> Result<(), FooMessageError> {
             if input.foo % (FOO_MOD + 1) == 0 {
                 Ok(())
             }
             else {
-                Err(Box::new(FooMessageError::new(&format!("Foo wasn't a multiple of {}", FOO_MOD + 1))))
+                Err(FooMessageError {})
             }
         }
     }
     impl SecondHandler for FooRepositoryContext {
-        fn handle(&self, _dispatch: &dyn TestMessages, input: &FooMessage) -> Result<()> {
-            self.repo.store(input.foo + 1);
+        fn handle(&self, _dispatch: &dyn TestMessages, input: FooMessage) -> Result<(), FooMessageError> {
+            self.repo
+                .write()
+                .unwrap()
+                .store(input.foo + 1);
             Ok(())
         }
     }
 
     impl ThirdValidator for FooRepositoryContext {
-        fn handle(&self, _dispatch: &dyn TestMessages, input: &FooMessage) -> Result<()> {
+        fn handle(&self, _dispatch: &dyn TestMessages, input: &FooMessage) -> Result<(), FooMessageError> {
             if input.foo % (FOO_MOD + 2) == 0 {
                 Ok(())
             }
             else {
-                Err(Box::new(FooMessageError::new(&format!("Foo wasn't a multiple of {}", FOO_MOD + 2))))
+                Err(FooMessageError {})
             }
         }
     }
     impl ThirdHandler for FooRepositoryContext {
-        fn handle(&self, _dispatch: &dyn TestMessages, input: &FooMessage) -> Result<()> {
-            self.repo.store(input.foo + 2);
+        fn handle(&self, _dispatch: &dyn TestMessages, input: FooMessage) -> Result<(), FooMessageError> {
+            self.repo
+                .write()
+                .unwrap()
+                .store(input.foo + 2);
             Ok(())
         }
     }
 
-    #[test]
+    #[whey_context(TestMessagesProvider)]
+    struct DefaultPipelineMessageContext {}
+
+    #[whey(DefaultPipelineMessageContext ~ context)]
     fn handles_first_successes() {
-        let provider = TestMessagesProvider::construct();
-        let repo = ServiceGenerator::<Rc<dyn FooRepository>>::generate(&provider);
+        let provider = context.test_type();
+        let repo: Singleton<Box<dyn FooRepository>> = provider.generate();
 
         assert_eq!((), provider.first(FooMessage::test(FOO_MOD)).unwrap());
-        assert_eq!(FOO_MOD, repo.get().unwrap());
+        assert_eq!(FOO_MOD, repo.read().unwrap().get().unwrap());
         assert_eq!((), provider.first(FooMessage::test(FOO_MOD * FOO_MOD)).unwrap());
-        assert_eq!(FOO_MOD * FOO_MOD, repo.get().unwrap());
+        assert_eq!(FOO_MOD * FOO_MOD, repo.read().unwrap().get().unwrap());
     }
 
-    #[test]
+    #[whey(DefaultPipelineMessageContext ~ context)]
     fn handles_first_failure() {
-        let provider = TestMessagesProvider::construct();
-        let repo = ServiceGenerator::<Rc<dyn FooRepository>>::generate(&provider);
+        let provider = context.test_type();
+        let repo: Singleton<Box<dyn FooRepository>> = provider.generate();
 
         provider.first(FooMessage::test(FOO_MOD + 1)).unwrap_err();
-        assert_eq!(None, repo.get());
+        assert_eq!(None, *repo.read().unwrap().get());
     }
 
-    #[test]
+    #[whey(DefaultPipelineMessageContext ~ context)]
     fn handles_second_successes() {
-        let provider = TestMessagesProvider::construct();
-        let repo = ServiceGenerator::<Rc<dyn FooRepository>>::generate(&provider);
+        let provider = context.test_type();
+        let repo: Singleton<Box<dyn FooRepository>> = provider.generate();
 
         assert_eq!((), provider.second(FooMessage::test(FOO_MOD + 1)).unwrap());
-        assert_eq!(FOO_MOD + 2, repo.get().unwrap());
+        assert_eq!(FOO_MOD + 2, repo.read().unwrap().get().unwrap());
         assert_eq!((), provider.second(FooMessage::test((FOO_MOD + 1) * (FOO_MOD + 1))).unwrap());
-        assert_eq!(((FOO_MOD + 1) * (FOO_MOD + 1) + 1), repo.get().unwrap());
+        assert_eq!(((FOO_MOD + 1) * (FOO_MOD + 1) + 1), repo.read().unwrap().get().unwrap());
     }
 
-    #[test]
+    #[whey(DefaultPipelineMessageContext ~ context)]
     fn handles_second_failure() {
-        let provider = TestMessagesProvider::construct();
-        let repo = ServiceGenerator::<Rc<dyn FooRepository>>::generate(&provider);
+        let provider = context.test_type();
+        let repo: Singleton<Box<dyn FooRepository>> = provider.generate();
 
         provider.second(FooMessage::test(FOO_MOD + 2)).unwrap_err();
-        assert_eq!(None, repo.get());
+        assert_eq!(None, *repo.read().unwrap().get());
     }
 
-    #[test]
+    #[whey(DefaultPipelineMessageContext ~ context)]
     fn handles_third_successes() {
-        let provider = TestMessagesProvider::construct();
-        let repo = ServiceGenerator::<Rc<dyn FooRepository>>::generate(&provider);
+        let provider = context.test_type();
+        let repo: Singleton<Box<dyn FooRepository>> = provider.generate();
 
         assert_eq!((), provider.third(FooMessage::test(FOO_MOD + 2)).unwrap());
-        assert_eq!(FOO_MOD + 4, repo.get().unwrap());
+        assert_eq!(FOO_MOD + 4, repo.read().unwrap().get().unwrap());
         assert_eq!((), provider.third(FooMessage::test((FOO_MOD + 2) * (FOO_MOD + 2))).unwrap());
-        assert_eq!(((FOO_MOD + 2) * (FOO_MOD + 2) + 2), repo.get().unwrap());
+        assert_eq!(((FOO_MOD + 2) * (FOO_MOD + 2) + 2), repo.read().unwrap().get().unwrap());
     }
 
-    #[test]
+    #[whey(DefaultPipelineMessageContext ~ context)]
     fn handles_third_failure() {
-        let provider = TestMessagesProvider::construct();
-        let repo = ServiceGenerator::<Rc<dyn FooRepository>>::generate(&provider);
+        let provider = context.test_type();
+        let repo: Singleton<Box<dyn FooRepository>> = provider.generate();
 
         provider.third(FooMessage::test(FOO_MOD + 3)).unwrap_err();
-        assert_eq!(None, repo.get());
+        assert_eq!(None, *repo.read().unwrap().get());
     }
 }

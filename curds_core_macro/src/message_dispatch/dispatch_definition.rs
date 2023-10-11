@@ -1,5 +1,8 @@
 use super::*;
 
+const PIPELINE_DEFAULT: &str = "pipeline_default";
+const CHAIN_DEFAULT: &str = "chain_default";
+
 pub struct DispatchDefinition {
     provider_definition: ServiceProviderDefinition,
     messages: Vec<MessageDefinition>,
@@ -8,7 +11,13 @@ pub struct DispatchDefinition {
 impl Parse for DispatchDefinition {
     fn parse(input: ParseStream) -> Result<Self> {
         let mut provider_definition: ServiceProviderDefinition = input.parse()?;
-        let messages = Self::parse_messages(provider_definition.item())?;        
+        let message_defaults = Self::parse_message_defaults(provider_definition.item())?;
+        let mut messages = Self::parse_messages(provider_definition.item())?;
+        messages = messages
+            .into_iter()
+            .map(|message| message.apply_template(&message_defaults))
+            .collect();
+
         let mut message_contexts: HashSet<Type> = HashSet::new();
         for message in &messages {
             message_contexts.insert(message.context_type());
@@ -25,6 +34,31 @@ impl Parse for DispatchDefinition {
 }
 
 impl DispatchDefinition {
+    fn parse_message_defaults(provider: &mut ItemStruct) -> Result<MessageDefaults> {
+        let mut defaults = MessageDefaults::new();
+        let length = provider.attrs.len();
+        if length > 0 {
+            let mut attribute_index = length - 1;
+            loop {
+                let attribute = &provider.attrs[attribute_index];
+                if attribute.path.is_ident(PIPELINE_DEFAULT) {
+                    defaults.pipeline = Some(attribute.parse_args()?);
+                    provider.attrs.remove(attribute_index);
+                }
+                else if attribute.path.is_ident(CHAIN_DEFAULT) {
+                    //parsed.push(ServiceProduction::GenerateTransient(attribute.parse_args::<GeneratedDefinition>()?));
+                    provider.attrs.remove(attribute_index);
+                }
+    
+                if attribute_index == 0 {
+                    break;
+                }
+                attribute_index = attribute_index - 1;
+            }
+        }
+
+        Ok(defaults)
+    }
     fn parse_messages(provider: &mut ItemStruct) -> Result<Vec<MessageDefinition>> {
         let mut messages: Vec<MessageDefinition> = Vec::new();
         let length = provider.attrs.len();
@@ -56,7 +90,6 @@ impl DispatchDefinition {
 
         Ok(messages)
     }
-
 
     pub fn quote(self, message_trait: MessageTraitDefinition) -> TokenStream {
         let visibility = self.provider_definition.visibility();

@@ -14,7 +14,7 @@ mod tests {
         let provider = SingletonProvider::construct();
 
         for i in 0..10 {
-            let singleton: Rc<RwLock<IncrementingFoo>> = provider.generate();
+            let singleton: Singleton<IncrementingFoo> = provider.generate();
             let mut foo = singleton.write().unwrap();
 
             assert_eq!(i * 3, foo.foo());
@@ -41,7 +41,7 @@ mod tests {
         let provider = SingletonProvider::construct();
 
         for i in 0..10 {
-            let singleton: Rc<RwLock<Box<dyn Foo>>> = provider.generate();
+            let singleton: Singleton<Box<dyn Foo>> = provider.generate();
             let mut foo = singleton.write().unwrap();
 
             assert_eq!(i * 3, foo.foo());
@@ -68,8 +68,8 @@ mod tests {
         let provider = SingletonProvider::construct();
 
         for i in 0..10 {
-            let trait_singleton: Rc<RwLock<Box<dyn Foo>>> = provider.generate();
-            let struct_singleton: Rc<RwLock<IncrementingFoo>> = provider.generate();
+            let trait_singleton: Singleton<Box<dyn Foo>> = provider.generate();
+            let struct_singleton: Singleton<IncrementingFoo> = provider.generate();
             let mut trait_foo = trait_singleton.write().unwrap();
             let mut struct_foo = struct_singleton.write().unwrap();
 

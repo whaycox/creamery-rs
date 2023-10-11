@@ -13,6 +13,13 @@ impl From<ChainDefinition> for DispatchRouting {
 }
 
 impl DispatchRouting {
+    pub fn apply_template(self, defaults: &MessageDefaults) -> Self {
+        match self {
+            Self::Pipeline(pipeline) => Self::Pipeline(pipeline.apply_template(defaults)),
+            Self::Chain(chain) => Self::Chain(chain.apply_template(defaults)),
+        }
+    }
+
     pub fn mutable(&self) -> bool {
         match self {
             Self::Pipeline(pipeline) => pipeline.mutable,
@@ -31,6 +38,12 @@ impl DispatchRouting {
             Self::Pipeline(pipeline) => pipeline.context.clone(),
             Self::Chain(chain) => chain.context.clone(),
         }
+    }
+    pub fn mock_return_attribute(&self) -> TokenStream {
+        match self {
+            Self::Pipeline(pipeline) => pipeline.mock_return_attribute(),
+            Self::Chain(chain) => chain.mock_return_attribute(),
+        }    
     }
     pub fn return_type(&self, error_type: &Type) -> TokenStream {
         match self {

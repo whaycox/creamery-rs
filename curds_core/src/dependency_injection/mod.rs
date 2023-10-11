@@ -59,7 +59,7 @@ mod simple {
 
     #[injected]
     pub struct BarredFoo {
-        bar: Rc<RwLock<Box<dyn Bar>>>,
+        bar: Singleton<Box<dyn Bar>>,
     }
     impl Foo for BarredFoo {
         fn foo(&mut self) -> u32 { EXPECTED_FOO * self.bar.write().unwrap().bar() }
