@@ -1,10 +1,8 @@
 #[cfg(test)]
 mod tests {
-    use std::marker::PhantomData;
-
     use super::super::*;
 
-    #[message_dispatch(TestMessages)]
+    #[message_dispatch(TestMessages ! FooMessageError)]
     #[first(FooMessage ~ FooMessageContext)]
     struct TestMessagesProvider<T> {
         #[defaulted]
@@ -12,14 +10,19 @@ mod tests {
     }
 
     impl FirstHandler for FooMessageContext {
-        fn handle(&self, _dispatch: &dyn TestMessages, input: &FooMessage) -> Result<()> {
+        fn handle(&self, _: &dyn TestMessages, _: FooMessage) -> Result<(), FooMessageError> {
             Ok(())
         }
     }
 
-    #[test]
+    #[whey_context(TestMessagesProvider<u32>)]
+    struct GenericDispatchContext {}
+
+    #[whey(GenericDispatchContext ~ context)]
     fn handles_first() {
-        let provider = TestMessagesProvider::<u32>::construct();
-        provider.first(FooMessage::new()).unwrap()
+        context
+            .test_type()
+            .first(FooMessage::new())
+            .unwrap()
     }
 }

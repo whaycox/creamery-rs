@@ -46,7 +46,7 @@ impl DispatchDefinition {
                     provider.attrs.remove(attribute_index);
                 }
                 else if attribute.path.is_ident(CHAIN_DEFAULT) {
-                    //parsed.push(ServiceProduction::GenerateTransient(attribute.parse_args::<GeneratedDefinition>()?));
+                    defaults.chain = Some(attribute.parse_args()?);
                     provider.attrs.remove(attribute_index);
                 }
     

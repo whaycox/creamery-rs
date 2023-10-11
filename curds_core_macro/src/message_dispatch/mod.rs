@@ -11,6 +11,7 @@ mod chain_stage;
 mod message_defaults;
 mod pipeline_default;
 mod stage_return;
+mod chain_default;
 
 pub use dispatch_definition::*;
 pub use message_trait_definition::*;
@@ -23,6 +24,7 @@ pub use chain_stage::*;
 pub use message_defaults::*;
 pub use pipeline_default::*;
 pub use stage_return::*;
+pub use chain_default::*;
 
 use proc_macro2::{TokenStream, Span};
 

@@ -21,12 +21,14 @@ impl Parse for ChainDefinition {
 
         let mut stages: Vec<ChainStage> = vec![ChainStage::default()];
         input.parse::<Token![|]>()?;
-        let stage_content;
-        bracketed!(stage_content in input);
-        let parsed_stages: Punctuated<ChainStage, Token![,]> = stage_content.parse_terminated(ChainStage::parse)?;
-        stages = parsed_stages
-            .into_iter()
-            .collect();
+        if input.peek(token::Bracket) {
+            let stage_content;
+            bracketed!(stage_content in input);
+            let parsed_stages: Punctuated<ChainStage, Token![,]> = stage_content.parse_terminated(ChainStage::parse)?;
+            stages = parsed_stages
+                .into_iter()
+                .collect();
+        }
 
         let mut return_type: Option<Type> = None;
         if input.peek(Token![->]) {
@@ -46,10 +48,20 @@ impl Parse for ChainDefinition {
 
 impl ChainDefinition {
     pub fn apply_template(self, defaults: &MessageDefaults) -> Self {
-        self
+        match &defaults.chain {
+            Some(chain_default) => {
+                Self {
+                    message: self.message,
+                    mutable: self.mutable,
+                    context: self.context,
+                    stages: chain_default.stages(),
+                    return_type: self.return_type,
+                }
+            },
+            None => self,
+        }
     }
 
-    pub fn has_return(&self) -> bool { self.return_type.is_some() }
     pub fn return_type(&self, error_type: &Type) -> TokenStream { 
         match &self.return_type {
             Some(output) => quote! { std::option::Option<std::result::Result<#output, #error_type>> },
