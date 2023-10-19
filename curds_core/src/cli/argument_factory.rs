@@ -1,8 +1,15 @@
 use super::*;
 
 #[whey_mock]
-#[expect(has_arguments() -> true)]
 pub trait ArgumentFactory {
-    fn has_arguments(&self) -> bool;
-    fn next(&self) -> String;
+    fn create(&self) -> Vec<String>;
+}
+
+#[injected]
+pub struct CliArgumentFactory {}
+
+impl ArgumentFactory for CliArgumentFactory {
+    fn create(&self) -> Vec<String>  {
+        todo!("argument factory create")
+    }
 }

@@ -1,6 +1,7 @@
 mod dependency_injection;
 mod whey;
 mod message_dispatch;
+mod cli;
 
 use proc_macro::TokenStream;
 use syn::{*, parse::*, punctuated::*, spanned::*};
@@ -11,6 +12,7 @@ use rand::*;
 use dependency_injection::*;
 use whey::*;
 use message_dispatch::*;
+use cli::*;
 
 #[proc_macro_attribute]
 pub fn injected(_: TokenStream, item: TokenStream) -> TokenStream {
@@ -101,5 +103,12 @@ pub fn message_dispatch(attr: TokenStream, item: TokenStream) -> TokenStream {
     let message_trait = parse_macro_input!(attr as MessageTraitDefinition);
     parse_macro_input!(item as DispatchDefinition)
         .quote(message_trait)
+        .into()
+}
+
+#[proc_macro_attribute]
+pub fn cli_arguments(attr: TokenStream, item: TokenStream) -> TokenStream {
+    parse_macro_input!(item as CliArgumentDefinition)
+        .quote()
         .into()
 }

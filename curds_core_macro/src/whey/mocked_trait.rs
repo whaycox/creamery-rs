@@ -32,7 +32,7 @@ impl WheyMockedTrait {
 
         quote! {
             {
-                let core = curds_core_abstraction::dependency_injection::ServiceGenerator::<Rc<RwLock<#core_name>>>::generate(self);
+                let core = curds_core_abstraction::dependency_injection::ServiceGenerator::<std::rc::Rc<std::sync::RwLock<#core_name>>>::generate(self);
                 core.write().unwrap().assert();
             }
         }

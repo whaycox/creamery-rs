@@ -12,3 +12,4 @@ syn = { version = "1.0.75", features = ["parsing", "extra-traits", "full"] }
 quote = "1.0.9"
 rand = "0.8.4"
 proc-macro2 = "1.0.28"
+regex = "1.10.2"
