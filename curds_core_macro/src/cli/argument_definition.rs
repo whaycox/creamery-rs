@@ -7,7 +7,10 @@ pub enum CliArgumentDefinition {
 
 impl Parse for CliArgumentDefinition {
     fn parse(input: ParseStream) -> Result<Self> {
-        if let Ok(definition) = input.parse::<CliArgumentEnumerationDefinition>() {
+        let forked = input.fork();
+
+        if forked.parse::<CliArgumentEnumerationDefinition>().is_ok() {
+            let definition = input.parse::<CliArgumentEnumerationDefinition>()?;
             Ok(Self::Enumeration(definition))
         }
         else if let Ok(definition) = input.parse::<CliArgumentStructDefinition>() {

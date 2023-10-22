@@ -16,11 +16,12 @@ impl CliArgumentEnumerationDefinition {
     pub fn quote(self) -> TokenStream {
         let variants = self.quote_cli_argument_parse();
         let item = self.item;
+        let name = &item.ident;
 
         quote! {
             #item
 
-            impl CliArgumentParse for TestOperations {
+            impl curds_core_abstraction::cli::CliArgumentParse for #name {
                 fn parse(arguments: &mut Vec<String>) -> Self {
                     let key = arguments.pop().unwrap(); 
                     match key.as_str() {
@@ -38,24 +39,9 @@ impl CliArgumentEnumerationDefinition {
             let variant_name = &variant.ident;
             let formatted_name = format_argument_name(variant_name);
             let argument = format!("--{}", formatted_name);
-            let argument_data = match &variant.fields {
-                Fields::Unit => quote! {},
-                Fields::Unnamed(fields) => {
-                    let mut unnamed_fields: Vec<TokenStream> = vec![];
-                    for field in &fields.unnamed {
-                        let ty = &field.ty;
-                        unnamed_fields.push(quote! { <#ty as curds_core_abstraction::cli::CliArgumentParse>::parse(arguments) })
-                    }
+            let initializer = parse_fields(quote! { Self::#variant_name }, &variant.fields);
 
-                    quote! { (#(#unnamed_fields),*) }
-                },
-                Fields::Named(fields) => quote! {},
-            };
-            println!("VARIANT: {:?}", variant);
-
-            variants.push(quote! {
-                #argument => Self::#variant_name #argument_data,
-            })
+            variants.push(quote! { #argument => { #initializer }, });
         }
 
         variants

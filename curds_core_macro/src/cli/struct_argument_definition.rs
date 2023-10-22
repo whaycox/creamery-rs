@@ -15,9 +15,17 @@ impl Parse for CliArgumentStructDefinition {
 impl CliArgumentStructDefinition {
     pub fn quote(self) -> TokenStream {
         let item = self.item;
+        let name = &item.ident;
+        let initializer = parse_fields(quote! { #name }, &item.fields);
 
         quote! {
             #item
+
+            impl curds_core_abstraction::cli::CliArgumentParse for #name {
+                fn parse(arguments: &mut Vec<String>) -> Self {
+                    #initializer
+                }
+            }
         }
     }
 }

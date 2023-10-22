@@ -10,6 +10,9 @@ pub struct CliArgumentFactory {}
 
 impl ArgumentFactory for CliArgumentFactory {
     fn create(&self) -> Vec<String>  {
-        todo!("argument factory create")
+        let mut arguments: Vec<String> = std::env::args().collect();
+        arguments.remove(0);
+
+        arguments
     }
 }

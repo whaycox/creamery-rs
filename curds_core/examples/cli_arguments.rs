@@ -1,11 +1,16 @@
+use curds_core::cli::Cli;
+use curds_core_macro::cli_arguments;
+
+#[cli_arguments]
+enum TestOperations {
+    Boolean,
+}
+
 fn main() {
-    let args: Vec<_> = std::env::args().collect();
-    for i in 0..args.len() {
-        println!("arg{}: {}", i, args[i]);
-    }    
-    let other_args: Vec<_> = std::env::args().collect();
-    for i in 0..other_args.len() {
-        println!("arg{}: {}", i, other_args[i]);
+    let operations = Cli::arguments::<TestOperations>();
+    for operation in operations {
+        match operation {
+            TestOperations::Boolean => println!("Performing the Boolean operation"),
+        }
     }
-    println!("Hi there");
 }
