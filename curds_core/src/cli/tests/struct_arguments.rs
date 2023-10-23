@@ -16,7 +16,7 @@ fn parses_struct() {
         "-two".to_string(),
     ];
 
-    assert_eq!(TestStruct { one: 9876, two: "test struct value".to_string()}, TestStruct::parse(&mut arguments));
+    assert_eq!(TestStruct { one: 9876, two: "test struct value".to_string()}, TestStruct::parse(&mut arguments).unwrap());
 }
 
 #[cli_arguments]
@@ -30,7 +30,7 @@ fn parses_tuple_struct() {
         "1234".to_string(),
     ];
 
-    assert_eq!(TupleStruct(1234, "test tuple struct value".to_string()), TupleStruct::parse(&mut arguments));
+    assert_eq!(TupleStruct(1234, "test tuple struct value".to_string()), TupleStruct::parse(&mut arguments).unwrap());
 }
 
 #[cli_arguments]
@@ -39,5 +39,5 @@ struct UnitStruct;
 
 #[test]
 fn parses_unit_struct() {
-    assert_eq!(UnitStruct, UnitStruct::parse(&mut Vec::new()));
+    assert_eq!(UnitStruct, UnitStruct::parse(&mut Vec::new()).unwrap());
 }

@@ -14,7 +14,7 @@ fn parses_boolean() {
         "--boolean".to_string(),
     ];
 
-    assert_eq!(TestOperations::Boolean, TestOperations::parse(&mut arguments));
+    assert_eq!(TestOperations::Boolean, TestOperations::parse(&mut arguments).unwrap());
 }
 
 #[test]
@@ -24,7 +24,7 @@ fn parses_unnamed() {
         "--unnamed".to_string(),
     ];
 
-    assert_eq!(TestOperations::Unnamed("unnamed value".to_string()), TestOperations::parse(&mut arguments));
+    assert_eq!(TestOperations::Unnamed("unnamed value".to_string()), TestOperations::parse(&mut arguments).unwrap());
 }
 
 #[test]
@@ -37,5 +37,5 @@ fn parses_named() {
         "--named".to_string(),
     ];
 
-    assert_eq!(TestOperations::Named{ one: 1234, two: "named value".to_string() }, TestOperations::parse(&mut arguments));
+    assert_eq!(TestOperations::Named{ one: 1234, two: "named value".to_string() }, TestOperations::parse(&mut arguments).unwrap());
 }

@@ -1,27 +1,16 @@
 use super::*;
 use chrono::{DateTime, Utc};
 
-pub struct UniversalTime {
-    pub time: DateTime<Utc>,
-}
-impl UniversalTime {
-    pub fn now() -> Self {
-        UniversalTime { 
-            time: Utc::now(), 
-        }
-    }
-}
-
 #[whey_mock]
 pub trait Clock {
-    #[mock_default_return(|| UniversalTime::now())]
-    fn current(&self) -> UniversalTime;
+    #[mock_default_return(|| Utc::now())]
+    fn current(&self) -> DateTime<Utc>;
 }
 
 #[injected]
 struct MachineClock {}
 impl Clock for MachineClock {
-    fn current(&self) -> UniversalTime { UniversalTime::now() }
+    fn current(&self) -> DateTime<Utc> { Utc::now() }
 }
 
 #[cfg(test)]
@@ -40,7 +29,7 @@ mod tests {
             .current();
 
         let after = Utc::now();
-        assert!(before < actual.time);
-        assert!(actual.time < after);
+        assert!(before < actual);
+        assert!(actual < after);
     }
 }

@@ -22,11 +22,11 @@ impl CliArgumentEnumerationDefinition {
             #item
 
             impl curds_core_abstraction::cli::CliArgumentParse for #name {
-                fn parse(arguments: &mut Vec<String>) -> Self {
+                fn parse(arguments: &mut Vec<String>) -> Result<Self, curds_core_abstraction::cli::CliArgumentParseError> {
                     let key = arguments.pop().unwrap(); 
                     match key.as_str() {
                         #(#variants)*
-                        _ => panic!("value \"{}\" not recognized as an operation key", key),
+                        _ => Err(curds_core_abstraction::cli::CliArgumentParseError::UnrecognizedKey(key)),
                     }
                 }
             }

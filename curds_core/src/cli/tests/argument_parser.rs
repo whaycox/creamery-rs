@@ -11,6 +11,7 @@ enum TestOperations {
 
 #[whey_context(CliArgumentParser)]
 #[mocks(dyn ArgumentFactory)]
+#[mocks(dyn Terminal)]
 struct CliArgumentParserContext {}
 
 #[whey(CliArgumentParserContext ~ context)]
@@ -22,7 +23,8 @@ fn parses_boolean_operations() {
 
     let actual = context
         .test_type()
-        .parse();
+        .parse()
+        .unwrap();
 
     assert_eq!(2, actual.len());
     assert_eq!(TestOperations::FirstBoolean, actual[0]);
@@ -39,7 +41,8 @@ fn parses_operations_with_anonymous_values() {
 
     let actual = context
         .test_type()
-        .parse();
+        .parse()
+        .unwrap();
 
     assert_eq!(1, actual.len());
     assert_eq!(TestOperations::Message(String::from("This is a test message"), 123), actual[0]);
@@ -57,7 +60,8 @@ fn parses_operations_with_named_values() {
 
     let actual = context
         .test_type()
-        .parse();
+        .parse()
+        .unwrap();
 
     assert_eq!(1, actual.len());
     assert_eq!(TestOperations::Point{ x: 234, y: 123 }, actual[0]);
