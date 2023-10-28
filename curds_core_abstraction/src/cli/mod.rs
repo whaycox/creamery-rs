@@ -1,4 +1,11 @@
-use std::{str::FromStr, fmt::Display, error::Error};
+use std::{
+    str::FromStr, 
+    fmt::Display, 
+    error::Error, 
+    any::type_name,
+    sync::OnceLock,
+};
+use regex::Regex;
 
 #[derive(Debug)]
 pub enum CliArgumentParseError {
@@ -20,8 +27,12 @@ impl Error for CliArgumentParseError {}
 
 pub trait CliArgumentParse {
     fn parse(arguments: &mut Vec<String>) -> Result<Self, CliArgumentParseError> where Self: Sized;
+    fn usage() -> String;
 }
 
+
+
+static TYPE_SIMPLIFIER: OnceLock<Regex> = OnceLock::new();
 impl<TType> CliArgumentParse for TType where TType : FromStr {
     fn parse(arguments: &mut Vec<String>) -> Result<Self, CliArgumentParseError> {
         match arguments.pop() {
@@ -31,5 +42,13 @@ impl<TType> CliArgumentParse for TType where TType : FromStr {
             },
             None => Err(CliArgumentParseError::ArgumentExpected),
         }
+    }
+
+    fn usage() -> String {
+        let simplifier = TYPE_SIMPLIFIER.get_or_init(|| Regex::new("[^:]+$").unwrap());
+        let type_name: &str = simplifier.find(type_name::<TType>())
+            .unwrap()
+            .as_str();
+        format!("<{}>", type_name) 
     }
 }

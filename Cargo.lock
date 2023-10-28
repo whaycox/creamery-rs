@@ -82,6 +82,9 @@ dependencies = [
 [[package]]
 name = "curds_core_abstraction"
 version = "0.1.0"
+dependencies = [
+ "regex",
+]
 
 [[package]]
 name = "curds_core_macro"

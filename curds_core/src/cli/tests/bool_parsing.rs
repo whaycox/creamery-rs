@@ -25,3 +25,8 @@ fn false_when_not_supplied() {
     
     assert_eq!(BoolTesting::Test{ one: false, two: false }, BoolTesting::parse(&mut arguments).unwrap());
 }
+
+#[test]
+fn usage_is_expected() {
+    assert_eq!("[--test [-one] [-two]]", BoolTesting::usage());
+}

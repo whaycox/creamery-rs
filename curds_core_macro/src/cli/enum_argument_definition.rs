@@ -15,6 +15,7 @@ impl Parse for CliArgumentEnumerationDefinition {
 impl CliArgumentEnumerationDefinition {
     pub fn quote(self) -> TokenStream {
         let variants = self.quote_cli_argument_parse();
+        let variant_usage = self.quote_usage();
         let item = self.item;
         let name = &item.ident;
 
@@ -28,6 +29,10 @@ impl CliArgumentEnumerationDefinition {
                         #(#variants)*
                         _ => Err(curds_core_abstraction::cli::CliArgumentParseError::UnrecognizedKey(key)),
                     }
+                }
+
+                fn usage() -> String {
+                    #variant_usage
                 }
             }
         }
@@ -45,5 +50,22 @@ impl CliArgumentEnumerationDefinition {
         }
 
         variants
+    }
+    fn quote_usage(&self) -> TokenStream {
+        let mut variant_usages: Vec<TokenStream> = vec![];
+        for variant in &self.item.variants {
+            let variant_name = &variant.ident;
+            let formatted_name = format_argument_name(variant_name);
+            let argument = format!("--{}", formatted_name);
+
+            variant_usages.push(field_usage(Some(argument), &variant.fields));
+        }
+
+        quote! {
+            let mut usages: Vec<String> = vec![];
+            #(#variant_usages)*
+            
+            usages.join(" ")
+        }
     }
 }

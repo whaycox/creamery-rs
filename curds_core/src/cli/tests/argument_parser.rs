@@ -66,3 +66,20 @@ fn parses_operations_with_named_values() {
     assert_eq!(1, actual.len());
     assert_eq!(TestOperations::Point{ x: 234, y: 123 }, actual[0]);
 }
+
+const TEST_APPLICATION_NAME: &str = "TestApplication";
+#[whey(CliArgumentParserContext ~ context)]
+fn parse_error_writes_usage() {
+    mock_sequence!(context ~ [
+        ArgumentFactory ~ create() -> || vec![
+            "NOT_PARSEABLE".to_string(),
+        ],
+        ArgumentFactory ~ application_name() -> || TEST_APPLICATION_NAME.to_string(),
+        Terminal ~ write(|input| input == "TestApplication [--first_boolean] [--second_bool] [--message <String> <u32>] [--point -x <u32> -y <u32>]"),
+    ]);
+
+    context
+        .test_type()
+        .parse::<TestOperations>()
+        .unwrap_err();
+}

@@ -43,7 +43,14 @@ impl CliArgumentParser {
         let mut parsed_operations: Vec<TOperation> = vec![];
         loop {
             if arguments.len() > 0 {
-                parsed_operations.push(TOperation::parse(&mut arguments)?);
+                match TOperation::parse(&mut arguments) {
+                    Ok(parsed) => parsed_operations.push(parsed),
+                    Err(error) => {
+                        let application_name = self.factory.application_name();
+                        self.terminal.write(&format!("{} {}", application_name, TOperation::usage()));
+                        return Err(error);
+                    }
+                }
             }
             else {
                 break;

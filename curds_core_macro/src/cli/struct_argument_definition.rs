@@ -17,6 +17,7 @@ impl CliArgumentStructDefinition {
         let item = self.item;
         let name = &item.ident;
         let initializer = parse_fields(quote! { #name }, &item.fields);
+        let usage = field_usage(None, &item.fields);
 
         quote! {
             #item
@@ -25,6 +26,13 @@ impl CliArgumentStructDefinition {
                 fn parse(arguments: &mut Vec<String>) -> Result<Self, curds_core_abstraction::cli::CliArgumentParseError> {
                     #initializer
                 }
+
+                fn usage() -> String {
+                    let mut usages: Vec<String> = vec![];
+                    #usage
+                    
+                    usages.join(" ")
+                 }
             }
         }
     }

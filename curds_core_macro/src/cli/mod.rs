@@ -30,6 +30,46 @@ fn format_argument_name(name: &Ident) -> Ident {
     Ident::new(&parts.join("_"), name.span())
 }
 
+fn type_is_bool(ty: &Type) -> bool {
+    if let Type::Path(path) = ty {
+        let last_segment = &path.path.segments[path.path.segments.len() - 1];
+        return last_segment.ident == "bool" && last_segment.arguments == PathArguments::None;
+    }
+    false
+}
+fn type_is_option(ty: &Type) -> bool {
+    if let Type::Path(path) = ty {
+        let last_segment = &path.path.segments[path.path.segments.len() - 1];
+        if let PathArguments::AngleBracketed(arguments) = &last_segment.arguments {
+            return last_segment.ident == "Option" && arguments.args.len() == 1;
+        }
+    }
+    false
+}
+fn type_is_vec(ty: &Type) -> bool {
+    if let Type::Path(path) = ty {
+        let last_segment = &path.path.segments[path.path.segments.len() - 1];
+        if let PathArguments::AngleBracketed(arguments) = &last_segment.arguments {
+            return last_segment.ident == "Vec" && arguments.args.len() == 1;
+        }
+    }
+    false
+}
+fn extract_inner_type(ty: &Type) -> Option<&Type> {
+    if let Type::Path(path) = ty {
+        let last_segment = &path.path.segments[path.path.segments.len() - 1];
+        if let PathArguments::AngleBracketed(arguments) = &last_segment.arguments {
+            if arguments.args.len() == 1 {
+                let argument = &arguments.args[0];
+                if let GenericArgument::Type(option_type) = argument {
+                    return Some(option_type);
+                }
+            }
+        }
+    }
+    return None;
+}
+
 fn parse_fields(type_name: TokenStream, fields: &Fields) -> TokenStream {
     match fields {
         Fields::Unit => quote! { Ok(#type_name) },
@@ -37,7 +77,35 @@ fn parse_fields(type_name: TokenStream, fields: &Fields) -> TokenStream {
             let mut unnamed_fields: Vec<TokenStream> = vec![];
             for field in &fields.unnamed {
                 let ty = &field.ty;
-                unnamed_fields.push(quote! { <#ty as curds_core_abstraction::cli::CliArgumentParse>::parse(arguments)? })
+                let is_vec = type_is_vec(ty);
+                let inner_type = extract_inner_type(ty);
+
+                unnamed_fields.push(if is_vec {
+                    quote! {
+                        {
+                            let mut parsed_vector: Vec<#inner_type> = Vec::new();
+                            loop {
+                                if arguments.len() > 0 {
+                                    let value = arguments.pop().unwrap();
+                                    if value == "--" {
+                                        break;
+                                    }
+                                    else {
+                                        arguments.push(value);
+                                        parsed_vector.push(<#inner_type as curds_core_abstraction::cli::CliArgumentParse>::parse(arguments)?);
+                                    }
+                                } 
+                                else {
+                                    break;
+                                }
+                            }
+                            parsed_vector
+                        }
+                    }
+                }
+                else {
+                    quote! { <#ty as curds_core_abstraction::cli::CliArgumentParse>::parse(arguments)? }
+                });
             }
             let argument_data = quote! { (#(#unnamed_fields),*) };
 
@@ -53,102 +121,78 @@ fn parse_fields(type_name: TokenStream, fields: &Fields) -> TokenStream {
                 let formatted_name = format!("-{}", name);
                 let ty = &field.ty;
 
-                let mut is_bool = false;
-                let mut inner_type: Option<&Type> = None;
-                let mut is_option = false;
-                let mut is_vec = false;
-                if let Type::Path(path) = ty {
-                    let last_segment = &path.path.segments[path.path.segments.len() - 1];
-                    is_bool = last_segment.ident == "bool" && last_segment.arguments == PathArguments::None;
-                    if let PathArguments::AngleBracketed(arguments) = &last_segment.arguments {
-                        if arguments.args.len() == 1 {
-                            let argument = &arguments.args[0];
-                            if let GenericArgument::Type(option_type) = argument {
-                                inner_type = Some(option_type);
-                            }
-                        }
-                    }
-
-                    if last_segment.ident == "Option" {
-                        is_option = true;
-                    }
-                    else if last_segment.ident == "Vec" {
-                        is_vec = true;
+                let is_bool = type_is_bool(ty);
+                let is_option = type_is_option(ty);
+                let mut is_vec = type_is_vec(ty);
+                let mut inner_type = extract_inner_type(ty);
+                if is_option {
+                    let optional_type = inner_type.unwrap();
+                    is_vec = type_is_vec(optional_type);
+                    if is_vec {
+                        inner_type = extract_inner_type(optional_type);
                     }
                 }
         
                 expected_keys.push(quote! { #formatted_name });
-                key_parsers.push(if is_bool {
+
+                let pre_parse = if is_vec {
                     quote! {
-                        #formatted_name => {
-                            argument_map.insert(#formatted_name, std::boxed::Box::new(true));
-                            expected_keys.remove(#formatted_name);
-                        },
-                    } 
-                }
-                else if is_option {
-                    quote! {
-                        #formatted_name => {
-                            argument_map.insert(#formatted_name, std::boxed::Box::new(Some(<#inner_type as curds_core_abstraction::cli::CliArgumentParse>::parse(arguments)?)));
-                            expected_keys.remove(#formatted_name);
-                        },
-                    } 
-                }
-                else if is_vec {
-                    quote! {
-                        #formatted_name => {
-                            let mut parsed_vector: Vec<#inner_type> = Vec::new();
-                            loop {
-                                if arguments.len() > 0 {
-                                    let value = arguments.pop().unwrap();
-                                    if value == "--" {
-                                        break;
-                                    }
-                                    else {
-                                        parsed_vector.push(<#inner_type as curds_core_abstraction::cli::CliArgumentParse>::parse(&mut vec![value])?);
-                                    }
-                                } 
-                                else {
+                        let mut parsed_vector: Vec<#inner_type> = Vec::new();
+                        loop {
+                            if arguments.len() > 0 {
+                                let value = arguments.pop().unwrap();
+                                if value == "--" {
                                     break;
                                 }
+                                else {
+                                    arguments.push(value);
+                                    parsed_vector.push(<#inner_type as curds_core_abstraction::cli::CliArgumentParse>::parse(arguments)?);
+                                }
+                            } 
+                            else {
+                                break;
                             }
-
-                            argument_map.insert(#formatted_name, std::boxed::Box::new(parsed_vector));
-                            expected_keys.remove(#formatted_name);
-                        },
-                    } 
+                        }
+                    }
                 }
-                else {
-                    quote! {
-                        #formatted_name => {
-                            argument_map.insert(#formatted_name, std::boxed::Box::new(<#ty as curds_core_abstraction::cli::CliArgumentParse>::parse(arguments)?));
-                            expected_keys.remove(#formatted_name);
-                        },
-                    }
-                });
-                field_initializers.push(if is_bool {
-                    quote! {
-                        #name: match argument_map.remove(#formatted_name) {
-                            Some(value) => *value.downcast::<#ty>().unwrap(),
-                            None => false,
-                        },
-                    }
+                else { quote! {} };
+                let parse = if is_bool {
+                    quote! { true }
+                }
+                else if is_option && is_vec {
+                    quote! { Some(parsed_vector) }
                 }
                 else if is_option {
-                    quote! {
-                        #name: match argument_map.remove(#formatted_name) {
-                            Some(value) => *value.downcast::<#ty>().unwrap(),
-                            None => None,
-                        },
-                    }
+                    quote! { Some(<#inner_type as curds_core_abstraction::cli::CliArgumentParse>::parse(arguments)?) }
+                }
+                else if is_vec {
+                    quote! { parsed_vector }
                 }
                 else {
-                    quote! {
-                        #name: match argument_map.remove(#formatted_name) {
-                            Some(value) => *value.downcast::<#ty>().unwrap(),
-                            None => return Err(curds_core_abstraction::cli::CliArgumentParseError::UnrecognizedKey(#formatted_name.to_string())),
-                        },
-                    }
+                    quote! { <#ty as curds_core_abstraction::cli::CliArgumentParse>::parse(arguments)? }
+                };
+                key_parsers.push(quote! {
+                    #formatted_name => {
+                        #pre_parse
+                        argument_map.insert(#formatted_name, std::boxed::Box::new(#parse));
+                        expected_keys.remove(#formatted_name);
+                    },
+                });
+
+                let value_not_parsed = if is_bool {
+                    quote! { false }
+                }
+                else if is_option {
+                    quote! { None }
+                }
+                else {
+                    quote! { return Err(curds_core_abstraction::cli::CliArgumentParseError::UnrecognizedKey(#formatted_name.to_string())) }
+                };
+                field_initializers.push(quote! {
+                    #name: match argument_map.remove(#formatted_name) {
+                        Some(value) => *value.downcast::<#ty>().unwrap(),
+                        None => #value_not_parsed,
+                    },
                 });
             }
         
@@ -179,5 +223,101 @@ fn parse_fields(type_name: TokenStream, fields: &Fields) -> TokenStream {
                 })
             }
         },
+    }
+}
+
+fn field_usage(argument: Option<String>, fields: &Fields) -> TokenStream {
+    let mut field_usage: Vec<TokenStream> = vec![];
+    if argument.is_some() {
+        field_usage.push(quote! { #argument.to_string() });
+    }
+    match fields {
+        Fields::Unit => {},
+        Fields::Unnamed(fields) => {
+            for field in &fields.unnamed {
+                let ty = &field.ty;
+                let is_vec = type_is_vec(ty);
+                let inner_type = extract_inner_type(ty);
+
+                field_usage.push(if is_vec {
+                    quote! { 
+                        vec![
+                            format!("{}*", <#inner_type as curds_core_abstraction::cli::CliArgumentParse>::usage()),
+                            "--".to_string(),
+                        ].join(" ")
+                    }
+                }
+                else {
+                    quote! { <#ty as curds_core_abstraction::cli::CliArgumentParse>::usage() }
+                });
+            }
+        },
+        Fields::Named(fields) => {
+            for field in &fields.named {
+                let name = field.ident.as_ref().unwrap();
+                let formatted_name = format!("-{}", name);
+                let ty = &field.ty;
+
+                let is_bool = type_is_bool(ty);
+                let is_option = type_is_option(ty);
+                let mut is_vec = type_is_vec(ty);
+                let mut inner_type = extract_inner_type(ty);
+                if is_option {
+                    let optional_type = inner_type.unwrap();
+                    is_vec = type_is_vec(optional_type);
+                    if is_vec {
+                        inner_type = extract_inner_type(optional_type);
+                    }
+                }
+
+                if is_bool {
+                    field_usage.push(quote! { format!("[{}]", #formatted_name.to_string()) });
+                }
+                else if is_option && is_vec {
+                    field_usage.push(quote! { 
+                        format!("[{}]", vec![
+                            #formatted_name.to_string(),
+                            format!("{}*", <#inner_type as curds_core_abstraction::cli::CliArgumentParse>::usage()),
+                            "--".to_string(),
+                        ].join(" "))
+                    });
+                }
+                else if is_option {
+                    field_usage.push(quote! { 
+                        format!("[{}]", vec![
+                            #formatted_name.to_string(),
+                            <#inner_type as curds_core_abstraction::cli::CliArgumentParse>::usage(),
+                        ].join(" "))
+                    });
+                }
+                else if is_vec {
+                    field_usage.push(quote! { 
+                        vec![
+                            #formatted_name.to_string(),
+                            format!("{}*", <#inner_type as curds_core_abstraction::cli::CliArgumentParse>::usage()),
+                            "--".to_string(),
+                        ].join(" ")
+                    });
+                }
+                else {
+                    field_usage.push(quote! { #formatted_name.to_string() });
+                    field_usage.push(quote! { <#ty as curds_core_abstraction::cli::CliArgumentParse>::usage() });
+                }
+            }
+        },
+    }
+    
+    let formatted_usage = match argument {
+        Some(_) => quote! { format!("[{}]", usage.join(" ")) },
+        None => quote! { usage.join(" ") },
+    };
+    quote! {
+        {
+            let usage: Vec<String> = vec![
+                #(#field_usage),*
+            ];
+
+            usages.push(#formatted_usage);
+        }
     }
 }

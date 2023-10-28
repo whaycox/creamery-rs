@@ -35,3 +35,8 @@ fn stops_parsing_with_terminator() {
     
     assert_eq!(VecTesting { boolean: true, option: Some(1234), collection: vec!["one".to_string(), "two".to_string(), "three".to_string()] }, VecTesting::parse(&mut arguments).unwrap());
 }
+
+#[test]
+fn vec_usage_is_expected() {
+    assert_eq!("[-boolean] [-option <u32>] -collection <String>* --", VecTesting::usage());
+}

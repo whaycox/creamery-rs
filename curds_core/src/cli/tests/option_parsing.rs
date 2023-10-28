@@ -27,3 +27,8 @@ fn none_when_not_supplied() {
     
     assert_eq!(OptionTesting::Test{ one: None, two: None }, OptionTesting::parse(&mut arguments).unwrap());
 }
+
+#[test]
+fn usage_is_expected() {
+    assert_eq!("[--test [-one <u32>] [-two <bool>]]", OptionTesting::usage());
+}
