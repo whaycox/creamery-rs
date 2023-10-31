@@ -1,73 +1,62 @@
-mod parser;
 mod argument_factory;
 mod terminal;
-mod parseable;
+
+#[cfg(test)]
+mod tests;
 
 use super::*;
-use parser::*;
 use argument_factory::*;
 use terminal::*;
-use parseable::*;
+
+pub use curds_core_abstraction::cli::{CliArgumentParse, CliArgumentParseError};
+pub use curds_core_macro::cli_arguments;
 
 pub struct Cli {}
 impl Cli {
-    pub fn parse<TParseableOperations>() -> Vec<TParseableOperations>
-    where TParseableOperations : Parseable {
-        todo!("parse")
-    }
-    fn parse_internal<TParseableOperations, TGenerator>(generator: TGenerator) -> Vec<TParseableOperations>
-    where TParseableOperations : Parseable,
-    TGenerator : ServiceGenerator<Rc<CliParser>> {
-        generator
-            .generate()
-            .parse::<TParseableOperations>()
+    pub fn arguments<TOperation : CliArgumentParse>() -> Vec<TOperation> {
+        let provider = CliArgumentParserProvider {};
+        let parser: CliArgumentParser = provider.generate();
+
+        match parser.parse() {
+            Ok(parsed) => parsed,
+            Err(error) => panic!("Failed to parse arguments: {}", error),
+        }
     }
 }
 
-#[cfg(test)]
-mod tests {
-    // use std::{convert::TryInto};
+#[service_provider]
+#[generates(CliArgumentParser)]
+#[generates(dyn ArgumentFactory ~ CliArgumentFactory)]
+#[generates(dyn Terminal ~ CliTerminal)]
+struct CliArgumentParserProvider {}
 
-    // use super::*;
+#[injected]
+struct CliArgumentParser {
+    factory: Box<dyn ArgumentFactory>,
+    terminal: Box<dyn Terminal>,
+}
 
-    // struct TestOperations {}
-    // impl Parseable for TestOperations {
-    //     fn parse(factory: Rc<dyn ArgumentFactory>) -> Self { Self {} }
-    // }
+impl CliArgumentParser {
+    fn parse<TOperation : CliArgumentParse>(&self) -> Result<Vec<TOperation>, CliArgumentParseError> {
+        let mut arguments = self.factory.create();
+        arguments.reverse();
+        let mut parsed_operations: Vec<TOperation> = vec![];
+        loop {
+            if arguments.len() > 0 {
+                match TOperation::parse(&mut arguments) {
+                    Ok(parsed) => parsed_operations.push(parsed),
+                    Err(error) => {
+                        let application_name = self.factory.application_name();
+                        self.terminal.write(&format!("{} {}", application_name, TOperation::usage()));
+                        return Err(error);
+                    }
+                }
+            }
+            else {
+                break;
+            }
+        }
 
-    // #[service_provider]
-    // #[generates_singleton(dyn ArgumentFactory ~ WheyArgumentFactory)]
-    // #[generates_singleton(WheyArgumentFactorySetup)]
-    // #[generates_singleton(dyn Terminal ~ WheyTerminal)]
-    // #[generates_singleton(CliParser)]
-    // struct TestingContext {}
-
-    // impl TestingContext {
-    //     pub fn setup_argument_factory(&self) -> Rc<WheyArgumentFactorySetup> { Self::generate(&self) }
-    // }
-
-    // #[test]
-    // fn parsing_operations() {
-    //     test_parsing_n_operations(1);
-    //     test_parsing_n_operations(5);
-    //     test_parsing_n_operations(10);
-    //     test_parsing_n_operations(15);
-    //     test_parsing_n_operations(100);
-    // }
-    // fn test_parsing_n_operations(operations: usize) {
-    //     let context = TestingContext::construct();
-    //     let trues: Box<dyn Setup<(), bool>> = Box::new(ValueSetup::new(Box::new(AnyCompare::new()),true));
-    //     trues.set_times(operations.try_into().unwrap());
-    //     context
-    //         .setup_argument_factory()
-    //         .has_arguments(trues);
-    //     let falses: Box<dyn Setup<(), bool>> = Box::new(ValueSetup::new(Box::new(AnyCompare::new()),false));
-    //     context
-    //         .setup_argument_factory()
-    //         .has_arguments(falses);
-
-    //     let actual: Vec<TestOperations> = Cli::parse_internal(context);
-
-    //     assert_eq!(operations, actual.len())
-    // }
+        Ok(parsed_operations)
+    }
 }

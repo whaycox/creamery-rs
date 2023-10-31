@@ -51,7 +51,7 @@ impl MessageDefinition {
         let message_return = self.routing.return_type(&message_trait.error_type);
 
         quote! {
-            //#mock_return_attribute
+            #mock_return_attribute
             fn #name(#receiver_token, message: #message) -> #message_return;
         }
     }

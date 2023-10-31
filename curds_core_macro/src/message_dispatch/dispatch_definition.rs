@@ -111,7 +111,7 @@ impl DispatchDefinition {
             .collect();
 
         quote! {
-            //#[whey_mock]
+            #[whey_mock]
             #visibility trait #message_trait_name {
                 #(#message_signatures)*
             }
