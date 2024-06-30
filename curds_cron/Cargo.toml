@@ -1,0 +1,8 @@
+[package]
+name = "curds_cron"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tokio = { version = "1.38.0", features = ["full"] }
+curds_core = { path = "../curds_core" }
