@@ -7,39 +7,34 @@ mod tests {
         fn parameterless(&self);
     }
 
-    #[whey_context(WheyVoidFoo)]
-    #[mocks(dyn VoidFoo)]
-    struct CallCountContext {}
-
-    #[whey(CallCountContext ~ context)]
+    #[test]
     fn void_parameterless_no_expectation() {
-        context
-            .test_type()
-            .parameterless();
+        let test_object = TestingVoidFoo::new();
+        
+        test_object.parameterless();
     }
 
-    #[whey(CallCountContext ~ context)]
+    #[test]
     fn void_parameterless_expectations() {
+        let test_object = TestingVoidFoo::new();
+
         for expected_counts in 1..=10 {
-            expect_calls!(context ~ VoidFoo ~ parameterless, expected_counts);
+            test_object.expect_calls_parameterless(expected_counts);
             
             for _ in 0..expected_counts {
-                context
-                    .test_type()
-                    .parameterless();
+                test_object.parameterless();
             }
 
-            context.assert();
+            test_object.assert();
         }
     }
 
-    #[whey(CallCountContext ~ context)]
+    #[test]
     #[should_panic(expected = "expected 2 calls to VoidFoo::parameterless but recorded 1 instead")]
     fn void_parameterless_unmet_expectation() {
-        expect_calls!(context ~ VoidFoo ~ parameterless, 2);
+        let test_object = TestingVoidFoo::new();
+        test_object.expect_calls_parameterless(2);
 
-        context
-            .test_type()
-            .parameterless();
+        test_object.parameterless();
     }
 }

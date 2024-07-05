@@ -37,8 +37,8 @@ impl WheyDefaultReturn {
             Some(ident) => quote! { #ident },
             None => quote! { self }
         };
-        let expected_mock = MockedTraitDefinition::generate_core_name(&self.expected_mock);
-        let method = WheyMockCore::default_return(&self.method);
+        let expected_mock = MockedTraitDefinition::generate_testing_name(&self.expected_mock);
+        let method = WheyMock::default_return(&self.method);
         let generator = self.generator;
 
         quote! {

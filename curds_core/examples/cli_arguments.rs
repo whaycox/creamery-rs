@@ -8,12 +8,13 @@ enum TestOperations {
 }
 
 fn main() {
-    let operations = Cli::arguments::<TestOperations>();
-    for operation in operations {
-        match operation {
-            TestOperations::Boolean => println!("Performing the Boolean operation"),
-            TestOperations::Unnamed(str, bit, int) => println!("Performing the Unnamed operation \"{}\", {}, {}", str, bit, int),
-            TestOperations::Named { optional, bit, collection } => println!("Performing the Named operation {:?}, {}, {:?}", optional, bit, collection),
-        }
-    }
+    todo!("fix cli")
+    // let operations = Cli::arguments::<TestOperations>();
+    // for operation in operations {
+    //     match operation {
+    //         TestOperations::Boolean => println!("Performing the Boolean operation"),
+    //         TestOperations::Unnamed(str, bit, int) => println!("Performing the Unnamed operation \"{}\", {}, {}", str, bit, int),
+    //         TestOperations::Named { optional, bit, collection } => println!("Performing the Named operation {:?}, {}, {:?}", optional, bit, collection),
+    //     }
+    // }
 }

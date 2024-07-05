@@ -9,9 +9,8 @@ pub fn parse_last_day_of_month(value: &str, field_type: &CronFieldType) -> Optio
             let max_offset = field_type.max() - 1;
             if offset_value > max_offset {
                 return Some(Err(CronParsingError::ValueOutOfBounds {
-                    raw_value: value.to_owned(),
+                    value: value.to_owned(),
                     allowed: max_offset,
-                    supplied: offset_value,
                     field_type: field_type.clone(),
                 }))
             }

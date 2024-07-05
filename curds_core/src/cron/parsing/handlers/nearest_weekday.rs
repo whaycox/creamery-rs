@@ -7,17 +7,15 @@ pub fn parse_nearest_weekday(value: &str, field_type: &CronFieldType) -> Option<
         let parsed_value = &captures[1].parse::<u32>().unwrap();
         if *parsed_value < field_type.min() {
             return Some(Err(CronParsingError::ValueOutOfBounds {
-                raw_value: value.to_owned(),
+                value: value.to_owned(),
                 allowed: field_type.min(),
-                supplied: *parsed_value,
                 field_type: field_type.clone(),
             }))
         }
         if *parsed_value > field_type.max() {
             return Some(Err(CronParsingError::ValueOutOfBounds {
-                raw_value: value.to_owned(),
+                value: value.to_owned(),
                 allowed: field_type.max(),
-                supplied: *parsed_value,
                 field_type: field_type.clone(),
             }))
         }

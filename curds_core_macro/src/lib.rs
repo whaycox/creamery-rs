@@ -36,30 +36,9 @@ pub fn derive_scoped(item: TokenStream) -> TokenStream {
 }
 
 #[proc_macro_attribute]
-pub fn whey_context(attr: TokenStream, item: TokenStream) -> TokenStream {
-    let mut test_type: Option<Type> = None;
-    if !attr.is_empty() {
-        test_type = Some(parse_macro_input!(attr as Type));
-    }
-    
-    parse_macro_input!(item as WheyContext)
-        .quote(test_type)
-        .into()
-}
-
-#[proc_macro_attribute]
 pub fn whey_mock(_: TokenStream, item: TokenStream) -> TokenStream {
     parse_macro_input!(item as WheyMock)
         .quote()
-        .into()
-}
-
-#[proc_macro_attribute]
-pub fn whey(attr: TokenStream, item: TokenStream) -> TokenStream {
-    let test_context = parse_macro_input!(attr as WheyTestContext);
-
-    parse_macro_input!(item as WheyTest)
-        .quote(test_context)
         .into()
 }
 

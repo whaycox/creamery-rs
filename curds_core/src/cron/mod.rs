@@ -11,5 +11,5 @@ use field::CronField;
 use field_type::CronFieldType;
 use value::CronValue;
 
-use chrono::{DateTime, Datelike, TimeZone, Timelike, Weekday};
-use std::sync::OnceLock;
+pub use chrono::{DateTime, Datelike, Duration, TimeZone, Timelike, Weekday};
+use std::{sync::OnceLock, fmt::{Display, Formatter}};

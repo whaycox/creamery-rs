@@ -41,8 +41,8 @@ impl WheyInputComparison {
             Some(ident) => quote! { #ident },
             None => quote! { self }
         };
-        let expected_mock = MockedTraitDefinition::generate_core_name(&self.expected_mock);
-        let method = WheyMockCore::store_expected_input(&self.method);
+        let expected_mock = MockedTraitDefinition::generate_testing_name(&self.expected_mock);
+        let method = WheyMock::store_expected_input(&self.method);
         let comparison = self.comparison;
         let times = self.times;
 

@@ -7,9 +7,8 @@ pub fn parse_nth_day_of_week(value: &str, field_type: &CronFieldType) -> Option<
         if let Ok(parsed_value) = field_type.translate(&captures[1]).parse::<u32>() {
             if parsed_value > field_type.max() {
                 return Some(Err(CronParsingError::ValueOutOfBounds {
-                    raw_value: value.to_owned(),
+                    value: value.to_owned(),
                     allowed: field_type.max(),
-                    supplied: parsed_value,
                     field_type: field_type.clone(),
                 }))
             }
@@ -20,7 +19,7 @@ pub fn parse_nth_day_of_week(value: &str, field_type: &CronFieldType) -> Option<
             }))
         }
         else {
-            return Some(Err(CronParsingError::ParsedValue {
+            return Some(Err(CronParsingError::InvalidValue {
                 value: value.to_owned(),
                 field_type: field_type.clone(),
             }))

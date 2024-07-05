@@ -6,5 +6,6 @@ edition = "2021"
 [dependencies]
 chrono = "0.4.19"
 regex = "1.10.5"
+thiserror = "1.0.61"
 curds_core_abstraction = { path = "../curds_core_abstraction" }
 curds_core_macro = { path = "../curds_core_macro" }

@@ -11,16 +11,14 @@ pub fn parse_wildcard(value: &str, field_type: &CronFieldType) -> Option<Result<
                 .unwrap();
             if step_value <= 1 {
                 return Some(Err(CronParsingError::ValueOutOfBounds {
-                    raw_value: value.to_owned(),
-                    supplied: step_value,
+                    value: value.to_owned(),
                     allowed: 2,
                     field_type: field_type.clone(),
                 }))
             }
             if field_type.min() + step_value > field_type.max() {
                 return Some(Err(CronParsingError::ValueOutOfBounds {
-                    raw_value: value.to_owned(),
-                    supplied: step_value,
+                    value: value.to_owned(),
                     allowed: field_type.max() - field_type.min(),
                     field_type: field_type.clone(),
                 }))

@@ -25,7 +25,10 @@ impl CronValueParserLink {
         }
         else {        
             match &self.successor {
-                None => Err(CronParsingError::InvalidValue(value.to_owned())),
+                None => Err(CronParsingError::InvalidValue {
+                    value: value.to_owned(),
+                    field_type: field_type.clone(),
+                }),
                 Some(link) => return link.parse(field_type, value),
             }
         }

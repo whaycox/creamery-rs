@@ -29,8 +29,8 @@ impl Parse for WheyExpectedCalls {
 impl WheyExpectedCalls {
     pub fn quote(self) -> TokenStream {
         let context = self.context;
-        let expected_mock = MockedTraitDefinition::generate_core_name(&self.expected_mock);
-        let method = WheyMockCore::expect_calls(&self.method);
+        let expected_mock = MockedTraitDefinition::generate_testing_name(&self.expected_mock);
+        let method = WheyMock::expect_calls(&self.method);
         let times = self.times;
         quote! {
             {

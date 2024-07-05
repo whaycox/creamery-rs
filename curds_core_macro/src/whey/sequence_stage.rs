@@ -41,7 +41,7 @@ impl WheySequenceStage {
             Some(ident) => quote! { #ident },
             None => quote! { self }
         };
-        let mock_core = MockedTraitDefinition::generate_core_name(&self.expected_mock);
+        let mock_core = MockedTraitDefinition::generate_testing_name(&self.expected_mock);
         let expected_mock = self.expected_mock;
         let method_str = format!("{}", self.method);
         let method = self.method;

@@ -8,7 +8,7 @@ pub fn parse_range(value: &str, field_type: &CronFieldType) -> Option<Result<Cro
         let max = field_type.translate(&captures[2]);
 
         match min.parse::<u32>() {
-            Err(_) => return Some(Err(CronParsingError::ParsedValue {
+            Err(_) => return Some(Err(CronParsingError::InvalidValue {
                 value: min.to_owned(),
                 field_type: field_type.clone(), 
             })),
@@ -16,15 +16,14 @@ pub fn parse_range(value: &str, field_type: &CronFieldType) -> Option<Result<Cro
                 let min_bound = field_type.min();
                 if min_value < min_bound {
                     return Some(Err(CronParsingError::ValueOutOfBounds {
-                        raw_value: value.to_owned(),
-                        supplied: min_value,
+                        value: value.to_owned(),
                         allowed: min_bound,
                         field_type: field_type.clone(),
                     }))
                 }
 
                 match max.parse::<u32>() {
-                    Err(_) => return Some(Err(CronParsingError::ParsedValue {
+                    Err(_) => return Some(Err(CronParsingError::InvalidValue {
                         value: max.to_owned(),
                         field_type: field_type.clone(), 
                     })),
@@ -32,8 +31,7 @@ pub fn parse_range(value: &str, field_type: &CronFieldType) -> Option<Result<Cro
                         let max_bound = field_type.max();
                         if max_value > max_bound {
                             return Some(Err(CronParsingError::ValueOutOfBounds {
-                                raw_value: value.to_owned(),
-                                supplied: max_value,
+                                value: value.to_owned(),
                                 allowed: max_bound,
                                 field_type: field_type.clone(),
                             }))
@@ -41,8 +39,6 @@ pub fn parse_range(value: &str, field_type: &CronFieldType) -> Option<Result<Cro
                         if min_value > max_value {
                             return Some(Err(CronParsingError::InvertedRange {
                                 raw_value: value.to_owned(),
-                                min: min_value,
-                                max: max_value,
                             }))
                         }
                         

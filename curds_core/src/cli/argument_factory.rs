@@ -7,8 +7,7 @@ pub trait ArgumentFactory {
     fn create(&self) -> Vec<String>;
 }
 
-#[injected]
-pub struct CliArgumentFactory {}
+pub struct CliArgumentFactory;
 
 impl ArgumentFactory for CliArgumentFactory {
     fn application_name(&self) -> String {

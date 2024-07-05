@@ -14,6 +14,19 @@ pub enum CronFieldType {
     /// The day of week field.
     DayOfWeek,
 }
+
+impl Display for CronFieldType {   
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CronFieldType::Minute => write!(formatter, "minute"),
+            CronFieldType::Hour => write!(formatter, "hour"),
+            CronFieldType::DayOfMonth => write!(formatter, "day of month"),
+            CronFieldType::Month => write!(formatter, "month"),
+            CronFieldType::DayOfWeek => write!(formatter, "day of week"),
+        }
+    }
+}
+
 impl CronFieldType {
     pub fn fetch<TTimezone>(&self, datetime: &DateTime<TTimezone>) -> u32
     where TTimezone : TimeZone {
