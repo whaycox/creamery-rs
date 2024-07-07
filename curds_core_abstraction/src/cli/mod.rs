@@ -30,8 +30,6 @@ pub trait CliArgumentParse {
     fn usage() -> String;
 }
 
-
-
 static TYPE_SIMPLIFIER: OnceLock<Regex> = OnceLock::new();
 impl<TType> CliArgumentParse for TType where TType : FromStr {
     fn parse(arguments: &mut Vec<String>) -> Result<Self, CliArgumentParseError> {

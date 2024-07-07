@@ -1,7 +1,6 @@
-use curds_core::{cron::CurdsCronFieldParser, time::*};
-
 use super::*;
-use std::{marker::PhantomData, time::Duration};
+use std::time::Duration;
+use curds_core::{cron::CurdsCronFieldParser, time::*};
 
 const SLEEP_TIME_S: u64 = 7;
 pub struct CurdsCronApp<
