@@ -2,6 +2,7 @@ mod app;
 mod scheduled_job;
 mod operations;
 
+use curds_core::cli::cli_arguments;
 use curds_core::cron::Timelike;
 use curds_core::cron::{CronExpression, CronFieldParser};
 use curds_core::cli::*;

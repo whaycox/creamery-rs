@@ -1,4 +1,6 @@
-#[curds_core::cli::cli_arguments]
+use super::*;
+
+#[cli_arguments]
 enum TestOperations {
     FirstBoolean,
     SecondBool,
