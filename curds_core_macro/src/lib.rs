@@ -3,20 +3,20 @@ mod cli;
 
 use proc_macro::TokenStream;
 use proc_macro_crate::FoundCrate;
-use syn::{*, parse::*, punctuated::*};
+use syn::{*, parse::*};
 use quote::*;
-use std::collections::HashMap;
 
 use whey::*;
 use cli::*;
 
+const SELF_NAME: &str = "curds_core";
 fn resolve_crate_name() -> proc_macro2::TokenStream {
-    match proc_macro_crate::crate_name("curds_core") {
-        Ok(found_crate) => match found_crate {
-            FoundCrate::Itself => quote! { crate },
-            _ => quote! { curds_core },
-        },
-        Err(_) => quote!{ curds_core },
+    match proc_macro_crate::crate_name(SELF_NAME) {
+        Ok(FoundCrate::Itself) => if let Ok(crate_name) = std::env::var("CARGO_CRATE_NAME") {
+            if crate_name == SELF_NAME { quote! { crate } } else { quote! { curds_core } }
+        }
+        else { quote! { crate } },
+        Ok(FoundCrate::Name(_)) | Err(_) => quote!{ curds_core },
     }
 }
 
