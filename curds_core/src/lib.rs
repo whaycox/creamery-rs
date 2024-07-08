@@ -1,9 +1,10 @@
 mod whey;
+pub mod io;
 pub mod cli;
 pub mod time;
 pub mod cron;
 
-use curds_core_macro::*;
+use curds_core_macro::whey_mock;
 
 #[cfg(test)]
 use std::{

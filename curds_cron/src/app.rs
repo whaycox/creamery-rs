@@ -1,70 +1,119 @@
 use super::*;
-use std::time::Duration;
-use curds_core::{cron::CurdsCronFieldParser, time::*};
+use std::{collections::HashSet, time::Duration};
+use curds_core::{cron::CurdsCronFieldParser, io::{AsyncFileSystem, FileSystem}, time::*};
+use tokio::io::{AsyncWriteExt, AsyncReadExt};
 
+const DEFAULT_CONFIG: &str = "config.json";
 const SLEEP_TIME_S: u64 = 7;
 pub struct CurdsCronApp<
-TFactory: ArgumentFactory,
-TClock: Clock, 
-TParser: CronFieldParser> {
-    arguments: TFactory,
+TClock : Clock,
+TFileSystem : FileSystem,
+TParser : CronFieldParser> {
     clock: TClock,
+    file_system: TFileSystem,
     parser: TParser,
 }
 
-impl CurdsCronApp<CliArgumentFactory, MachineClock, CurdsCronFieldParser> {
+impl CurdsCronApp<MachineClock, AsyncFileSystem, CurdsCronFieldParser> {
     pub fn new() -> Self {
         Self {
-            arguments: CliArgumentFactory,
             clock: MachineClock,
+            file_system: AsyncFileSystem,
             parser: CurdsCronFieldParser,
         }
     }
 }
 
-impl<TFactory, TClock, TParser> CurdsCronApp<TFactory, TClock, TParser> where 
-TFactory : ArgumentFactory,
-TClock: Clock,
+impl<TClock, TFileSystem, TParser> CurdsCronApp<TClock, TFileSystem, TParser> where
+TClock : Clock,
+TFileSystem : FileSystem,
 TParser : CronFieldParser {
-    pub async fn start(&self) {
-        println!("Starting");
-        let mut expressions: Vec<CronExpression> = Vec::new();
-        for arg in self.arguments.create() {
-            match CronExpression::parse(&arg, &self.parser) {
-                Ok(expression) => expressions.push(expression),
-                Err(error) => println!("\"{}\" is not a valid cron expression: {}", arg, error),
-            }
-        }
-        println!("Supplied {} expressions", expressions.len());
+    pub fn test(&self, expressions: Vec<CronExpression>) {
+        if expressions.len() > 0 {
+            println!("Beginning a test of {} provided expressions", expressions.len());
 
-        let mut last_minute = None;
-        loop {
             let current = self.clock.current();
-            let current_minute = Some(current.minute());
-            if current_minute != last_minute {
-                last_minute = current_minute;
-
-                println!("Testing for {}", current);
-                for expression in &expressions {
-                    if expression.is_responsive(&current) {
-                        println!("{} is responsive, running test", expression);
-                        let result = Command::new("cmd")
-                            .args(["/C", "echo hello"])
-                            .output()
-                            .await
-                            .expect("failed to execute process");
-                        
-                        println!("It exited with a status code: {}", result.status);
-                        println!("Its output:");
-                        stdout().write_all(&result.stdout).unwrap();
-                    }
-                    else {
-                        println!("{} is not responsive", expression);
-                    }
+            println!("Testing at {}", current);
+            for expression in &expressions {
+                if expression.is_responsive(&current) {
+                    println!("{} is responsive", expression);
+                }
+                else {
+                    println!("{} is not responsive", expression);
                 }
             }
+        }
+    }
 
-            sleep(Duration::from_secs(SLEEP_TIME_S)).await;
+    fn expand_path(path: &Option<String>) -> &str {
+        match &path {
+            Some(provided_path) => provided_path,
+            None => DEFAULT_CONFIG,
+        }  
+    }
+
+    pub async fn generate(&self, paths: HashSet<Option<String>>) {
+        if paths.len() > 0 {
+            println!("Generating {} sample configs", paths.len());
+            for path in paths {
+                let expanded_path = Self::expand_path(&path);
+                println!("Generating: {}", expanded_path);
+
+                let json_data = serde_json::to_string_pretty(&CronConfig::sample()).unwrap();
+                let mut file = self.file_system.write(&expanded_path).await.unwrap();
+                file.write_all(json_data.as_bytes()).await.unwrap();
+            }
+        }
+    }
+
+    pub async fn start(&self, paths: Vec<Option<String>>) {
+        if paths.len() > 0 {
+            println!("Starting from {} configurations", paths.len());
+            let mut combined = CronConfig::new();
+            for path in paths {
+                let expanded_path = Self::expand_path(&path);
+                println!("Reading: {}", expanded_path);
+
+                let mut file = self.file_system.read(&expanded_path).await.unwrap();
+                let mut contents = String::new();
+                file.read_to_string(&mut contents).await.unwrap();
+
+                let config: CronConfig = serde_json::from_str(&contents).unwrap();
+                combined.absorb(config);
+            }
+            let jobs = combined.parse(&self.parser).unwrap();
+            println!("Configured jobs: {:#?}", jobs);
+
+            let mut last_minute = None;
+            loop {
+                let current = self.clock.current();
+                let current_minute = Some(current.minute());
+                if current_minute != last_minute {
+                    last_minute = current_minute;
+    
+                    println!("Checking at {}", current);
+                    for job in &jobs {
+                        if job.is_responsive(&current) {
+                            println!("{} is responsive; invoking its parameters", job.name);
+                            let mut command = Command::new(&job.parameters.process);
+                            if let Some(parameters) = &job.parameters.arguments {
+                                command.args(parameters);
+                            }
+
+                            match command.output().await {
+                                Ok(result) => {
+                                    println!("It exited with {}", result.status);
+                                    println!("Its output:");
+                                    stdout().write_all(&result.stdout).unwrap();
+                                },
+                                Err(error) => println!("It failed to run: {}", error),
+                            }
+                        }
+                    }
+                }
+
+                sleep(Duration::from_secs(SLEEP_TIME_S)).await;
+            }
         }
     }
 }
@@ -72,19 +121,18 @@ TParser : CronFieldParser {
 #[cfg(test)]
 mod tests {
     use std::sync::OnceLock;
-    use curds_core::time::DateTime;
+    use curds_core::{cron::TestingCronFieldParser, io::TestingFileSystem, time::DateTime};
 
     use super::*;
 
     static TESTING_TIME: OnceLock<DateTime<Local>> = OnceLock::new();
-    impl CurdsCronApp<TestingArgumentFactory, TestingClock, CurdsCronFieldParser> {
+    impl CurdsCronApp<TestingClock, TestingFileSystem, TestingCronFieldParser> {
         pub fn test_object() -> Self {
             let test_object = Self {
-                arguments: TestingArgumentFactory::new(),
                 clock: TestingClock::new(),
-                parser: CurdsCronFieldParser,
+                file_system: TestingFileSystem::new(),
+                parser: TestingCronFieldParser::new(),
             };
-            test_object.arguments.default_return_create(|| Vec::new());
             test_object.clock.default_return_current(|| TESTING_TIME.get_or_init(|| Local::now()).clone());
 
             test_object
@@ -96,9 +144,7 @@ mod tests {
         let test_object = CurdsCronApp::test_object();
         test_object.clock.expect_calls_current(1);
 
-        tokio::select! {
-            _ = test_object.start() => {},
-            _ = sleep(Duration::from_millis(100)) => {},
-        }
+
+        todo!("local time test");
     }
 }

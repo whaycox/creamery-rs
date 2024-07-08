@@ -1,9 +1,8 @@
 use super::*;
 
 #[cli_arguments]
-enum TestOperations {
-    FirstBoolean,
-    SecondBool,
-    Message(String, u32),
-    Point { x: u32, y: u32 },
+pub enum CronOperation {
+    Test(Vec<CronExpression>),
+    Generate { path: Option<String> },
+    Start { path: Option<String> }
 }

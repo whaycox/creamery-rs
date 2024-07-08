@@ -1,6 +1,7 @@
 use super::*;
 use std::{
     str::FromStr, 
+    error::Error,
     any::type_name,
     sync::OnceLock,
 };
@@ -12,12 +13,12 @@ pub trait CliArgumentParse {
 }
 
 static TYPE_SIMPLIFIER: OnceLock<Regex> = OnceLock::new();
-impl<TType> CliArgumentParse for TType where TType : FromStr {
+impl<TType> CliArgumentParse for TType where TType : FromStr, TType::Err : Error {
     fn parse(arguments: &mut Vec<String>) -> Result<Self, CliArgumentParseError> {
         match arguments.pop() {
             Some(string) => match FromStr::from_str(&string) {
                 Ok(value) => Ok(value),
-                Err(_) => Err(CliArgumentParseError::Parse(string)),
+                Err(parse_error) => Err(CliArgumentParseError::Parse(string, parse_error.to_string())),
             },
             None => Err(CliArgumentParseError::ArgumentExpected),
         }

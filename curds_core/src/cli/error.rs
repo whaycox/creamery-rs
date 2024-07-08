@@ -5,7 +5,7 @@ use std::error::Error;
 pub enum CliArgumentParseError {
     ArgumentExpected,
     UnrecognizedKey(String),
-    Parse(String),
+    Parse(String, String),
 }
 
 impl Display for CliArgumentParseError {
@@ -13,7 +13,7 @@ impl Display for CliArgumentParseError {
         match self {
             Self::ArgumentExpected => write!(formatter, "There are no more arguments but more are expected"),
             Self::UnrecognizedKey(key) => write!(formatter, "Value \"{}\" not recognized as an operation key", key),
-            Self::Parse(value) => write!(formatter, "The value \"{}\" could not be properly parsed into the expected value", value),
+            Self::Parse(value, error) => write!(formatter, "The value \"{}\" could not be properly parsed into the expected value: {}", value, error),
         }
     }
 }
