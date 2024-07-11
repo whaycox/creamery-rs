@@ -8,14 +8,14 @@ mod tests {
     }
 
     #[test]
-    fn void_parameterless_no_expectation() {
+    fn can_call_with_no_expectation() {
         let test_object = TestingVoidFoo::new();
         
         test_object.parameterless();
     }
 
     #[test]
-    fn void_parameterless_expectations() {
+    fn can_call_and_meet_expectations() {
         let test_object = TestingVoidFoo::new();
 
         for expected_counts in 1..=10 {
@@ -31,9 +31,24 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "expected 2 calls to VoidFoo::parameterless but recorded 1 instead")]
-    fn void_parameterless_unmet_expectation() {
+    fn panics_with_unmet_expectation() {
         let test_object = TestingVoidFoo::new();
         test_object.expect_calls_parameterless(2);
+
+        test_object.parameterless();
+    }
+    
+    #[test]
+    fn can_expect_no_calls() {
+        let test_object = TestingVoidFoo::new();
+        test_object.expect_calls_parameterless(0);
+    }
+    
+    #[test]
+    #[should_panic(expected = "expected 0 calls to VoidFoo::parameterless but recorded 1 instead")]
+    fn panics_if_doesnt_meet_no_calls() {
+        let test_object = TestingVoidFoo::new();
+        test_object.expect_calls_parameterless(0);
 
         test_object.parameterless();
     }

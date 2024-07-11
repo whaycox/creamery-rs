@@ -1,7 +1,6 @@
 mod argument_factory;
 mod error;
 mod argument_parse;
-mod terminal;
 
 #[cfg(test)]
 mod tests;
@@ -11,7 +10,6 @@ use super::*;
 pub use argument_factory::*;
 pub use argument_parse::*;
 pub use error::*;
-pub use terminal::*;
 pub use curds_core_macro::cli_arguments;
 
 pub struct Cli {}
@@ -24,27 +22,26 @@ impl Cli {
             Err(error) => panic!("Failed to parse arguments: {}", error),
         }
     }
+    
+    pub fn usage<TOperation : CliArgumentParse>() {
+        CliArgumentParser::new().usage::<TOperation>();
+    }
 }
 
-struct CliArgumentParser<
-TFactory : ArgumentFactory,
-TTerminal : Terminal> {
+struct CliArgumentParser<TFactory : ArgumentFactory> {
     factory: TFactory,
-    terminal: TTerminal,
 }
 
-impl CliArgumentParser<CliArgumentFactory, CliTerminal> {
+impl CliArgumentParser<CliArgumentFactory> {
     pub fn new() -> Self {
         Self {
             factory: CliArgumentFactory,
-            terminal: CliTerminal,
         }
     }
 }
 
-impl<TFactory, TTerminal> CliArgumentParser<TFactory, TTerminal> where 
-TFactory : ArgumentFactory,
-TTerminal : Terminal {
+impl<TFactory> CliArgumentParser<TFactory> where 
+TFactory : ArgumentFactory {
     fn parse<TOperation : CliArgumentParse>(&self) -> Result<Vec<TOperation>, CliArgumentParseError> {
         let mut arguments = self.factory.create();
         arguments.reverse();
@@ -54,8 +51,7 @@ TTerminal : Terminal {
                 match TOperation::parse(&mut arguments) {
                     Ok(parsed) => parsed_operations.push(parsed),
                     Err(error) => {
-                        let application_name = self.factory.application_name();
-                        self.terminal.write(&format!("{} {}", application_name, TOperation::usage()));
+                        self.usage::<TOperation>();
                         return Err(error);
                     }
                 }
@@ -66,5 +62,9 @@ TTerminal : Terminal {
         }
 
         Ok(parsed_operations)
+    }
+
+    fn usage<TOperation : CliArgumentParse>(&self) {
+        log::info!("{} {}", self.factory.application_name(), TOperation::usage());
     }
 }
