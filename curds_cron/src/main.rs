@@ -47,7 +47,7 @@ async fn main() {
     
         let app = app::CurdsCronApp::new();
         app.test(test_expressions);
-        app.generate(generate_paths).await;
+        app.generate(generate_paths.into_iter().collect()).await;
     
         let (sender, receiver) = channel::<()>();
         tokio::spawn(async move {
@@ -56,7 +56,7 @@ async fn main() {
         });
     
         tokio::select! {
-            _ = app.start(start_paths) => {},
+            _ = app.start(start_paths.into_iter().collect()) => {},
             _ = receiver => { log::info!("Closing down"); },
         };
     }

@@ -1,5 +1,7 @@
 use super::*;
+use curds_core::whey_mock;
 
+#[whey_mock]
 pub trait Processor {
     fn process_job(&self, id: Uuid, job: JobParameters) -> Pin<Box<dyn Future<Output = ()> + Send>>;
 }
