@@ -91,3 +91,27 @@ impl JobParameters {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::{CronConfig, JobParameters, DEFAULT_TIMEOUT};
+
+    #[test]
+    fn absorb_is_expected() {
+        let mut sample = CronConfig::sample();
+
+        sample.absorb(CronConfig::sample());
+
+        assert_eq!(2, sample.jobs.len());
+    }
+
+    #[test]
+    fn expand_populates_timeout() {
+        let mut test = JobParameters::sample();
+        test.timeout_seconds = None;
+
+        test = test.expand();
+
+        assert_eq!(test.timeout_seconds, Some(DEFAULT_TIMEOUT));
+    }
+}

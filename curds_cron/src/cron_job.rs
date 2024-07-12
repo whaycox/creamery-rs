@@ -25,3 +25,40 @@ impl CronJob {
         false
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::str::FromStr;
+    use curds_core::time::Local;
+
+    fn responsive() -> CronExpression {
+        FromStr::from_str("* * * * *").unwrap()
+    }
+
+    fn unresponsive() -> CronExpression {
+        FromStr::from_str("0 0 1 1 0").unwrap()
+    }
+
+    #[test]
+    fn only_unresponsive_is_unresponsive() {
+        let test = CronJob {
+            name: "Testing".to_owned(),
+            expressions: vec![unresponsive()],
+            parameters: JobParameters::sample(),
+        };
+
+        assert_eq!(false, test.is_responsive(&Local::now()));
+    }
+
+    #[test]
+    fn any_responsive_is_responsive() {
+        let test = CronJob {
+            name: "Testing".to_owned(),
+            expressions: vec![responsive(), unresponsive()],
+            parameters: JobParameters::sample(),
+        };
+
+        assert_eq!(true, test.is_responsive(&Local::now()));
+    }
+}
