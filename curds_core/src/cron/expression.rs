@@ -52,3 +52,144 @@ impl CronExpression {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use time::Utc;
+
+    fn test_parser() -> TestingCronFieldParser {
+        let parser = TestingCronFieldParser::new();
+        parser.default_return_parse_minute(|_| Ok(CronField::new(CronFieldType::Minute, vec![CronValue::Any])));
+        parser.default_return_parse_hour(|_| Ok(CronField::new(CronFieldType::Hour, vec![CronValue::Any])));
+        parser.default_return_parse_day_of_month(|_| Ok(CronField::new(CronFieldType::DayOfMonth, vec![CronValue::Any])));
+        parser.default_return_parse_month(|_| Ok(CronField::new(CronFieldType::Month, vec![CronValue::Any])));
+        parser.default_return_parse_day_of_week(|_| Ok(CronField::new(CronFieldType::DayOfWeek, vec![CronValue::Any])));
+
+        parser
+    }
+
+    #[test]
+    fn too_long_expression_fails() {
+        match CronExpression::parse("* * * * * *", &test_parser()) {
+            Err(CronParsingError::FieldCount { expression, parts }) => { 
+                assert_eq!("* * * * * *", expression);
+                assert_eq!(6, parts);
+            },
+            _ => panic!("Did not get the expected error"),
+        }
+    }
+
+    #[test]
+    fn too_short_expression_fails() {
+        match CronExpression::parse("* * * *", &test_parser()) {
+            Err(CronParsingError::FieldCount { expression, parts }) => { 
+                assert_eq!("* * * *", expression);
+                assert_eq!(4, parts);
+            },
+            _ => panic!("Did not get the expected error"),
+        }
+    }
+
+    #[test]
+    fn forwards_minute_parse_error() {
+        let test_parser = test_parser();
+        test_parser.store_return_parse_minute(|_| Err(CronParsingError::InvalidValue { value: "test_value".to_owned(), field_type: CronFieldType::Minute }), 1);
+        match CronExpression::parse("* * * * *", &test_parser) {
+            Err(CronParsingError::InvalidValue { value, field_type }) => { 
+                assert_eq!("test_value", value);
+                assert_eq!(CronFieldType::Minute, field_type);
+            },
+            _ => panic!("Did not get the expected error"),
+        }
+    }
+
+    #[test]
+    fn forwards_hour_parse_error() {
+        let test_parser = test_parser();
+        test_parser.store_return_parse_hour(|_| Err(CronParsingError::InvalidValue { value: "test_value".to_owned(), field_type: CronFieldType::Hour }), 1);
+        match CronExpression::parse("* * * * *", &test_parser) {
+            Err(CronParsingError::InvalidValue { value, field_type }) => { 
+                assert_eq!("test_value", value);
+                assert_eq!(CronFieldType::Hour, field_type);
+            },
+            _ => panic!("Did not get the expected error"),
+        }
+    }
+
+    #[test]
+    fn forwards_day_of_month_parse_error() {
+        let test_parser = test_parser();
+        test_parser.store_return_parse_day_of_month(|_| Err(CronParsingError::InvalidValue { value: "test_value".to_owned(), field_type: CronFieldType::DayOfMonth }), 1);
+        match CronExpression::parse("* * * * *", &test_parser) {
+            Err(CronParsingError::InvalidValue { value, field_type }) => { 
+                assert_eq!("test_value", value);
+                assert_eq!(CronFieldType::DayOfMonth, field_type);
+            },
+            _ => panic!("Did not get the expected error"),
+        }
+    }
+
+    #[test]
+    fn forwards_month_parse_error() {
+        let test_parser = test_parser();
+        test_parser.store_return_parse_month(|_| Err(CronParsingError::InvalidValue { value: "test_value".to_owned(), field_type: CronFieldType::Month }), 1);
+        match CronExpression::parse("* * * * *", &test_parser) {
+            Err(CronParsingError::InvalidValue { value, field_type }) => { 
+                assert_eq!("test_value", value);
+                assert_eq!(CronFieldType::Month, field_type);
+            },
+            _ => panic!("Did not get the expected error"),
+        }
+    }
+
+    #[test]
+    fn forwards_day_of_week_parse_error() {
+        let test_parser = test_parser();
+        test_parser.store_return_parse_day_of_week(|_| Err(CronParsingError::InvalidValue { value: "test_value".to_owned(), field_type: CronFieldType::DayOfWeek }), 1);
+        match CronExpression::parse("* * * * *", &test_parser) {
+            Err(CronParsingError::InvalidValue { value, field_type }) => { 
+                assert_eq!("test_value", value);
+                assert_eq!(CronFieldType::DayOfWeek, field_type);
+            },
+            _ => panic!("Did not get the expected error"),
+        }
+    }
+
+    #[test]
+    fn parses_each_field() {
+        let test_parser = test_parser();
+        test_parser.store_expected_input_parse_minute(|value| value == "one", 1);
+        test_parser.store_expected_input_parse_hour(|value| value == "two", 1);
+        test_parser.store_expected_input_parse_day_of_month(|value| value == "three", 1);
+        test_parser.store_expected_input_parse_month(|value| value == "four", 1);
+        test_parser.store_expected_input_parse_day_of_week(|value| value == "five", 1);
+
+        CronExpression::parse("one two three four five", &test_parser).unwrap();
+    }
+
+    fn unresponsive_field() -> CronField { 
+        CronField::new(CronFieldType::Minute, vec![CronValue::Single(99)]) 
+    }
+    fn responsive_field() -> CronField { 
+        CronField::new(CronFieldType::Minute, vec![CronValue::Any])
+    }
+
+    #[test]
+    fn any_unresponsive_field_is_unresponsive() {
+        let expression = CronExpression {
+            fields: [unresponsive_field(), responsive_field(), responsive_field(), responsive_field(), responsive_field()]
+        };
+
+        assert_eq!(false, expression.is_responsive(&Utc::now()));
+    }
+
+    #[test]
+    fn all_responsive_fields_is_responsive() {
+        let expression = CronExpression {
+            fields: [responsive_field(), responsive_field(), responsive_field(), responsive_field(), responsive_field()]
+        };
+
+        assert_eq!(true, expression.is_responsive(&Utc::now()));
+    }
+}

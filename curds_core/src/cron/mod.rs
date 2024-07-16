@@ -22,3 +22,9 @@ impl FromStr for CronExpression {
         CronExpression::parse::<CurdsCronFieldParser>(input, &CurdsCronFieldParser)
     }
 }
+
+impl From<&str> for CronExpression {
+    fn from(value: &str) -> Self {
+        CronExpression::parse::<CurdsCronFieldParser>(value, &CurdsCronFieldParser).unwrap()
+    }
+}

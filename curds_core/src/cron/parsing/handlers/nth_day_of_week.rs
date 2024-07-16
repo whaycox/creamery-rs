@@ -27,3 +27,45 @@ pub fn parse_nth_day_of_week(value: &str, field_type: &CronFieldType) -> Option<
     }
     None
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_values_correctly() {
+        let actual = parse_nth_day_of_week("SUN#2", &CronFieldType::DayOfWeek)
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(CronValue::NthDayOfWeek { day_of_week: 0, n: 2}, actual);
+    }
+
+    #[test]
+    fn nonmatch_returns_none() {
+        assert_eq!(None, parse_nth_day_of_week("DayOfWeek", &CronFieldType::DayOfWeek));
+    }
+
+    #[test]
+    fn value_greater_than_max_returns_error() {
+        match parse_nth_day_of_week("60#2", &CronFieldType::DayOfWeek).unwrap() {
+            Err(CronParsingError::ValueOutOfBounds { value, allowed, field_type }) => {
+                assert_eq!("60#2", value);
+                assert_eq!(6, allowed);
+                assert_eq!(CronFieldType::DayOfWeek, field_type);
+            },
+            _ => panic!("Did not get expected error"),
+        }
+    }
+    
+    #[test]
+    fn unparseable_returns_error() {
+        match parse_nth_day_of_week("OEU#2", &CronFieldType::DayOfWeek).unwrap() {
+            Err(CronParsingError::InvalidValue { value, field_type }) => {
+                assert_eq!("OEU#2", value);
+                assert_eq!(CronFieldType::DayOfWeek, field_type);
+            },
+            _ => panic!("Did not get expected error"),
+        }
+    }
+}

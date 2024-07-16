@@ -8,6 +8,5 @@ pub use error::CronParsingError;
 
 use super::*;
 use link::*;
-use regex::Regex;
 
-type CronParsingHandler = fn(&str, &CronFieldType) -> Option<Result<CronValue, CronParsingError>>;
+use regex::Regex;

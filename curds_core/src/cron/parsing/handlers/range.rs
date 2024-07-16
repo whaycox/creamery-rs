@@ -38,7 +38,8 @@ pub fn parse_range(value: &str, field_type: &CronFieldType) -> Option<Result<Cro
                         }            
                         if min_value > max_value {
                             return Some(Err(CronParsingError::InvertedRange {
-                                raw_value: value.to_owned(),
+                                value: value.to_owned(),
+                                field_type: field_type.clone(),
                             }))
                         }
                         
@@ -52,4 +53,74 @@ pub fn parse_range(value: &str, field_type: &CronFieldType) -> Option<Result<Cro
         }
     }
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_range_as_int() {
+        let actual = parse_range("4-8", &CronFieldType::Minute)
+            .unwrap()
+            .unwrap();
+        
+        assert_eq!(CronValue::Range { min: 4, max: 8 }, actual);
+    }
+
+    #[test]
+    fn translates_min() {
+        let actual = parse_range("MAR-6", &CronFieldType::Month)
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(CronValue::Range { min: 3, max: 6 }, actual);
+    }
+
+    #[test]
+    fn translates_max() {
+        let actual = parse_range("4-sat", &CronFieldType::DayOfWeek)
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(CronValue::Range { min: 4, max: 6 }, actual);
+    }
+
+    #[test]
+    fn nonmatch_return_none() {
+        assert_eq!(None, parse_range("DayOfWeek", &CronFieldType::DayOfWeek));
+    }
+
+    #[test]
+    fn nonint_min_returns_error() {
+        match parse_range("OEU-5", &CronFieldType::DayOfWeek).unwrap() {
+            Err(CronParsingError::InvalidValue { value, field_type }) => {
+                assert_eq!("OEU", value);
+                assert_eq!(CronFieldType::DayOfWeek, field_type);
+            },
+            _ => panic!("Did not get expected error"),
+        }
+    }
+
+    #[test]
+    fn nonint_max_returns_error() {
+        match parse_range("03-OEU", &CronFieldType::DayOfWeek).unwrap() {
+            Err(CronParsingError::InvalidValue { value, field_type }) => {
+                assert_eq!("OEU", value);
+                assert_eq!(CronFieldType::DayOfWeek, field_type);
+            },
+            _ => panic!("Did not get expected error"),
+        }
+    }
+
+    #[test]
+    fn inverted_range_returns_error() {
+        match parse_range("THU-MON", &CronFieldType::DayOfWeek).unwrap() {
+            Err(CronParsingError::InvertedRange { value, field_type }) => {
+                assert_eq!("THU-MON", value);
+                assert_eq!(CronFieldType::DayOfWeek, field_type);
+            },
+            _ => panic!("Did not get expected error"),
+        }
+    }
 }

@@ -12,11 +12,7 @@ pub fn parse_last_day_of_week(value: &str, field_type: &CronFieldType) -> Option
                     field_type: field_type.clone(),
                 }))
             }
-            let n = captures[2].parse::<u32>().unwrap();                
-            return Some(Ok(CronValue::NthDayOfWeek { 
-                day_of_week: parsed_value, 
-                n: n 
-            }))
+            return Some(Ok(CronValue::LastDayOfWeek { day_of_week: parsed_value }))
         }
         else {
             return Some(Err(CronParsingError::InvalidValue {
@@ -26,4 +22,55 @@ pub fn parse_last_day_of_week(value: &str, field_type: &CronFieldType) -> Option
         }
     }
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_day_of_week_as_int() {
+        let actual = parse_last_day_of_week("001L", &CronFieldType::DayOfWeek)
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(CronValue::LastDayOfWeek { day_of_week: 1 }, actual);
+    }
+
+    #[test]
+    fn translates_values() {
+        let actual = parse_last_day_of_week("sAtl", &CronFieldType::DayOfWeek)
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(CronValue::LastDayOfWeek { day_of_week: 6 }, actual);
+    }
+
+    #[test]
+    fn nonmatch_returns_none() {
+        assert_eq!(None, parse_last_day_of_week("DayOfWeek", &CronFieldType::DayOfWeek));
+    }
+
+    #[test]
+    fn value_larger_than_max_returns_error() {
+        match parse_last_day_of_week("60l", &CronFieldType::DayOfWeek).unwrap() {
+            Err(CronParsingError::ValueOutOfBounds { value, allowed, field_type }) => {
+                assert_eq!("60l", value);
+                assert_eq!(6, allowed);
+                assert_eq!(CronFieldType::DayOfWeek, field_type);
+            },
+            _ => panic!("Did not get expected error"),
+        }
+    }
+
+    #[test]
+    fn unparseable_value_returns_error() {
+        match parse_last_day_of_week("OEUL", &CronFieldType::DayOfWeek).unwrap() {
+            Err(CronParsingError::InvalidValue { value, field_type }) => {
+                assert_eq!("OEUL", value);
+                assert_eq!(CronFieldType::DayOfWeek, field_type);
+            },
+            _ => panic!("Did not get expected error"),
+        }
+    }
 }

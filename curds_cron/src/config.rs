@@ -3,17 +3,16 @@ use serde::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize)]
 pub struct CronConfig {
-    jobs: Vec<JobConfig>,
+    pub jobs: Vec<JobConfig>,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct JobConfig {
-    name: String,
-    expressions: Vec<String>,
-    job: JobParameters,
+    pub name: String,
+    pub expressions: Vec<String>,
+    pub job: JobParameters,
 }
 
-pub const DEFAULT_TIMEOUT: u64 = 50;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JobParameters {
     pub process: String,
@@ -38,10 +37,10 @@ impl CronConfig {
         self.jobs.extend(config.jobs);
     }
     
-    pub fn parse<TParser: CronFieldParser>(self, parser: &TParser) -> Result<Vec<CronJob>, CronParsingError> {
+    pub fn to_cron_jobs(self) -> Result<Vec<CronJob>, CronParsingError> {
         let mut jobs: Vec<CronJob> = Vec::new();
         for job in self.jobs {
-            jobs.push(job.parse(parser)?);
+            jobs.push(job.to_cron_job()?);
         }
 
         Ok(jobs)
@@ -57,44 +56,39 @@ impl JobConfig {
         }
     }
 
-    pub fn parse<TParser: CronFieldParser>(self, parser: &TParser) -> Result<CronJob, CronParsingError> {
+    pub fn to_cron_job(self) -> Result<CronJob, CronParsingError> {
         let mut expressions: Vec<CronExpression> = Vec::new();
         for expression in self.expressions {
-            expressions.push(CronExpression::parse(&expression, parser)?);
+            expressions.push(expression.parse()?);
         }
 
-        Ok(CronJob::new(self.name, expressions, self.job.expand()))
+        Ok(CronJob::new(self.name, expressions, self.job))
     }
 }
 
+const SAMPLE_TIMEOUT: u64 = 50;
 impl JobParameters {
+    #[cfg(target_os = "windows")]
     pub fn sample() -> Self {
         Self {
             process: "cmd".to_owned(),
             arguments: Some(vec!["/C".to_owned(), "echo hello world!".to_owned()]),
-            timeout_seconds: Some(DEFAULT_TIMEOUT),
+            timeout_seconds: Some(SAMPLE_TIMEOUT),
         }
     }
-
-    pub fn expand(self) -> Self {
-        let expanded_timeout = if self.timeout_seconds.is_some() {
-            self.timeout_seconds
-        }
-        else {
-            Some(DEFAULT_TIMEOUT)
-        };
-
+    #[cfg(target_os = "linux")]
+    pub fn sample() -> Self {
         Self {
-            process: self.process,
-            arguments: self.arguments,
-            timeout_seconds: expanded_timeout,
+            process: "sh".to_owned(),
+            arguments: Some(vec!["-c".to_owned(), "echo hello world!".to_owned()]),
+            timeout_seconds: Some(SAMPLE_TIMEOUT),
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{CronConfig, JobParameters, DEFAULT_TIMEOUT};
+    use super::*;
 
     #[test]
     fn absorb_is_expected() {
@@ -103,15 +97,5 @@ mod tests {
         sample.absorb(CronConfig::sample());
 
         assert_eq!(2, sample.jobs.len());
-    }
-
-    #[test]
-    fn expand_populates_timeout() {
-        let mut test = JobParameters::sample();
-        test.timeout_seconds = None;
-
-        test = test.expand();
-
-        assert_eq!(test.timeout_seconds, Some(DEFAULT_TIMEOUT));
     }
 }

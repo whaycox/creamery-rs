@@ -97,3 +97,88 @@ impl CronFieldType {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use time::Utc;
+
+    #[test]
+    fn fetches_date_part() {
+        let now = Utc::now();
+
+        assert_eq!(now.minute(), CronFieldType::Minute.fetch(&now));
+        assert_eq!(now.hour(), CronFieldType::Hour.fetch(&now));
+        assert_eq!(now.day(), CronFieldType::DayOfMonth.fetch(&now));
+        assert_eq!(now.month(), CronFieldType::Month.fetch(&now));
+    }
+
+    #[test]
+    fn fetches_day_of_week_part() {
+        let sunday = "2021-04-04T00:00:00Z".parse::<DateTime<Utc>>().unwrap();
+        
+        assert_eq!(0, CronFieldType::DayOfWeek.fetch(&sunday));
+        assert_eq!(1, CronFieldType::DayOfWeek.fetch(&(sunday + Duration::days(1))));
+        assert_eq!(2, CronFieldType::DayOfWeek.fetch(&(sunday + Duration::days(2))));
+        assert_eq!(3, CronFieldType::DayOfWeek.fetch(&(sunday + Duration::days(3))));
+        assert_eq!(4, CronFieldType::DayOfWeek.fetch(&(sunday + Duration::days(4))));
+        assert_eq!(5, CronFieldType::DayOfWeek.fetch(&(sunday + Duration::days(5))));
+        assert_eq!(6, CronFieldType::DayOfWeek.fetch(&(sunday + Duration::days(6))));
+    }
+
+    #[test]
+    fn min_is_expected() {
+        assert_eq!(0, CronFieldType::Minute.min());
+        assert_eq!(0, CronFieldType::Hour.min());
+        assert_eq!(1, CronFieldType::DayOfMonth.min());
+        assert_eq!(1, CronFieldType::Month.min());
+        assert_eq!(0, CronFieldType::DayOfWeek.min());
+    }
+
+    #[test]
+    fn max_is_expected() {
+        assert_eq!(59, CronFieldType::Minute.max());
+        assert_eq!(23, CronFieldType::Hour.max());
+        assert_eq!(31, CronFieldType::DayOfMonth.max());
+        assert_eq!(12, CronFieldType::Month.max());
+        assert_eq!(6, CronFieldType::DayOfWeek.max());
+    }
+
+    #[test]
+    fn months_translate() {
+        assert_eq!("1", CronFieldType::Month.translate("JAN"));
+        assert_eq!("2", CronFieldType::Month.translate("feb"));
+        assert_eq!("3", CronFieldType::Month.translate("mAr"));
+        assert_eq!("4", CronFieldType::Month.translate("Apr"));
+        assert_eq!("5", CronFieldType::Month.translate("may"));
+        assert_eq!("6", CronFieldType::Month.translate("jUN"));
+        assert_eq!("7", CronFieldType::Month.translate("juL"));
+        assert_eq!("8", CronFieldType::Month.translate("AUG"));
+        assert_eq!("9", CronFieldType::Month.translate("SEP"));
+        assert_eq!("10", CronFieldType::Month.translate("OCT"));
+        assert_eq!("11", CronFieldType::Month.translate("nov"));
+        assert_eq!("12", CronFieldType::Month.translate("dec"));
+        assert_eq!("anything", CronFieldType::Month.translate("anything"));
+    }
+
+    #[test]
+    fn days_of_week_translate() {
+        assert_eq!("0", CronFieldType::DayOfWeek.translate("sun"));
+        assert_eq!("1", CronFieldType::DayOfWeek.translate("MON"));
+        assert_eq!("2", CronFieldType::DayOfWeek.translate("tue"));
+        assert_eq!("3", CronFieldType::DayOfWeek.translate("Wed"));
+        assert_eq!("4", CronFieldType::DayOfWeek.translate("tHu"));
+        assert_eq!("5", CronFieldType::DayOfWeek.translate("frI"));
+        assert_eq!("6", CronFieldType::DayOfWeek.translate("sat"));
+        assert_eq!("anything", CronFieldType::DayOfWeek.translate("anything"));
+    }
+
+    #[test]
+    fn other_translation_returns_self() {
+        let anything = "anything";
+
+        assert_eq!(anything, CronFieldType::Minute.translate(anything));
+        assert_eq!(anything, CronFieldType::Hour.translate(anything));
+        assert_eq!(anything, CronFieldType::DayOfMonth.translate(anything));
+    }
+}

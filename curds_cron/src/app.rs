@@ -1,6 +1,6 @@
 use super::*;
 use std::time::Duration;
-use curds_core::{cron::CurdsCronFieldParser, io::{AsyncFileSystem, FileSystem}, time::*};
+use curds_core::{io::{AsyncFileSystem, FileSystem}, time::*};
 use uuid::Uuid;
 
 const DEFAULT_CONFIG: &str = "config.json";
@@ -8,29 +8,25 @@ const SLEEP_TIME_S: u64 = 7;
 pub struct CurdsCronApp<
 TClock : Clock,
 TFileSystem : FileSystem,
-TParser : CronFieldParser,
 TProcessor : Processor> {
     clock: TClock,
     file_system: TFileSystem,
-    parser: TParser,
     processor: TProcessor,
 }
 
-impl CurdsCronApp<MachineClock, AsyncFileSystem, CurdsCronFieldParser, JobProcessor> {
+impl CurdsCronApp<MachineClock, AsyncFileSystem, JobProcessor> {
     pub fn new() -> Self {
         Self {
             clock: MachineClock,
             file_system: AsyncFileSystem,
-            parser: CurdsCronFieldParser,
             processor: JobProcessor,
         }
     }
 }
 
-impl<TClock, TFileSystem, TParser, TProcessor> CurdsCronApp<TClock, TFileSystem, TParser, TProcessor> where
+impl<TClock, TFileSystem, TProcessor> CurdsCronApp<TClock, TFileSystem, TProcessor> where
 TClock : Clock,
 TFileSystem : FileSystem,
-TParser : CronFieldParser,
 TProcessor : Processor {
     pub fn test(&self, expressions: Vec<CronExpression>) {
         if expressions.len() > 0 {
@@ -77,7 +73,7 @@ TProcessor : Processor {
                 let config: CronConfig = serde_json::from_str(&file).unwrap();
                 combined.absorb(config);
             }
-            let jobs = combined.parse(&self.parser).unwrap();
+            let jobs = combined.to_cron_jobs().unwrap();
             log::info!("Configured jobs: {:#?}", jobs);
 
             let mut last_minute = None;
@@ -105,26 +101,20 @@ TProcessor : Processor {
 #[cfg(test)]
 mod tests {
     use std::sync::OnceLock;
-    use curds_core::{cron::TestingCronFieldParser, io::TestingFileSystem, time::DateTime};
+    use curds_core::{io::TestingFileSystem, time::DateTime};
 
     use super::*;
 
     static TESTING_TIME: OnceLock<DateTime<Local>> = OnceLock::new();
-    impl CurdsCronApp<TestingClock, TestingFileSystem, TestingCronFieldParser, TestingProcessor> {
+    impl CurdsCronApp<TestingClock, TestingFileSystem, TestingProcessor> {
         pub fn test_object() -> Self {
             let test_object = Self {
                 clock: TestingClock::new(),
                 file_system: TestingFileSystem::new(),
-                parser: TestingCronFieldParser::new(),
                 processor: TestingProcessor::new(),
             };
             test_object.clock.default_return_current(|| TESTING_TIME.get_or_init(|| Local::now()).clone());
             test_object.file_system.default_return_read_string(|_| Ok(sample_json()));
-            test_object.parser.default_return_parse_minute(|_| Ok(CronField::new(CronFieldType::Minute, vec![CronValue::Any])));
-            test_object.parser.default_return_parse_hour(|_| Ok(CronField::new(CronFieldType::Hour, vec![CronValue::Any])));
-            test_object.parser.default_return_parse_day_of_month(|_| Ok(CronField::new(CronFieldType::DayOfMonth, vec![CronValue::Any])));
-            test_object.parser.default_return_parse_month(|_| Ok(CronField::new(CronFieldType::Month, vec![CronValue::Any])));
-            test_object.parser.default_return_parse_day_of_week(|_| Ok(CronField::new(CronFieldType::DayOfWeek, vec![CronValue::Any])));
             test_object.processor.default_return_process_job(|_,_| Box::pin(async {}));
 
             test_object
@@ -132,7 +122,7 @@ mod tests {
     }
 
     fn test_expressions() -> Vec<CronExpression> {
-        vec![std::str::FromStr::from_str("* * * * *").unwrap()]
+        vec!["* * * * *".parse().unwrap()]
     }
 
     const TEST_PATH: &str = "TestPath";
@@ -172,18 +162,6 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn start_parses_expression() {
-        let test_object = CurdsCronApp::test_object();
-        test_object.parser.store_expected_input_parse_minute(|value| value == "*", 1);
-        test_object.parser.store_expected_input_parse_hour(|value| value == "*", 1);
-        test_object.parser.store_expected_input_parse_day_of_month(|value| value == "*", 1);
-        test_object.parser.store_expected_input_parse_month(|value| value == "*", 1);
-        test_object.parser.store_expected_input_parse_day_of_week(|value| value == "*", 1);
-
-        tokio::time::timeout(Duration::from_millis(100), test_object.start(test_paths())).await.expect_err("");
-    }
-
-    #[tokio::test]
     async fn start_calls_local() {
         let test_object = CurdsCronApp::test_object();
         test_object.clock.expect_calls_current(1);
@@ -201,8 +179,18 @@ mod tests {
 
     #[tokio::test]
     async fn start_doesnt_process_if_expression_isnt_responsive() {
+        let unresponsive_config = CronConfig {
+            jobs: vec![              
+                JobConfig {
+                    name: "TestingName".to_owned(),
+                    expressions: vec!["0 0 1 1 0".parse().unwrap()],
+                    job: JobParameters::sample(),
+                    
+                }
+            ]
+        };
         let test_object = CurdsCronApp::test_object();
-        test_object.parser.default_return_parse_minute(|_| Ok(CronField::new(CronFieldType::Minute, vec![])));
+        test_object.file_system.store_return_read_string(move |_| Ok(serde_json::to_string_pretty(&unresponsive_config).unwrap()), 2);
         test_object.processor.expect_calls_process_job(0);
 
         tokio::time::timeout(Duration::from_millis(100), test_object.start(test_paths())).await.expect_err("");

@@ -23,3 +23,46 @@ pub fn parse_nearest_weekday(value: &str, field_type: &CronFieldType) -> Option<
     }
     None
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_value_as_int() {
+        let actual = parse_nearest_weekday("20w", &CronFieldType::DayOfMonth)
+            .unwrap()
+            .unwrap();
+        
+        assert_eq!(CronValue::NearestWeekday { day_of_month: 20}, actual);
+    }
+
+    #[test]
+    fn nonmatch_returns_none() {
+        assert_eq!(None, parse_nearest_weekday("DayOfMonth", &CronFieldType::DayOfMonth));
+    }
+
+    #[test]
+    fn value_larger_than_max_returns_error() {
+        match parse_nearest_weekday("32W", &CronFieldType::DayOfMonth).unwrap() {
+            Err(CronParsingError::ValueOutOfBounds { value, allowed, field_type }) => {
+                assert_eq!("32W", value);
+                assert_eq!(31, allowed);
+                assert_eq!(CronFieldType::DayOfMonth, field_type);
+            },
+            _ => panic!("Did not get expected error"),
+        }
+    }
+
+    #[test]
+    fn value_less_than_min_returns_error() {
+        match parse_nearest_weekday("0w", &CronFieldType::DayOfMonth).unwrap() {
+            Err(CronParsingError::ValueOutOfBounds { value, allowed, field_type }) => {
+                assert_eq!("0w", value);
+                assert_eq!(1, allowed);
+                assert_eq!(CronFieldType::DayOfMonth, field_type);
+            },
+            _ => panic!("Did not get expected error"),
+        }
+    }
+}

@@ -1,7 +1,7 @@
 use thiserror::Error;
 use super::field_type::CronFieldType;
 
-#[derive(Debug, Error)]
+#[derive(Debug, PartialEq, Error)]
 pub enum CronParsingError {
     #[error("Expression {expression} contains {parts} fields")]
     FieldCount {
@@ -19,8 +19,9 @@ pub enum CronParsingError {
         allowed: u32,
         field_type: CronFieldType,
     },
-    #[error("The value \"{raw_value}\" represents an inverted range; this is not allowed")]
+    #[error("The value \"{value}\" represents an inverted range on {field_type}; this is not allowed")]
     InvertedRange {
-        raw_value: String,
+        value: String,
+        field_type: CronFieldType,
     }
 }

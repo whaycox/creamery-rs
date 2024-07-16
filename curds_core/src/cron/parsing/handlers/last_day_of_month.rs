@@ -20,3 +20,43 @@ pub fn parse_last_day_of_month(value: &str, field_type: &CronFieldType) -> Optio
     }
     None
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn captures_without_offset() {
+        let actual = parse_last_day_of_month("L", &CronFieldType::DayOfMonth)
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(CronValue::LastDayOfMonth { offset: 0 }, actual);
+    }
+
+    #[test]
+    fn captures_with_offset() {
+        let actual = parse_last_day_of_month("l-30", &CronFieldType::DayOfMonth)
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(CronValue::LastDayOfMonth { offset: 30 }, actual);
+    }
+
+    #[test]
+    fn nonmatch_returns_none() {
+        assert_eq!(None, parse_last_day_of_month("DayOfMonth", &CronFieldType::DayOfMonth));
+    }
+
+    #[test]
+    fn offset_larger_than_allowed_returns_error() {
+        match parse_last_day_of_month("L-31", &CronFieldType::DayOfMonth).unwrap() {
+            Err(CronParsingError::ValueOutOfBounds { value, allowed, field_type }) => {
+                assert_eq!("L-31", value);
+                assert_eq!(30, allowed);
+                assert_eq!(CronFieldType::DayOfMonth, field_type);
+            },
+            _ => panic!("Did not get the expected error"),
+        }
+    }
+}
