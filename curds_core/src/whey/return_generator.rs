@@ -11,46 +11,46 @@ mod tests {
         fn custom(&self) -> CustomStruct;
     }
 
-    #[whey_context(WheyValueFoo)]
-    #[mocks(dyn ValueFoo)]
-    struct ReturnGeneratorValueContext {}
-
     fn simple_delegate() -> u32 { 1 }
     
-    #[whey(ReturnGeneratorValueContext ~ context)]
+    #[test]
     #[should_panic(expected = "not all stored returns for ValueFoo::simple have been consumed")]
     fn panics_if_returns_arent_consumed() {
-        mock_return!(context ~ ValueFoo ~ simple, simple_delegate, 1);
+        let test_object = TestingValueFoo::new();
+
+        test_object.store_return_simple(simple_delegate, 1);
     }
     
-    #[whey(ReturnGeneratorValueContext ~ context)]
+    #[test]
     fn resets_stored_returns() {
-        mock_return!(context ~ ValueFoo ~ simple, simple_delegate, 1);
-        
-        let core: Singleton<WheyCoreValueFoo> = context.generate();
-        core.write().unwrap().reset();
+        let test_object = TestingValueFoo::new();
+        test_object.store_return_simple(simple_delegate, 1);
+
+        test_object.reset();
     }
     
-    #[whey(ReturnGeneratorValueContext ~ context)]
+    #[test]
     fn returns_from_many_generators() {
+        let test_object = TestingValueFoo::new();
+
         for i in 1..=10 {
-            mock_return!(context ~ ValueFoo ~ simple, move || i, i);
-            let test = context.test_type();
+            test_object.store_return_simple(move || i, i);
 
             for _ in 0..i {
-                assert_eq!(i, test.simple());
+                assert_eq!(i, test_object.simple());
             }
         }
     }
     
-    #[whey(ReturnGeneratorValueContext ~ context)]
+    #[test]
     fn returns_from_many_generators_with_input() {
+        let test_object = TestingValueFoo::new();
+
         for i in 1..=10 {
-            mock_return!(context ~ ValueFoo ~ input, move |value, reference| value + reference + i, i);
-            let test = context.test_type();
+            test_object.store_return_input(move |value, reference| value + reference + i, i);
 
             for j in 0..i {
-                assert_eq!(EXPECTED_INT + &j + i, test.input(EXPECTED_INT, &j));
+                assert_eq!(EXPECTED_INT + &j + i, test_object.input(EXPECTED_INT, &j));
             }
         }
     }

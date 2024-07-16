@@ -1,19 +1,12 @@
 [package]
 name = "curds_cron"
-version = "0.2.0"
-authors = ["whaycox <whaycox@gmail.com>"]
-description = "A library for parsing and consuming CronExpressions."
-repository = "https://github.com/whaycox/creamery-rs"
-edition = "2018"
-license = "Apache-2.0"
-readme = "README.md"
-keywords = ["parsing", "scheduling", "cron", "time"]
+version = "1.0.0"
+edition = "2021"
 
 [dependencies]
-chrono = "0.4.19"
-regex = "1.4.5"
-lazy_static = "1.4.0"
-thiserror = "1.0.24"
-
-[dev-dependencies]
-mockall = "0.9.1"
+tokio = { version = "1.38.0", features = ["full"] }
+serde = { version = "1.0.204", features = ["derive"] }
+serde_json = "1.0.120"
+log = "0.4.22"
+uuid = { version = "1.10.0", features = ["v4"] }
+curds_core = { path = "../curds_core" }

@@ -1,32 +1,40 @@
 use super::*;
-use chrono::{DateTime, Utc};
+pub use chrono::{DateTime, Local, Utc};
 
 #[whey_mock]
 pub trait Clock {
-    #[mock_default_return(|| Utc::now())]
-    fn current(&self) -> DateTime<Utc>;
+    fn current(&self) -> DateTime<Local>;
+    fn current_utc(&self) -> DateTime<Utc>;
 }
 
-#[injected]
-struct MachineClock {}
+pub struct MachineClock;
 impl Clock for MachineClock {
-    fn current(&self) -> DateTime<Utc> { Utc::now() }
+    fn current(&self) -> DateTime<Local> { Local::now() }
+    fn current_utc(&self) -> DateTime<Utc> { Utc::now() }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    
+    #[test]
+    fn local_returns_now() {
+        let clock = MachineClock;
+        let before = Local::now();
 
-    #[whey_context(MachineClock)]
-    struct TestingContext {}
+        let actual = clock.current();
 
-    #[whey(TestingContext ~ context)]
-    fn returns_now() {
+        let after = Local::now();
+        assert!(before < actual);
+        assert!(actual < after);
+    }
+
+    #[test]
+    fn utc_returns_now() {
+        let clock = MachineClock;
         let before = Utc::now();
 
-        let actual = context
-            .test_type()
-            .current();
+        let actual = clock.current_utc();
 
         let after = Utc::now();
         assert!(before < actual);

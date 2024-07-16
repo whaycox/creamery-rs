@@ -1,9 +1,12 @@
 [package]
 name = "curds_core"
 version = "0.1.0"
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 chrono = "0.4.19"
-curds_core_abstraction = { path = "../curds_core_abstraction" }
+regex = "1.10.5"
+thiserror = "1.0.61"
+log = "0.4.22"
+tokio = { version = "1.38.0", features = ["full"] }
 curds_core_macro = { path = "../curds_core_macro" }

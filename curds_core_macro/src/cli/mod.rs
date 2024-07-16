@@ -71,6 +71,7 @@ fn extract_inner_type(ty: &Type) -> Option<&Type> {
 }
 
 fn parse_fields(type_name: TokenStream, fields: &Fields) -> TokenStream {
+    let crate_name = resolve_crate_name();
     match fields {
         Fields::Unit => quote! { Ok(#type_name) },
         Fields::Unnamed(fields) => {
@@ -92,7 +93,7 @@ fn parse_fields(type_name: TokenStream, fields: &Fields) -> TokenStream {
                                     }
                                     else {
                                         arguments.push(value);
-                                        parsed_vector.push(<#inner_type as curds_core_abstraction::cli::CliArgumentParse>::parse(arguments)?);
+                                        parsed_vector.push(<#inner_type as #crate_name::cli::CliArgumentParse>::parse(arguments)?);
                                     }
                                 } 
                                 else {
@@ -104,7 +105,7 @@ fn parse_fields(type_name: TokenStream, fields: &Fields) -> TokenStream {
                     }
                 }
                 else {
-                    quote! { <#ty as curds_core_abstraction::cli::CliArgumentParse>::parse(arguments)? }
+                    quote! { <#ty as #crate_name::cli::CliArgumentParse>::parse(arguments)? }
                 });
             }
             let argument_data = quote! { (#(#unnamed_fields),*) };
@@ -146,7 +147,7 @@ fn parse_fields(type_name: TokenStream, fields: &Fields) -> TokenStream {
                                 }
                                 else {
                                     arguments.push(value);
-                                    parsed_vector.push(<#inner_type as curds_core_abstraction::cli::CliArgumentParse>::parse(arguments)?);
+                                    parsed_vector.push(<#inner_type as #crate_name::cli::CliArgumentParse>::parse(arguments)?);
                                 }
                             } 
                             else {
@@ -163,13 +164,13 @@ fn parse_fields(type_name: TokenStream, fields: &Fields) -> TokenStream {
                     quote! { Some(parsed_vector) }
                 }
                 else if is_option {
-                    quote! { Some(<#inner_type as curds_core_abstraction::cli::CliArgumentParse>::parse(arguments)?) }
+                    quote! { Some(<#inner_type as #crate_name::cli::CliArgumentParse>::parse(arguments)?) }
                 }
                 else if is_vec {
                     quote! { parsed_vector }
                 }
                 else {
-                    quote! { <#ty as curds_core_abstraction::cli::CliArgumentParse>::parse(arguments)? }
+                    quote! { <#ty as #crate_name::cli::CliArgumentParse>::parse(arguments)? }
                 };
                 key_parsers.push(quote! {
                     #formatted_name => {
@@ -186,7 +187,7 @@ fn parse_fields(type_name: TokenStream, fields: &Fields) -> TokenStream {
                     quote! { None }
                 }
                 else {
-                    quote! { return Err(curds_core_abstraction::cli::CliArgumentParseError::UnrecognizedKey(#formatted_name.to_string())) }
+                    quote! { return Err(#crate_name::cli::CliArgumentParseError::UnrecognizedKey(#formatted_name.to_string())) }
                 };
                 field_initializers.push(quote! {
                     #name: match argument_map.remove(#formatted_name) {
@@ -227,6 +228,7 @@ fn parse_fields(type_name: TokenStream, fields: &Fields) -> TokenStream {
 }
 
 fn field_usage(argument: Option<String>, fields: &Fields) -> TokenStream {
+    let crate_name = resolve_crate_name();
     let mut field_usage: Vec<TokenStream> = vec![];
     if argument.is_some() {
         field_usage.push(quote! { #argument.to_string() });
@@ -242,13 +244,13 @@ fn field_usage(argument: Option<String>, fields: &Fields) -> TokenStream {
                 field_usage.push(if is_vec {
                     quote! { 
                         vec![
-                            format!("{}*", <#inner_type as curds_core_abstraction::cli::CliArgumentParse>::usage()),
+                            format!("{}*", <#inner_type as #crate_name::cli::CliArgumentParse>::usage()),
                             "--".to_string(),
                         ].join(" ")
                     }
                 }
                 else {
-                    quote! { <#ty as curds_core_abstraction::cli::CliArgumentParse>::usage() }
+                    quote! { <#ty as #crate_name::cli::CliArgumentParse>::usage() }
                 });
             }
         },
@@ -277,7 +279,7 @@ fn field_usage(argument: Option<String>, fields: &Fields) -> TokenStream {
                     field_usage.push(quote! { 
                         format!("[{}]", vec![
                             #formatted_name.to_string(),
-                            format!("{}*", <#inner_type as curds_core_abstraction::cli::CliArgumentParse>::usage()),
+                            format!("{}*", <#inner_type as #crate_name::cli::CliArgumentParse>::usage()),
                             "--".to_string(),
                         ].join(" "))
                     });
@@ -286,7 +288,7 @@ fn field_usage(argument: Option<String>, fields: &Fields) -> TokenStream {
                     field_usage.push(quote! { 
                         format!("[{}]", vec![
                             #formatted_name.to_string(),
-                            <#inner_type as curds_core_abstraction::cli::CliArgumentParse>::usage(),
+                            <#inner_type as #crate_name::cli::CliArgumentParse>::usage(),
                         ].join(" "))
                     });
                 }
@@ -294,14 +296,14 @@ fn field_usage(argument: Option<String>, fields: &Fields) -> TokenStream {
                     field_usage.push(quote! { 
                         vec![
                             #formatted_name.to_string(),
-                            format!("{}*", <#inner_type as curds_core_abstraction::cli::CliArgumentParse>::usage()),
+                            format!("{}*", <#inner_type as #crate_name::cli::CliArgumentParse>::usage()),
                             "--".to_string(),
                         ].join(" ")
                     });
                 }
                 else {
                     field_usage.push(quote! { #formatted_name.to_string() });
-                    field_usage.push(quote! { <#ty as curds_core_abstraction::cli::CliArgumentParse>::usage() });
+                    field_usage.push(quote! { <#ty as #crate_name::cli::CliArgumentParse>::usage() });
                 }
             }
         },

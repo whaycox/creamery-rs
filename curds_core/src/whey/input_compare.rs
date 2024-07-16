@@ -8,55 +8,55 @@ mod tests {
         fn reference(&mut self, one: &u32, two: &u64);
     }
 
-    #[whey_context(WheyVoidFoo)]
-    #[mocks(dyn VoidFoo)]
-    struct VoidFooContext {}
-
     fn value_comparison(input: &u32) -> bool { *input == EXPECTED_INT }
 
-    #[whey(VoidFooContext ~ context)]
+    #[test]
     #[should_panic(expected = "not all stored input comparisons for VoidFoo::value have been consumed")]
     fn panics_if_inputs_arent_consumed() {
-        mock_input!(context ~ VoidFoo ~ value, value_comparison, 1);
+        let test_object = TestingVoidFoo::new();
+
+        test_object.store_expected_input_value(value_comparison, 1);
     }
     
-    #[whey(VoidFooContext ~ context)]
+    #[test]
     fn resets_stored_returns() {
-        mock_input!(context ~ VoidFoo ~ value, value_comparison, 1);        
-        let core: Singleton<WheyCoreVoidFoo> = context.generate();
+        let test_object = TestingVoidFoo::new();
+        test_object.store_expected_input_value(value_comparison, 1);
 
-        core.write().unwrap().reset();
+        test_object.reset();
     }
 
-    #[whey(VoidFooContext ~ context)]
+    #[test]
     #[should_panic(expected = "the expected inputs for VoidFoo::value were not supplied")]
     fn panics_if_inputs_arent_expected() {
-        mock_input!(context ~ VoidFoo ~ value, value_comparison, 1);
-        let mut test = context.test_type();
+        let mut test_object = TestingVoidFoo::new();
+        test_object.store_expected_input_value(value_comparison, 1);
 
-        test.value(EXPECTED_INT + 1);
+        test_object.value(EXPECTED_INT + 1);
     }
     
-    #[whey(VoidFooContext ~ context)]
+    #[test]
     fn compares_against_many_comparisons() {
+        let mut test_object = TestingVoidFoo::new();
+
         for i in 1..=10 {
-            mock_input!(context ~ VoidFoo ~ value, move |input| *input == i, i);
-            let mut test = context.test_type();
+            test_object.store_expected_input_value(move |input| *input == i, i);
 
             for _ in 0..i {
-                test.value(i);
+                test_object.value(i);
             }
         }
     }
     
-    #[whey(VoidFooContext ~ context)]
+    #[test]
     fn compares_against_multiple_inputs() {
+        let mut test_object = TestingVoidFoo::new();
+
         for i in 1..=10 {
-            mock_input!(context ~ VoidFoo ~ reference, move |one, two| *one == EXPECTED_INT + i && *two == EXPECTED_LONG, i);
-            let mut test = context.test_type();
+            test_object.store_expected_input_reference(move |one, two| *one == EXPECTED_INT + i && *two == EXPECTED_LONG, i);
 
             for _ in 0..i {
-                test.reference(&(EXPECTED_INT + i), &EXPECTED_LONG);
+                test_object.reference(&(EXPECTED_INT + i), &EXPECTED_LONG);
             }
         }
     }

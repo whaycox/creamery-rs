@@ -15,6 +15,7 @@ impl Parse for CliArgumentStructDefinition {
 impl CliArgumentStructDefinition {
     pub fn quote(self) -> TokenStream {
         let item = self.item;
+        let crate_name = resolve_crate_name();
         let name = &item.ident;
         let initializer = parse_fields(quote! { #name }, &item.fields);
         let usage = field_usage(None, &item.fields);
@@ -22,8 +23,8 @@ impl CliArgumentStructDefinition {
         quote! {
             #item
 
-            impl curds_core_abstraction::cli::CliArgumentParse for #name {
-                fn parse(arguments: &mut Vec<String>) -> Result<Self, curds_core_abstraction::cli::CliArgumentParseError> {
+            impl #crate_name::cli::CliArgumentParse for #name {
+                fn parse(arguments: &mut Vec<String>) -> Result<Self, #crate_name::cli::CliArgumentParseError> {
                     #initializer
                 }
 

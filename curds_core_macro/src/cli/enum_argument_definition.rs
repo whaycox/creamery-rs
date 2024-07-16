@@ -17,17 +17,18 @@ impl CliArgumentEnumerationDefinition {
         let variants = self.quote_cli_argument_parse();
         let variant_usage = self.quote_usage();
         let item = self.item;
+        let crate_name = resolve_crate_name();
         let name = &item.ident;
 
         quote! {
             #item
 
-            impl curds_core_abstraction::cli::CliArgumentParse for #name {
-                fn parse(arguments: &mut Vec<String>) -> Result<Self, curds_core_abstraction::cli::CliArgumentParseError> {
-                    let key = arguments.pop().unwrap(); 
+            impl #crate_name::cli::CliArgumentParse for #name {
+                fn parse(arguments: &mut Vec<String>) -> Result<Self, #crate_name::cli::CliArgumentParseError> {
+                    let key = arguments.pop().unwrap();
                     match key.as_str() {
                         #(#variants)*
-                        _ => Err(curds_core_abstraction::cli::CliArgumentParseError::UnrecognizedKey(key)),
+                        _ => Err(#crate_name::cli::CliArgumentParseError::UnrecognizedKey(key)),
                     }
                 }
 
