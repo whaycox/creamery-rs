@@ -14,14 +14,12 @@ use curds_core::cli::*;
 
 use std::pin::Pin;
 use std::future::Future;
-use std::time::Duration;
 use std::collections::HashSet;
 use std::process::Stdio;
 use tokio::sync::oneshot::channel;
 use tokio::time::sleep;
 use tokio::signal::ctrl_c;
 use tokio::process::Command;
-use tokio::io::BufReader;
 use tokio::io::AsyncBufReadExt;
 use uuid::Uuid;
 

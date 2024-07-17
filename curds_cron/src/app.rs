@@ -75,7 +75,7 @@ TProcessor : Processor {
             }
             let jobs = combined.to_cron_jobs().unwrap();
             log::info!("Configured jobs: {:#?}", jobs);
-
+    
             let mut last_minute = None;
             loop {
                 let current = self.clock.current();
@@ -91,7 +91,7 @@ TProcessor : Processor {
                         }
                     }
                 }
-
+    
                 sleep(Duration::from_secs(SLEEP_TIME_S)).await;
             }
         }
