@@ -7,8 +7,6 @@ mod tests {
         fn simple(&self) -> u32;
 
         fn input(&self, value: u32, reference: &u32) -> u32;
-
-        fn custom(&self) -> CustomStruct;
     }
 
     fn simple_delegate() -> u32 { 1 }

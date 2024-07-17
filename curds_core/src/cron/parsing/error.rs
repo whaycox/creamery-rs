@@ -1,9 +1,9 @@
 use thiserror::Error;
-use super::field_type::CronFieldType;
+use crate::cron::{CronExpression, field_type::CronFieldType};
 
 #[derive(Debug, PartialEq, Error)]
 pub enum CronParsingError {
-    #[error("Expression {expression} contains {parts} fields")]
+    #[error("Expression \"{expression}\" contains {parts} fields, but {} are required", CronExpression::FIELD_COUNT)]
     FieldCount {
         expression: String,
         parts: usize,

@@ -1,7 +1,5 @@
 use super::*;
 
-pub const DEFAULT_RETURN_IDENTIFIER: &str = "mock_default_return";
-
 pub struct WheyMock {
     pub mocked_trait: ItemTrait,
 }
@@ -242,7 +240,7 @@ impl WheyMock {
         }
         match &method.sig.output {
             ReturnType::Default => {},
-            ReturnType::Type(_, ty) => {
+            ReturnType::Type(_, _) => {
                 let default_generator = Self::default_generator(&method.sig.ident);
                 initializers.push(quote! { #default_generator: std::default::Default::default() });
 
