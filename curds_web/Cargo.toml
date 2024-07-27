@@ -1,0 +1,9 @@
+[package]
+name = "curds_web"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tokio = { version = "1.38.0", features = ["full"] }
+log = "0.4.22"
+curds_core = { path = "../curds_core" }

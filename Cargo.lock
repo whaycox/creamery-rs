@@ -149,6 +149,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "curds_web"
+version = "0.1.0"
+dependencies = [
+ "curds_core",
+ "log",
+ "tokio",
+]
+
+[[package]]
 name = "equivalent"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

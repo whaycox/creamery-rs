@@ -3,5 +3,6 @@ resolver = "2"
 members = [
     "curds_core_macro",
     "curds_core",
-    "curds_cron",
+    "curds_cron", 
+    "curds_web",
 ]
