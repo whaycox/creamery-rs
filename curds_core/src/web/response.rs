@@ -5,7 +5,7 @@ use std::fmt::Write;
 pub struct HttpResponse {
     pub status: HttpStatus,
 
-    pub body: Option<String>,
+    pub body: Option<Vec<u8>>,
 }
 
 impl HttpResponse {
@@ -24,12 +24,14 @@ impl HttpResponse {
         if let Some(body) = self.body {
             write!(response, "Content-Length: {}\r\n", body.len()).unwrap();
             write!(response, "Content-Type: text/plain\r\n\r\n").unwrap();
-            write!(response, "{}", body).unwrap();
+            let mut response_bytes = response.as_bytes().to_owned();
+            response_bytes.extend(body);
+
+            response_bytes
         }
         else {
             write!(response, "\r\n").unwrap();
+            response.as_bytes().to_owned()
         }
-
-        response.as_bytes().to_owned()
     }
 }

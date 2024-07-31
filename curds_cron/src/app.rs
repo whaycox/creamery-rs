@@ -114,7 +114,7 @@ mod tests {
                 processor: TestingProcessor::new(),
             };
             test_object.clock.default_return_current(|| TESTING_TIME.get_or_init(|| Local::now()).clone());
-            test_object.file_system.default_return_read_string(|_| Ok(sample_json()));
+            test_object.file_system.default_return_read_string(|_| Box::pin(async { Ok(sample_json()) }));
             test_object.processor.default_return_process_job(|_,_| Box::pin(async {}));
 
             test_object
@@ -145,7 +145,7 @@ mod tests {
     #[tokio::test]
     async fn generate_writes_expected_files() {
         let test_object = CurdsCronApp::test_object();
-        test_object.file_system.default_return_write_bytes(|_,_| Ok(()));
+        test_object.file_system.default_return_write_bytes(|_,_| Box::pin(async { Ok(()) }));
         test_object.file_system.store_expected_input_write_bytes(|path, bytes| path == DEFAULT_CONFIG && bytes == sample_json().as_bytes(), 1);
         test_object.file_system.store_expected_input_write_bytes(|path, bytes| path == TEST_PATH && bytes == sample_json().as_bytes(), 1);
 
@@ -179,18 +179,20 @@ mod tests {
 
     #[tokio::test]
     async fn start_doesnt_process_if_expression_isnt_responsive() {
-        let unresponsive_config = CronConfig {
-            jobs: vec![              
-                JobConfig {
-                    name: "TestingName".to_owned(),
-                    expressions: vec!["0 0 1 1 0".parse().unwrap()],
-                    job: JobParameters::sample(),
-                    
-                }
-            ]
-        };
         let test_object = CurdsCronApp::test_object();
-        test_object.file_system.store_return_read_string(move |_| Ok(serde_json::to_string_pretty(&unresponsive_config).unwrap()), 2);
+        test_object.file_system.store_return_read_string(move |_| Box::pin(async {
+            let unresponsive_config = CronConfig {
+                jobs: vec![              
+                    JobConfig {
+                        name: "TestingName".to_owned(),
+                        expressions: vec!["0 0 1 1 0".parse().unwrap()],
+                        job: JobParameters::sample(),
+                        
+                    }
+                ]
+            };
+            Ok(serde_json::to_string_pretty(&unresponsive_config).unwrap()) 
+        }), 2);
         test_object.processor.expect_calls_process_job(0);
 
         tokio::time::timeout(Duration::from_millis(100), test_object.start(test_paths())).await.expect_err("");

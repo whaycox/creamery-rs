@@ -1,5 +1,5 @@
 use super::*;
-use curds_core::web::{CurdsWebError, CurdsWebHttpRequestParser, HttpMethod, HttpRequest, HttpRequestParser, HttpResponse, HttpStatus, HttpVersion};
+use curds_core::{io::AsyncFileSystem, web::{CurdsWebError, CurdsWebHttpRequestParser, HttpMethod, HttpRequest, HttpRequestParser, HttpResponse, HttpStatus, HttpVersion}};
 use tokio::{io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt}, net::{TcpListener, TcpStream}};
 use tokio::io::BufReader;
 use std::{net::SocketAddr, pin::Pin};
@@ -11,11 +11,11 @@ pub struct CurdsWebServer<TRequestParser, TResponder> {
     responder: Arc<TResponder>,
 }
 
-impl CurdsWebServer<CurdsWebHttpRequestParser, CurdsWebHttpResponder> {
+impl CurdsWebServer<CurdsWebHttpRequestParser, ProductionWebHttpResponder> {
     pub fn new() -> Self {
         Self {
             request_parser: Arc::new(CurdsWebHttpRequestParser),
-            responder: Arc::new(CurdsWebHttpResponder),
+            responder: Arc::new(ProductionWebHttpResponder::new()),
         }
     }
 }
@@ -32,13 +32,11 @@ TResponder : HttpResponder + Send + Sync + 'static {
         }
     }
     fn handle_stream(&self, mut stream: TcpStream, socket: SocketAddr) -> Pin<Box<dyn Future<Output = ()> + Send + Sync>> {
-        let cloned_parser = self.request_parser.clone();
-        let cloned_responder = self.responder.clone();
+        let request_parser = self.request_parser.clone();
+        let responder = self.responder.clone();
         Box::pin(async move {
-            let request_parser = cloned_parser;
-            let responder = cloned_responder;
             log::info!("{}|Connection received", socket);
-            if let Some(response) = responder.create(&socket, request_parser.parse(&mut stream).await) {
+            if let Some(response) = responder.create(&socket, request_parser.parse(&mut stream).await).await {
                 log::info!("{}|Sending response: {}", socket, response.status);
                 stream.write_all(&response.to_bytes()).await.unwrap();
                 stream.flush().await.unwrap();
