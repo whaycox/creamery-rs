@@ -5,7 +5,7 @@ use std::future::Future;
 
 use crate::{web::{HttpRequest, HttpVersion, HttpMethod, CurdsWebError, CurdsWebResult}, whey_mock};
 
-
+#[whey_mock]
 pub trait HttpRequestParser {
     fn parse<'a>(&self, stream: &'a mut TcpStream) -> Pin<Box<dyn Future<Output = CurdsWebResult<HttpRequest>> + Send + Sync + 'a>>;
 }

@@ -1,6 +1,8 @@
 mod server;
+mod responder;
 
 use server::CurdsWebServer;
+use responder::*;
 use tokio::sync::oneshot::channel;
 use tokio::signal::ctrl_c;
 

@@ -2,7 +2,7 @@
 mod tests {
     use super::super::*;
 
-    fn test_delegate(value: u32, reference: &u32) -> u32 { value * reference }
+    fn test_delegate(value: &u32, reference: &u32) -> u32 { value * reference }
 
     #[whey_mock]
     trait ValueFoo {
@@ -31,7 +31,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "a return is necessary for ValueFoo::simple but none have been supplied")]
+    #[should_panic(expected = "a return is necessary for TestingValueFoo::simple but none have been supplied")]
     fn simple_panics_without_default() {
         let test_object = TestingValueFoo::new();
 

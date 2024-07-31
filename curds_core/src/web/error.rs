@@ -1,5 +1,4 @@
 use std::string::FromUtf8Error;
-
 use thiserror::Error;
 
 #[derive(Debug, Error)]

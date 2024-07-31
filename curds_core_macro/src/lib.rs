@@ -3,7 +3,7 @@ mod cli;
 
 use proc_macro::TokenStream;
 use proc_macro_crate::FoundCrate;
-use syn::{*, parse::*};
+use syn::{*, parse::*, punctuated::*, token::{Add, Comma, Colon2}};
 use quote::*;
 
 use whey::*;
