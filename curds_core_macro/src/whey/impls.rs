@@ -23,11 +23,11 @@ pub fn quote_impl(testing_struct_name: &Ident, method: &TraitItemMethod) -> Toke
         let expected_input_failure = format!("the expected inputs for {}::{} were not supplied", testing_struct_name, method.sig.ident);
 
         quote! {
-            let length = self.#expected_input_times_field.borrow().len();
+            let length = self.#expected_input_times_field.lock().unwrap().len();
             for i in 0..length {
-                if self.#expected_input_times_field.borrow()[i] > 0 {
-                    self.#expected_input_times_field.borrow_mut()[i] -= 1;
-                    if !(self.#expected_input_field.borrow()[i])(#(#input_names),*) {
+                if self.#expected_input_times_field.lock().unwrap()[i] > 0 {
+                    self.#expected_input_times_field.lock().unwrap()[i] -= 1;
+                    if !(self.#expected_input_field.lock().unwrap()[i])(#(#input_names),*) {
                         panic!(#expected_input_failure);
                     }
                     break;
@@ -46,14 +46,14 @@ pub fn quote_impl(testing_struct_name: &Ident, method: &TraitItemMethod) -> Toke
             let no_return_failure = format!("a return is necessary for {}::{} but none have been supplied", testing_struct_name, method.sig.ident);
 
             quote! {
-                let length = self.#returned_times_field.borrow().len();
+                let length = self.#returned_times_field.lock().unwrap().len();
                 for i in 0..length {
-                    if self.#returned_times_field.borrow()[i] > 0 {
-                        self.#returned_times_field.borrow_mut()[i] -= 1;
-                        return (self.#returned_field.borrow()[i])(#(#input_names),*)
+                    if self.#returned_times_field.lock().unwrap()[i] > 0 {
+                        self.#returned_times_field.lock().unwrap()[i] -= 1;
+                        return (self.#returned_field.lock().unwrap()[i])(#(#input_names),*)
                     }
                 }
-                match &*self.#default_generator_field.borrow() {
+                match &*self.#default_generator_field.lock().unwrap() {
                     Some(generator) => return generator(#(#input_names),*),
                     _ => panic!(#no_return_failure),
                 }
@@ -64,7 +64,7 @@ pub fn quote_impl(testing_struct_name: &Ident, method: &TraitItemMethod) -> Toke
     let recorded_calls = recorded_calls_field(&method.sig.ident);
     quote! {
         #signature {
-            *self.#recorded_calls.borrow_mut() += 1;
+            *self.#recorded_calls.lock().unwrap() += 1;
             #compare_input
             #generate_return
         }
@@ -103,7 +103,7 @@ fn quote_expect_calls(method: &TraitItemMethod) -> TokenStream {
     let expected_calls = expected_calls_field(&method.sig.ident);
     quote! {
         pub fn #expect_calls(&self, expected: u32) {
-            *self.#expected_calls.borrow_mut() = Some(expected);
+            *self.#expected_calls.lock().unwrap() = Some(expected);
         }
     }
 }
@@ -113,9 +113,9 @@ fn quote_store_expected_input(ident: &Ident, input_types: Vec<Box<Type>>) -> Tok
     let expected_input_field = expected_input_field(ident);
 
     quote! {
-        pub fn #store_input<TComparer: 'static + Fn(#(#input_types),*) -> bool>(&self, comparison: TComparer, times: u32) {
-            self.#expected_input_times_field.borrow_mut().push(times);
-            self.#expected_input_field.borrow_mut().push(std::boxed::Box::new(comparison));
+        pub fn #store_input<TComparer: 'static + Send + Sync + Fn(#(#input_types),*) -> bool>(&self, comparison: TComparer, times: u32) {
+            self.#expected_input_times_field.lock().unwrap().push(times);
+            self.#expected_input_field.lock().unwrap().push(std::boxed::Box::new(comparison));
         }
     }
 }
@@ -124,8 +124,8 @@ fn quote_default_return(method: &TraitItemMethod, input_types: Vec<Box<Type>>, r
     let default_generator_field = default_generator_field(&method.sig.ident);
 
     quote! {
-        pub fn #default_return<TGenerator: 'static + Fn(#(#input_types),*) -> #returned_type>(&self, generator: TGenerator) {
-            *self.#default_generator_field.borrow_mut() = Some(std::boxed::Box::new(generator));
+        pub fn #default_return<TGenerator: 'static + Send + Sync + Fn(#(#input_types),*) -> #returned_type>(&self, generator: TGenerator) {
+            *self.#default_generator_field.lock().unwrap() = Some(std::boxed::Box::new(generator));
         }
     }
 }
@@ -135,9 +135,9 @@ fn quote_store_return(method: &TraitItemMethod, input_types: Vec<Box<Type>>, ret
     let returned_field = returned_field(&method.sig.ident);
 
     quote! {
-        pub fn #store_return<TGenerator: 'static + Fn(#(#input_types),*) -> #returned_type>(&self, generator: TGenerator, times: u32) {
-            self.#returned_times_field.borrow_mut().push(times);
-            self.#returned_field.borrow_mut().push(std::boxed::Box::new(generator));
+        pub fn #store_return<TGenerator: 'static + Send + Sync + Fn(#(#input_types),*) -> #returned_type>(&self, generator: TGenerator, times: u32) {
+            self.#returned_times_field.lock().unwrap().push(times);
+            self.#returned_field.lock().unwrap().push(std::boxed::Box::new(generator));
         }
     }
 }
@@ -162,7 +162,7 @@ pub fn quote_assert_expectations(testing_struct_name: &Ident, method: &TraitItem
         let expected_input_failure = format!("not all stored input comparisons for {}::{} have been consumed", testing_struct_name, method.sig.ident);
 
         quote! {
-            if self.#expected_input_times_field.borrow().iter().any(|comparer| *comparer != 0) {
+            if self.#expected_input_times_field.lock().unwrap().iter().any(|comparer| *comparer != 0) {
                 panic!(#expected_input_failure);
             }
         }
@@ -175,7 +175,7 @@ pub fn quote_assert_expectations(testing_struct_name: &Ident, method: &TraitItem
             let returned_failure = format!("not all stored returns for {}::{} have been consumed", testing_struct_name, method.sig.ident);
 
             quote! {
-                if self.#returned_times_field.borrow().iter().any(|generator| *generator != 0) {
+                if self.#returned_times_field.lock().unwrap().iter().any(|generator| *generator != 0) {
                     panic!(#returned_failure);
                 }
             }
@@ -183,8 +183,8 @@ pub fn quote_assert_expectations(testing_struct_name: &Ident, method: &TraitItem
     };
     
     quote! {
-        if self.#expected_calls.borrow().is_some() && self.#expected_calls.borrow().unwrap() != *self.#recorded_calls.borrow() {
-            panic!(#expected_calls_failure, self.#expected_calls.borrow().unwrap(), self.#recorded_calls.borrow());
+        if self.#expected_calls.lock().unwrap().is_some() && self.#expected_calls.lock().unwrap().unwrap() != *self.#recorded_calls.lock().unwrap() {
+            panic!(#expected_calls_failure, self.#expected_calls.lock().unwrap().unwrap(), self.#recorded_calls.lock().unwrap());
         }
         #input_assert
         #return_assert
@@ -210,8 +210,8 @@ pub fn quote_reset_expectations(method: &TraitItemMethod) -> TokenStream {
         let expected_input_field = expected_input_field(&method.sig.ident);
 
         quote! {
-            self.#expected_input_times_field.borrow_mut().clear();
-            self.#expected_input_field.borrow_mut().clear();
+            self.#expected_input_times_field.lock().unwrap().clear();
+            self.#expected_input_field.lock().unwrap().clear();
         }
     }
     else { quote! {} };
@@ -222,15 +222,15 @@ pub fn quote_reset_expectations(method: &TraitItemMethod) -> TokenStream {
             let returned_field = returned_field(&method.sig.ident);
 
             quote! {
-                self.#returned_times_field.borrow_mut().clear();
-                self.#returned_field.borrow_mut().clear();
+                self.#returned_times_field.lock().unwrap().clear();
+                self.#returned_field.lock().unwrap().clear();
             }
         },
     };
     
     quote! {
-        *self.#expected_calls.borrow_mut() = None;
-        *self.#recorded_calls.borrow_mut() = 0;
+        *self.#expected_calls.lock().unwrap() = None;
+        *self.#recorded_calls.lock().unwrap() = 0;
         #input_reset
         #return_reset
     }      

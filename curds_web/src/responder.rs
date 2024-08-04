@@ -3,7 +3,6 @@ use curds_core::{io::{AsyncFileSystem, FileSystem}, web::{CurdsWebError, CurdsWe
 use std::pin::Pin;
 use std::future::Future;
 use std::sync::Arc;
-use std::io::Error;
 
 #[whey_mock]
 pub trait HttpResponder {

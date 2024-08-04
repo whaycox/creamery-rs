@@ -1,5 +1,3 @@
-use proc_macro::Punct;
-
 use super::*;
 use std::collections::HashSet;
 
@@ -159,46 +157,46 @@ pub fn quote_fields(method: &TraitItemMethod, lifetimes: &HashSet<Ident>) -> Vec
 fn quote_expected_calls_field(method: &TraitItemMethod) -> TokenStream {
     let expected_calls_field = expected_calls_field(&method.sig.ident);
     quote! {
-        #expected_calls_field: std::cell::RefCell<std::option::Option<u32>>
+        #expected_calls_field: std::sync::Mutex<std::option::Option<u32>>
     }
 }
 fn quote_recorded_calls_field(method: &TraitItemMethod) -> TokenStream {
     let recorded_calls_field = recorded_calls_field(&method.sig.ident);
     quote! {
-        #recorded_calls_field: std::cell::RefCell<u32>
+        #recorded_calls_field: std::sync::Mutex<u32>
     }
 }
 fn quote_expected_input_times_field(ident: &Ident) -> TokenStream {
     let expected_input_times_field = expected_input_times_field(ident);
     quote! {
-        #expected_input_times_field: std::cell::RefCell<std::vec::Vec<u32>>
+        #expected_input_times_field: std::sync::Mutex<std::vec::Vec<u32>>
     }
 }
 fn quote_expected_input_field(ident: &Ident, input_types: Vec<Box<Type>>) -> TokenStream {
     let expected_input_field = expected_input_field(ident);
     quote! {
-        #expected_input_field: std::cell::RefCell<std::vec::Vec<std::boxed::Box<dyn Fn(#(#input_types),*) -> bool>>>
+        #expected_input_field: std::sync::Mutex<std::vec::Vec<std::boxed::Box<dyn Fn(#(#input_types),*) -> bool + Send + Sync>>>
     }
 }
 fn quote_default_return_field(ident: &Ident, input_types: Vec<Box<Type>>, returned_type: Type) -> TokenStream {
     let default_generator_field = default_generator_field(ident);
 
     quote! {
-        #default_generator_field: std::cell::RefCell<std::option::Option<std::boxed::Box<dyn Fn(#(#input_types),*) -> #returned_type>>>
+        #default_generator_field: std::sync::Mutex<std::option::Option<std::boxed::Box<dyn Fn(#(#input_types),*) -> #returned_type + Send + Sync>>>
     }
 }
 fn quote_returned_times_field(ident: &Ident) -> TokenStream {
     let returned_times_field = returned_times_field(ident);
 
     quote! {
-        #returned_times_field: std::cell::RefCell<std::vec::Vec<u32>>
+        #returned_times_field: std::sync::Mutex<std::vec::Vec<u32>>
     }
 }
 fn quote_returned_field(ident: &Ident, input_types: Vec<Box<Type>>, returned_type: Type) -> TokenStream {
     let returned_field = returned_field(ident);
 
     quote! {
-        #returned_field: std::cell::RefCell<std::vec::Vec<std::boxed::Box<dyn Fn(#(#input_types),*) -> #returned_type>>>
+        #returned_field: std::sync::Mutex<std::vec::Vec<std::boxed::Box<dyn Fn(#(#input_types),*) -> #returned_type + Send + Sync>>>
     }
 }
 

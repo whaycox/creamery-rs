@@ -10,3 +10,6 @@ thiserror = "1.0.61"
 log = "0.4.22"
 tokio = { version = "1.38.0", features = ["full"] }
 curds_core_macro = { path = "../curds_core_macro" }
+
+[features]
+"test-helpers" = []

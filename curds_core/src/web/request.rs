@@ -1,6 +1,6 @@
 use super::{HttpHeaders, HttpMethod, HttpVersion};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct HttpRequest {
     pub method: HttpMethod,
     pub target: String,

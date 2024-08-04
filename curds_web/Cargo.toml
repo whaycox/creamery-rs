@@ -7,3 +7,6 @@ edition = "2021"
 tokio = { version = "1.38.0", features = ["full"] }
 log = "0.4.22"
 curds_core = { path = "../curds_core" }
+
+[dev-dependencies]
+curds_core = { path = "../curds_core", features = ["test-helpers"] }

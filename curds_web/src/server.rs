@@ -1,10 +1,4 @@
 use super::*;
-use curds_core::{io::AsyncFileSystem, web::{CurdsWebError, CurdsWebHttpRequestParser, HttpMethod, HttpRequest, HttpRequestParser, HttpResponse, HttpStatus, HttpVersion}};
-use tokio::{io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt}, net::{TcpListener, TcpStream}};
-use tokio::io::BufReader;
-use std::{net::SocketAddr, pin::Pin};
-use std::future::Future;
-use std::sync::Arc;
 
 pub struct CurdsWebServer<TRequestParser, TResponder> {
     request_parser: Arc<TRequestParser>,
@@ -48,19 +42,54 @@ TResponder : HttpResponder + Send + Sync + 'static {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use curds_core::web::TestingHttpRequestParser;
+    use curds_core::web::test_connection;
+
+    fn test_response() -> HttpResponse { HttpResponse::new(HttpStatus::OK) }
 
     impl CurdsWebServer<TestingHttpRequestParser, TestingHttpResponder> {
         pub fn test_object() -> Self {
-            Self {
+            let test = Self {
                 request_parser: Arc::new(TestingHttpRequestParser::new()),
                 responder: Arc::new(TestingHttpResponder::new()),
-            }
+            };
+            test.request_parser.default_return_parse(|_| Box::pin(async { Ok(HttpRequest::new(HttpMethod::GET, "/".to_owned(), HttpVersion::OnePointOne)) }));
+            test.responder.default_return_create(|_, _| Box::pin(async { Some(test_response()) }));
+
+            test
         }
     }
 
-    // #[test]
-    // fn something() {
-    //     todo!("testing")
-    // }
+    #[tokio::test]
+    async fn parses_request_and_creates_response() {
+        let test_object = CurdsWebServer::test_object();
+        test_object.request_parser.expect_calls_parse(1);
+        test_object.responder.expect_calls_create(1);
+        let (socket, _, server) = test_connection("localhost:41234").await;
+
+        test_object.handle_stream(server, socket).await;
+    }
+
+    #[tokio::test]
+    async fn writes_response_to_stream() {
+        let test_object = CurdsWebServer::test_object();
+        let (socket, mut client, server) = test_connection("localhost:41235").await;
+
+        test_object.handle_stream(server, socket).await;
+
+        let mut written_bytes: Vec<u8> = Vec::new();
+        client.read_to_end(&mut written_bytes).await.unwrap();
+        assert_eq!(test_response().to_bytes(), written_bytes);
+    }
+
+    #[tokio::test]
+    async fn doesnt_write_when_no_response() {
+        let test_object = CurdsWebServer::test_object();
+        test_object.responder.store_return_create(|_, _| Box::pin(async { None }), 1);
+        let (socket, mut client, server) = test_connection("localhost:41236").await;
+
+        test_object.handle_stream(server, socket).await;
+
+        let mut written_bytes: Vec<u8> = Vec::new();
+        assert_eq!(0, client.read_to_end(&mut written_bytes).await.unwrap());
+    }
 }

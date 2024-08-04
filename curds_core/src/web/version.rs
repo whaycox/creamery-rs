@@ -1,6 +1,7 @@
 use std::fmt::Display;
+use super::{CurdsWebResult, CurdsWebError};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum HttpVersion {
     One,
     OnePointOne,
@@ -9,13 +10,13 @@ pub enum HttpVersion {
 }
 
 impl HttpVersion {
-    pub fn new(version: String) -> Self {
+    pub fn new(version: String) -> CurdsWebResult<Self> {
         match version.as_str() {
-            "HTTP/1" | "HTTP/1.0" => HttpVersion::One,
-            "HTTP/1.1" => HttpVersion::OnePointOne,
-            "HTTP/2" | "HTTP/2.0" => HttpVersion::Two,
-            "HTTP/3" | "HTTP/3.0" => HttpVersion::Three,
-            _ => panic!("Unrecognized version {}", version),
+            "HTTP/1" | "HTTP/1.0" => Ok(HttpVersion::One),
+            "HTTP/1.1" => Ok(HttpVersion::OnePointOne),
+            "HTTP/2" | "HTTP/2.0" => Ok(HttpVersion::Two),
+            "HTTP/3" | "HTTP/3.0" => Ok(HttpVersion::Three),
+            _ => Err(CurdsWebError::RequestFormat(format!("Unrecognized HTTP version: {}", version)),)
         }
     }
 }
