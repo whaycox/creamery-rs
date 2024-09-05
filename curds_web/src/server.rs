@@ -6,11 +6,11 @@ pub struct CurdsWebServer<TRequestParser, TResponder> {
 }
 
 impl CurdsWebServer<CurdsWebHttpRequestParser, ProductionWebHttpResponder> {
-    pub fn new() -> Self {
-        Self {
+    pub async fn new() -> CurdsWebResult<Self> {
+        Ok(Self {
             request_parser: Arc::new(CurdsWebHttpRequestParser),
-            responder: Arc::new(ProductionWebHttpResponder::new()),
-        }
+            responder: Arc::new(ProductionWebHttpResponder::new().await?),
+        })
     }
 }
 
@@ -43,6 +43,7 @@ TResponder : HttpResponder + Send + Sync + 'static {
 mod tests {
     use super::*;
     use curds_core::web::test_connection;
+    use curds_core::web::Uri;
 
     fn test_response() -> HttpResponse { HttpResponse::new(HttpStatus::OK) }
 
@@ -52,7 +53,7 @@ mod tests {
                 request_parser: Arc::new(TestingHttpRequestParser::new()),
                 responder: Arc::new(TestingHttpResponder::new()),
             };
-            test.request_parser.default_return_parse(|_| Box::pin(async { Ok(HttpRequest::new(HttpMethod::GET, "/".to_owned(), HttpVersion::OnePointOne)) }));
+            test.request_parser.default_return_parse(|_| Box::pin(async { Ok(HttpRequest::new(HttpMethod::GET, Uri::default(), HttpVersion::OnePointOne)) }));
             test.responder.default_return_create(|_, _| Box::pin(async { Some(test_response()) }));
 
             test

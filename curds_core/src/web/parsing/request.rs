@@ -2,6 +2,7 @@ use tokio::{io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt}, net::{TcpListene
 use tokio::io::BufReader;
 use std::{pin::Pin, time::Duration};
 use std::future::Future;
+use super::*;
 
 use crate::{web::{HttpRequest, HttpVersion, HttpMethod, CurdsWebError, CurdsWebResult}, whey_mock};
 
@@ -74,58 +75,18 @@ impl HttpRequestParser for CurdsWebHttpRequestParser {
     }
 }
 
-fn byte_sequence_index(buffer: &[u8], sequence: &[u8]) -> Option<usize> {
-    let buffer_length = buffer.len();
-    let sequence_length = sequence.len();
-    if buffer_length >= sequence_length {
-        for i in 0..=buffer_length - sequence_length {
-            if &buffer[i..i + sequence_length] == sequence {
-                return Some(i);
-            }
-        }
-    }
-    None
-}
-
 const HEADER_END_LENGTH: usize = 4;
 static HEADER_END: [u8; HEADER_END_LENGTH] = [0x0D,0x0A,0x0D,0x0A];
 fn header_end_index(buffer: &[u8]) -> Option<usize> { byte_sequence_index(buffer, &HEADER_END) }
 
-fn split_on_byte_sequence(mut buffer: Vec<u8>, sequence: &[u8]) -> Vec<Vec<u8>> {
-    let mut splits: Vec<Vec<u8>> = Vec::new();
-    let sequence_length = sequence.len();
-    while let Some(split) = byte_sequence_index(&buffer, sequence) {
-        let mut tail = buffer.split_off(split);
-        if buffer.len() > 0 {
-            splits.push(buffer);
-        }
-        buffer = tail.split_off(sequence_length);
-    }
-    if buffer.len() > 0 {
-        splits.push(buffer);
-    }
-
-    splits
-}
-
-const NEW_LINE_LENGTH: usize = 2;
-static NEW_LINE: [u8; NEW_LINE_LENGTH] = [0x0D,0x0A];
-fn split_on_new_line(buffer: Vec<u8>) -> Vec<Vec<u8>> { split_on_byte_sequence(buffer, &NEW_LINE) }
-
-const SPACE_LENGTH: usize = 1;
-static SPACE: [u8; SPACE_LENGTH] = [0x20];
-fn split_on_space(buffer: Vec<u8>) -> Vec<Vec<u8>> { split_on_byte_sequence(buffer, &SPACE) }
-
-const HEADER_SEPARATOR_LENGTH: usize = 1;
-static HEADER_SEPARATOR: [u8; HEADER_SEPARATOR_LENGTH] = [0x3A];
 fn split_header_key_and_value(mut buffer: Vec<u8>) -> Vec<Vec<u8>> {
     let mut splits: Vec<Vec<u8>> = Vec::new();
-    if let Some(split) = byte_sequence_index(&buffer, &HEADER_SEPARATOR) {
+    if let Some(split) = byte_sequence_index(&buffer, &COLON) {
         let mut tail = buffer.split_off(split);
         if buffer.len() > 0 {
             splits.push(buffer);
         }
-        buffer = tail.split_off(HEADER_SEPARATOR_LENGTH);
+        buffer = tail.split_off(DELIMITER_LENGTH);
     }
     splits.push(buffer);
 
@@ -161,18 +122,17 @@ fn parse_headers(headers: Vec<u8>) -> CurdsWebResult<HttpRequest> {
     Ok(request)
 }
 fn parse_request_line(request_line: Vec<u8>) -> CurdsWebResult<HttpRequest> {
-    let mut splits: Vec<String> = Vec::new();
-    for split in split_on_space(request_line) {
-        splits.push(String::from_utf8(split)?);
-    }
+    let mut splits: Vec<Vec<u8>> = split_on_space(request_line)
+        .into_iter()
+        .collect();
     if splits.len() != 3 {
-        return Err(CurdsWebError::RequestFormat(format!("Incorrect request line: {}", splits.join(", "))));
+        return Err(CurdsWebError::RequestFormat(format!("Incorrect request line parts; there are {} but 3 is expected", splits.len())));
     }
 
     let mut iterator = splits.into_iter();
-    let method = HttpMethod::new(iterator.next().unwrap());
-    let target = iterator.next().unwrap();
-    let version = HttpVersion::new(iterator.next().unwrap())?;
+    let method = HttpMethod::new(String::from_utf8(iterator.next().unwrap())?);
+    let target = Uri::parse(iterator.next().unwrap())?;
+    let version = HttpVersion::new(String::from_utf8(iterator.next().unwrap())?)?;
 
     Ok(HttpRequest::new(method, target, version))
 }
@@ -192,6 +152,10 @@ mod tests {
         request
     }
 
+    fn test_target() -> Uri {
+        Uri::parse("/Testing".as_bytes().to_owned()).unwrap()
+    }
+
     #[tokio::test]
     async fn parses_test_request() {
         let test_object = CurdsWebHttpRequestParser;
@@ -201,7 +165,7 @@ mod tests {
         let actual = test_object.parse(&mut server).await.unwrap();
 
         assert_eq!(HttpMethod::GET, actual.method);
-        assert_eq!("/Testing", actual.target);
+        assert_eq!(test_target(), actual.target);
         assert_eq!(HttpVersion::OnePointOne, actual.version);
         assert_eq!(43, actual.headers.content_length.unwrap());
         assert_eq!("The quick brown fox jumps over the lazy dog", actual.body.unwrap());
@@ -257,7 +221,7 @@ mod tests {
     #[test]
     fn parses_headers() {
         let test_line = "GET /Testing HTTP/1.1\r\nOne:      Two     \r\nThree:\r\nOne:Four\r\n\r\n".as_bytes().to_owned();
-        let mut expected = HttpRequest::new(HttpMethod::GET, "/Testing".to_owned(), HttpVersion::OnePointOne);
+        let mut expected = HttpRequest::new(HttpMethod::GET, test_target(), HttpVersion::OnePointOne);
         expected.headers.add("One".to_owned(), "Two".to_owned());
         expected.headers.add("Three".to_owned(), String::new());
         expected.headers.add("One".to_owned(), "Four".to_owned());
@@ -290,7 +254,7 @@ mod tests {
     fn parses_request_line() {
         let test_line = "GET /Testing HTTP/1.1".as_bytes().to_owned();
 
-        assert_eq!(HttpRequest::new(HttpMethod::GET, "/Testing".to_owned(), HttpVersion::OnePointOne), parse_request_line(test_line).unwrap());
+        assert_eq!(HttpRequest::new(HttpMethod::GET, test_target(), HttpVersion::OnePointOne), parse_request_line(test_line).unwrap());
     }
 
     #[test]

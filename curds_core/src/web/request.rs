@@ -1,9 +1,9 @@
-use super::{HttpHeaders, HttpMethod, HttpVersion};
+use super::{HttpHeaders, HttpMethod, HttpVersion, Uri};
 
 #[derive(Debug, PartialEq)]
 pub struct HttpRequest {
     pub method: HttpMethod,
-    pub target: String,
+    pub target: Uri,
     pub version: HttpVersion,
 
     pub headers: HttpHeaders,
@@ -11,7 +11,7 @@ pub struct HttpRequest {
 }
 
 impl HttpRequest {
-    pub fn new(method: HttpMethod, target: String, version: HttpVersion) -> Self {
+    pub fn new(method: HttpMethod, target: Uri, version: HttpVersion) -> Self {
         Self {
             method,
             target,
