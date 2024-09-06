@@ -1,6 +1,7 @@
-use std::string::FromUtf8Error;
-
+use std::{num::ParseIntError, string::FromUtf8Error};
 use thiserror::Error;
+
+use super::UriPath;
 
 #[derive(Debug, Error)]
 pub enum CurdsWebError {
@@ -12,8 +13,14 @@ pub enum CurdsWebError {
     Timeout(u64),
     #[error("The structure of the request read is incorrect: {0}")]
     RequestFormat(String),
+    #[error("The target \"{0}\" was not found")]
+    FileNotFound(UriPath),
 }
 
 impl From<FromUtf8Error> for CurdsWebError {
     fn from(value: FromUtf8Error) -> Self { Self::Read(value.to_string()) }
+}
+
+impl From<ParseIntError> for CurdsWebError {
+    fn from(value: ParseIntError) -> Self { Self::Read(value.to_string()) }
 }

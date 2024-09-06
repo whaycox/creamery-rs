@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 #[repr(u16)]
 pub enum HttpStatus {
     Continue = 100,

@@ -11,7 +11,7 @@ mod tests {
     fn value_comparison(input: &u32) -> bool { *input == EXPECTED_INT }
 
     #[test]
-    #[should_panic(expected = "not all stored input comparisons for VoidFoo::value have been consumed")]
+    #[should_panic(expected = "not all stored input comparisons for TestingVoidFoo::value have been consumed")]
     fn panics_if_inputs_arent_consumed() {
         let test_object = TestingVoidFoo::new();
 
@@ -27,7 +27,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "the expected inputs for VoidFoo::value were not supplied")]
+    #[should_panic(expected = "the expected inputs for TestingVoidFoo::value were not supplied")]
     fn panics_if_inputs_arent_expected() {
         let mut test_object = TestingVoidFoo::new();
         test_object.store_expected_input_value(value_comparison, 1);

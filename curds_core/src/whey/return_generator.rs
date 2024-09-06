@@ -12,7 +12,7 @@ mod tests {
     fn simple_delegate() -> u32 { 1 }
     
     #[test]
-    #[should_panic(expected = "not all stored returns for ValueFoo::simple have been consumed")]
+    #[should_panic(expected = "not all stored returns for TestingValueFoo::simple have been consumed")]
     fn panics_if_returns_arent_consumed() {
         let test_object = TestingValueFoo::new();
 

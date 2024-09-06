@@ -5,5 +5,11 @@ edition = "2021"
 
 [dependencies]
 tokio = { version = "1.38.0", features = ["full"] }
+regex = "1.10.5"
 log = "0.4.22"
+notify-debouncer-full = "0.3.1"
+notify = { version = "6.1.1", default-features = false, features = ["macos_kqueue"] }
 curds_core = { path = "../curds_core" }
+
+[dev-dependencies]
+curds_core = { path = "../curds_core", features = ["test-helpers"] }

@@ -1,5 +1,6 @@
 use super::*;
 use std::time::Duration;
+use std::path::Path;
 use curds_core::{io::{AsyncFileSystem, FileSystem}, time::*};
 use uuid::Uuid;
 
@@ -45,10 +46,10 @@ TProcessor : Processor {
         }
     }
 
-    fn expand_path(path: &Option<String>) -> &str {
+    fn expand_path(path: &Option<String>) -> &Path {
         match &path {
-            Some(provided_path) => provided_path,
-            None => DEFAULT_CONFIG,
+            Some(provided_path) => Path::new(provided_path),
+            None => Path::new(DEFAULT_CONFIG),
         }  
     }
 
@@ -114,7 +115,7 @@ mod tests {
                 processor: TestingProcessor::new(),
             };
             test_object.clock.default_return_current(|| TESTING_TIME.get_or_init(|| Local::now()).clone());
-            test_object.file_system.default_return_read_string(|_| Ok(sample_json()));
+            test_object.file_system.default_return_read_string(|_| Box::pin(async { Ok(sample_json()) }));
             test_object.processor.default_return_process_job(|_,_| Box::pin(async {}));
 
             test_object
@@ -145,9 +146,9 @@ mod tests {
     #[tokio::test]
     async fn generate_writes_expected_files() {
         let test_object = CurdsCronApp::test_object();
-        test_object.file_system.default_return_write_bytes(|_,_| Ok(()));
-        test_object.file_system.store_expected_input_write_bytes(|path, bytes| path == DEFAULT_CONFIG && bytes == sample_json().as_bytes(), 1);
-        test_object.file_system.store_expected_input_write_bytes(|path, bytes| path == TEST_PATH && bytes == sample_json().as_bytes(), 1);
+        test_object.file_system.default_return_write_bytes(|_,_| Box::pin(async { Ok(()) }));
+        test_object.file_system.store_expected_input_write_bytes(|path, bytes| path == Path::new(DEFAULT_CONFIG) && bytes == sample_json().as_bytes(), 1);
+        test_object.file_system.store_expected_input_write_bytes(|path, bytes| path == Path::new(TEST_PATH) && bytes == sample_json().as_bytes(), 1);
 
         test_object.generate(test_paths()).await;
     }
@@ -155,8 +156,8 @@ mod tests {
     #[tokio::test]
     async fn start_reads_paths() {
         let test_object = CurdsCronApp::test_object();
-        test_object.file_system.store_expected_input_read_string(|path| path == DEFAULT_CONFIG, 1);
-        test_object.file_system.store_expected_input_read_string(|path| path == TEST_PATH, 1);
+        test_object.file_system.store_expected_input_read_string(|path| path == Path::new(DEFAULT_CONFIG), 1);
+        test_object.file_system.store_expected_input_read_string(|path| path == Path::new(TEST_PATH), 1);
 
         tokio::time::timeout(Duration::from_millis(100), test_object.start(test_paths())).await.expect_err("");
     }
@@ -179,18 +180,20 @@ mod tests {
 
     #[tokio::test]
     async fn start_doesnt_process_if_expression_isnt_responsive() {
-        let unresponsive_config = CronConfig {
-            jobs: vec![              
-                JobConfig {
-                    name: "TestingName".to_owned(),
-                    expressions: vec!["0 0 1 1 0".parse().unwrap()],
-                    job: JobParameters::sample(),
-                    
-                }
-            ]
-        };
         let test_object = CurdsCronApp::test_object();
-        test_object.file_system.store_return_read_string(move |_| Ok(serde_json::to_string_pretty(&unresponsive_config).unwrap()), 2);
+        test_object.file_system.store_return_read_string(move |_| Box::pin(async {
+            let unresponsive_config = CronConfig {
+                jobs: vec![              
+                    JobConfig {
+                        name: "TestingName".to_owned(),
+                        expressions: vec!["0 0 1 1 0".parse().unwrap()],
+                        job: JobParameters::sample(),
+                        
+                    }
+                ]
+            };
+            Ok(serde_json::to_string_pretty(&unresponsive_config).unwrap()) 
+        }), 2);
         test_object.processor.expect_calls_process_job(0);
 
         tokio::time::timeout(Duration::from_millis(100), test_object.start(test_paths())).await.expect_err("");
