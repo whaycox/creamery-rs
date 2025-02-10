@@ -10,6 +10,7 @@ use regex::Regex;
 pub trait CliArgumentParse {
     fn parse(arguments: &mut Vec<String>) -> Result<Self, CliArgumentParseError> where Self: Sized;
     fn usage() -> String;
+    fn description() -> Option<Vec<&'static str>>;
 }
 
 static TYPE_SIMPLIFIER: OnceLock<Regex> = OnceLock::new();
@@ -30,5 +31,9 @@ impl<TType> CliArgumentParse for TType where TType : FromStr, TType::Err : Error
             .unwrap()
             .as_str();
         format!("<{}>", type_name) 
+    }
+
+    fn description() -> Option<Vec<&'static str>> {
+        None
     }
 }

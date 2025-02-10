@@ -2,12 +2,17 @@ use super::*;
 
 pub struct CliArgumentEnumerationDefinition {
     item: ItemEnum,
+    descriptions: EnumerationDescriptions,
 }
 
 impl Parse for CliArgumentEnumerationDefinition {
     fn parse(input: ParseStream) -> Result<Self> {
+        let mut item: ItemEnum = input.parse()?;
+        let descriptions = EnumerationDescriptions::parse(&mut item)?;
+
         Ok(Self {
-            item: input.parse()?,
+            item,
+            descriptions,
         })
     }
 }
@@ -19,6 +24,10 @@ impl CliArgumentEnumerationDefinition {
         let item = self.item;
         let crate_name = resolve_crate_name();
         let name = &item.ident;
+        let mut descriptions = self.descriptions.quote_descriptions();
+        if descriptions.len() == 0 {
+            descriptions = vec![quote! { None }];
+        }
 
         quote! {
             #item
@@ -34,6 +43,10 @@ impl CliArgumentEnumerationDefinition {
 
                 fn usage() -> String {
                     #variant_usage
+                }
+
+                fn description() -> Option<Vec<&'static str>> {
+                    #(#descriptions)*
                 }
             }
         }

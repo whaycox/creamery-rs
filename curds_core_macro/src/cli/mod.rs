@@ -2,30 +2,34 @@ use super::*;
 
 mod argument_definition;
 mod enum_argument_definition;
+mod enum_descriptions;
 mod struct_argument_definition;
 
 pub use argument_definition::*;
 pub use enum_argument_definition::*;
+pub use enum_descriptions::*;
 pub use struct_argument_definition::*;
 
 use proc_macro2::{TokenStream, Span};
 use std::sync::OnceLock;
 use regex::Regex;
 
-static CAMEL_CASE_SPLITTER: OnceLock<Regex> = OnceLock::new();
-fn format_argument_name(name: &Ident) -> Ident {
-    let splitter = CAMEL_CASE_SPLITTER.get_or_init(|| Regex::new("[A-Z][a-z]*").unwrap());
-    let name_string = name.to_string();
-    let parts: Vec<String> = splitter.find_iter(&name_string)
-        .map(|part| {
-            let mut part_string = part.as_str().to_owned();
-            if let Some(char) = part_string.get_mut(0..1) {
-                char.make_ascii_lowercase();
-            }
+const DESCRIPTION_IDENTIFIER: &str = "description";
 
-            part_string
-        })
-        .collect();
+static CAMEL_CASE_SPLITTER: OnceLock<Regex> = OnceLock::new();
+fn camel_case_splitter() -> &'static Regex { CAMEL_CASE_SPLITTER.get_or_init(|| Regex::new("[A-Z][a-z]*").unwrap()) }
+
+fn format_argument_name(name: &Ident) -> Ident {
+    let splitter = camel_case_splitter();
+    let mut name_string = name.to_string();
+    let mut parts: Vec<String> = vec![];
+    while let Some(part) = splitter.find(&name_string) {
+        let mut part: String = name_string.drain(part.start()..part.len()).collect();
+        if let Some(char) = part.get_mut(0..1) {
+            char.make_ascii_lowercase();
+        }
+        parts.push(part);
+    }
     
     Ident::new(&parts.join("_"), name.span())
 }

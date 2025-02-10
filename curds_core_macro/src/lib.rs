@@ -4,6 +4,7 @@ mod cli;
 use proc_macro::TokenStream;
 use proc_macro_crate::FoundCrate;
 use syn::{*, parse::*, punctuated::*, token::{Add, Comma, Colon2}};
+use std::collections::HashMap;
 use quote::*;
 
 use whey::*;
