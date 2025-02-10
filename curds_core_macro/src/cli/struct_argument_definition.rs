@@ -33,7 +33,11 @@ impl CliArgumentStructDefinition {
                     #usage
                     
                     usages.join(" ")
-                 }
+                }
+
+                fn description() -> Option<Vec<&'static str>> {
+                    None
+                }
             }
         }
     }

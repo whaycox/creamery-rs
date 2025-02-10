@@ -66,5 +66,10 @@ TFactory : ArgumentFactory {
 
     fn usage<TOperation : CliArgumentParse>(&self) {
         log::info!("{} {}", self.factory.application_name(), TOperation::usage());
+        if let Some(descriptions) = TOperation::description() {
+            for description in descriptions {
+                log::info!("{}", description);
+            }
+        }
     }
 }

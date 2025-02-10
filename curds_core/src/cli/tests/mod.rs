@@ -7,5 +7,6 @@ mod vec_parsing;
 mod option_vec_parsing;
 mod unnamed_vec_parsing;
 mod nested;
+mod description;
 
 use super::*;
