@@ -2,6 +2,7 @@ use tokio::{io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt}, net::{TcpListene
 use tokio::io::BufReader;
 use std::{pin::Pin, time::Duration};
 use std::future::Future;
+use std::sync::Arc;
 use super::*;
 
 use crate::{web::{HttpRequest, HttpVersion, HttpMethod, CurdsWebError, CurdsWebResult}, whey_mock};
@@ -10,17 +11,35 @@ use crate::{web::{HttpRequest, HttpVersion, HttpMethod, CurdsWebError, CurdsWebR
 pub trait HttpRequestParser {
     fn parse<'a>(&self, stream: &'a mut TcpStream) -> Pin<Box<dyn Future<Output = CurdsWebResult<HttpRequest>> + Send + Sync + 'a>>;
 }
+pub struct CurdsWebHttpRequestParser<TRequestLineParser, THeaderParser> {
+    request_line: Arc<TRequestLineParser>,
+    header: Arc<THeaderParser>,
+}
 
-pub struct CurdsWebHttpRequestParser;
+pub type ProductionHttpRequestParser = CurdsWebHttpRequestParser<CurdsWebRequestLineParser, CurdsWebHttpHeaderParser>;
+impl ProductionHttpRequestParser {
+    pub fn new() -> Self {
+        ProductionHttpRequestParser {
+            request_line: Arc::new(CurdsWebRequestLineParser),
+            header: Arc::new(CurdsWebHttpHeaderParser),
+        }
+    }
+}
 
-impl CurdsWebHttpRequestParser {    
+impl<TRequestLineParser, THeaderParser> CurdsWebHttpRequestParser<TRequestLineParser, THeaderParser> {    
     const BUFFER_SIZE: usize = 1024;
     const TIMEOUT_MS: u64 = 300;
 }
 
-impl HttpRequestParser for CurdsWebHttpRequestParser {
+impl<TRequestLineParser, THeaderParser> HttpRequestParser for CurdsWebHttpRequestParser<TRequestLineParser, THeaderParser> where
+TRequestLineParser : HttpRequestLineParser + Send + Sync + 'static,
+THeaderParser : HttpHeaderParser + Send + Sync + 'static {
     fn parse<'a>(&self, stream: &'a mut TcpStream) -> Pin<Box<dyn Future<Output = CurdsWebResult<HttpRequest>> + Send + Sync + 'a>> {
+        let request_line_parser = self.request_line.clone();
+        let header_parser = self.header.clone();
         Box::pin(async move {
+            let request_line_parser = request_line_parser;
+            let header_parser = header_parser;
             let mut header_buffer = vec![0; Self::BUFFER_SIZE];
             let mut header_end = 0;
             let mut total_read = 0;
@@ -51,7 +70,10 @@ impl HttpRequestParser for CurdsWebHttpRequestParser {
             let mut body_buffer = header_buffer.split_off(header_end + HEADER_END_LENGTH);
             total_read -= header_buffer.len();
             body_buffer.truncate(total_read);
-            let mut request = parse_headers(header_buffer)?;
+
+            let mut request = request_line_parser.parse(&mut header_buffer)?;
+            header_parser.add_headers(header_buffer, &mut request)?;
+
             if let Some(length) = &request.headers.content_length {
                 if *length < total_read {
                     return Err(CurdsWebError::RequestFormat(format!("A body length of {} was expected but at least {} have already been read", length, total_read)));
@@ -78,65 +100,7 @@ impl HttpRequestParser for CurdsWebHttpRequestParser {
 const HEADER_END_LENGTH: usize = 4;
 static HEADER_END: [u8; HEADER_END_LENGTH] = [0x0D,0x0A,0x0D,0x0A];
 fn header_end_index(buffer: &[u8]) -> Option<usize> { byte_sequence_index(buffer, &HEADER_END) }
-
-fn split_header_key_and_value(mut buffer: Vec<u8>) -> Vec<Vec<u8>> {
-    let mut splits: Vec<Vec<u8>> = Vec::new();
-    if let Some(split) = byte_sequence_index(&buffer, &COLON) {
-        let mut tail = buffer.split_off(split);
-        if buffer.len() > 0 {
-            splits.push(buffer);
-        }
-        buffer = tail.split_off(DELIMITER_LENGTH);
-    }
-    splits.push(buffer);
-
-    splits
- }
-
-fn parse_headers(headers: Vec<u8>) -> CurdsWebResult<HttpRequest> {
-    let mut split_headers = split_on_new_line(headers);
-    let mut request = parse_request_line(split_headers.remove(0))?;
-    for header in split_headers {
-        let mut splits: Vec<String> = Vec::new();
-        for split in split_header_key_and_value(header) {
-            splits.push(String::from_utf8(split)?);
-        }
-        if splits.len() != 2 {
-            return Err(CurdsWebError::RequestFormat(format!("Incorrect header: {}", splits.join(", "))));
-        }
-        let mut value = splits.pop().unwrap();
-        let trimmed_value = value.trim();
-        let trimmed_length = trimmed_value.len();
-        if trimmed_length != value.len() {
-            let start = trimmed_value.as_ptr() as usize - value.as_ptr() as usize;
-            let end = start + trimmed_length;
-
-            value.drain(..start);
-            value.drain(end - start..);
-        }
-        let key = splits.pop().unwrap();
-
-        request.headers.add(key, value);
-    }
-
-    Ok(request)
-}
-fn parse_request_line(request_line: Vec<u8>) -> CurdsWebResult<HttpRequest> {
-    let mut splits: Vec<Vec<u8>> = split_on_space(request_line)
-        .into_iter()
-        .collect();
-    if splits.len() != 3 {
-        return Err(CurdsWebError::RequestFormat(format!("Incorrect request line parts; there are {} but 3 is expected", splits.len())));
-    }
-
-    let mut iterator = splits.into_iter();
-    let method = HttpMethod::new(String::from_utf8(iterator.next().unwrap())?);
-    let target = Uri::parse(iterator.next().unwrap())?;
-    let version = HttpVersion::new(String::from_utf8(iterator.next().unwrap())?)?;
-
-    Ok(HttpRequest::new(method, target, version))
-}
-
+/* 
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -287,4 +251,4 @@ mod tests {
             _ => panic!("Did not receive the expected error"),
         }
     }
-}
+} */

@@ -1,3 +1,5 @@
+use curds_core::web::ProductionHttpRequestParser;
+
 use super::*;
 
 pub struct CurdsWebServer<TRequestParser, TResponder> {
@@ -5,10 +7,11 @@ pub struct CurdsWebServer<TRequestParser, TResponder> {
     responder: Arc<TResponder>,
 }
 
-impl CurdsWebServer<CurdsWebHttpRequestParser, ProductionWebHttpResponder> {
+pub type ProductionWebServer = CurdsWebServer<ProductionHttpRequestParser, ProductionWebHttpResponder>;
+impl ProductionWebServer {
     pub async fn new() -> CurdsWebResult<Self> {
         Ok(Self {
-            request_parser: Arc::new(CurdsWebHttpRequestParser),
+            request_parser: Arc::new(ProductionHttpRequestParser::new()),
             responder: Arc::new(ProductionWebHttpResponder::new().await?),
         })
     }

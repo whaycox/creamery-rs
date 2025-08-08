@@ -3,6 +3,7 @@ use super::{CurdsWebResult, CurdsWebError};
 
 #[derive(Debug, PartialEq)]
 pub enum HttpVersion {
+    ZeroPointNine,
     One,
     OnePointOne,
     Two,
@@ -12,6 +13,7 @@ pub enum HttpVersion {
 impl HttpVersion {
     pub fn new(version: String) -> CurdsWebResult<Self> {
         match version.as_str() {
+            "HTTP/0.9" => Ok(HttpVersion::ZeroPointNine),
             "HTTP/1" | "HTTP/1.0" => Ok(HttpVersion::One),
             "HTTP/1.1" => Ok(HttpVersion::OnePointOne),
             "HTTP/2" | "HTTP/2.0" => Ok(HttpVersion::Two),
@@ -24,6 +26,7 @@ impl HttpVersion {
 impl Display for HttpVersion {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            HttpVersion::ZeroPointNine => write!(formatter, "HTTP/0.9"),
             HttpVersion::One => write!(formatter, "HTTP/1.0"),
             HttpVersion::OnePointOne => write!(formatter, "HTTP/1.1"),
             HttpVersion::Two => write!(formatter, "HTTP/2"),
